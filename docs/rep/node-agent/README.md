@@ -1,26 +1,27 @@
 # RIK - Node Agent Architecture (Riklet)
 
-This document provides a technical reflexion about our component, the **node agent**. 
+This document provides a technical reflexion about our component, the **node agent**.
 
-Our component will be installed on each node of a cluster and it will be composed by 4 sub-components :
+Our component will be installed on each node of a cluster and it will be composed of 4 sub-components :
 
-- **Node Manager**
-- **Node Runtime Memory**
-- **Node Proxy**
-- **Node Monitor**
+-   **Node Manager**
+-   **Node Runtime Memory**
+-   **Node Proxy**
+-   **Node Monitor**
 
 We will describe these components in more details throughout this document. Below a diagram to illustrate how these components works together.
 
-![](assets/node-schema.png)    
+![](assets/node-schema.png)
 
-The rikelet is the primary *node agent* that runs on each node.
+The rikelet is the primary _node agent_ that runs on each node.
 
 ## 1) Node Manager
 
 The Node Manager is the main sub-component of the Riklet. It should be able to :
-- Interprete Scheduler instructions
-- Run / Stop an application
-- List pods in the node
+
+-   Interprete Scheduler instructions
+-   Run / Stop an application
+-   List pods in the node
 
 ## 2) Node Runtime Memory
 
@@ -28,13 +29,13 @@ The Node Runtime Memory is a simple runtime memory which allow us to manage all 
 
 ## 3) Node Monitor
 
-The node monitor is responsible to aggregate and return node / pods metrics. It will be useful for the scheduler to different informations about the node. 
+The node monitor is responsible to aggregate and return node / pods metrics. It will be useful for the scheduler to get different informations about the node.
 
 For optimization purposes, it will be able to return **node resources**, **realtime node resources** and **realtime pods resources**.
 
-Below an example for each endpoint, of the response returned : 
+Below returned responses propositions for each endpoint :
 
-- Node resources
+-   Node resources
 
 ```json
 {
@@ -55,7 +56,7 @@ Below an example for each endpoint, of the response returned :
 }
 ```
 
-- Realtime node resources
+-   Realtime node resources
 
 ```json
 {
@@ -69,11 +70,11 @@ Below an example for each endpoint, of the response returned :
     "memory": {
         "totalMemory": 34359738368,
         "currentUsage": 50 // Percentage
-    },
+    }
 }
 ```
 
-- Realtime app resources
+-   Realtime app resources
 
 ```json
 {
@@ -93,9 +94,9 @@ Below an example for each endpoint, of the response returned :
 
 ## 4) Node Proxy
 
-- Packets routing (TCP, UDP, SCTP)
-- Redirects entering traffic to the good app
-- Should be able to respond
+-   Packets routing (TCP, UDP, SCTP)
+-   Redirects entering traffic to the good app
+-   Should be able to respond
 
 <!-- ## App
 
@@ -104,7 +105,7 @@ Below an example for each endpoint, of the response returned :
 - Deploy
 
     Deployment file example :
-    ```yaml    
+    ```yaml
     name: nginx
     repo: https://example.com/nginx | /usr/share/nginx/html
     version: 1.19.1
@@ -122,7 +123,7 @@ Below an example for each endpoint, of the response returned :
     NAME          STATUS       AGE
     helloworld    Completed    4h12m
     ```
-    
+
 - Destroy
     ```sh
     $ rik delete {app_name}
