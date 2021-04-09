@@ -10,22 +10,7 @@ Our component will be installed on each node of a cluster and it will be compose
 
 We will describe these components in more details throughout this document. Below a diagram to illustrate how these components works together.
 
-![](assets/node-schema.png)
-
-
-## Instructions
-
-1. Define requirements:
-    which service must the domain provide
-        
-    what is in scope and out of scope
-2. Propose high level architecture 
-3. Propose API or commands 
-    What Is your component interface
-4. (Optional) Send a PR with the above 3 points documented
-    agaisnt the “docs/proposals/” folder
-    must be approved by the component consumers
-    
+![](assets/node-schema.png)    
 
 ## Riklet
 
