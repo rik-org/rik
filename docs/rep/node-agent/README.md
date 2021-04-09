@@ -23,6 +23,8 @@ The Node Manager is the main sub-component of the Riklet. It should be able to :
 
 ## 2) Node Runtime Memory
 
+![](assets/nrm.png)
+
 The Node Runtime Memory is a simple runtime memory which allow us to manage all the running pods on the node. This component allow the Node Manager to get Pods instance fastly to execute actions on them. It saves the state of each pods.
 
 ## 3) Node Monitor
@@ -58,17 +60,17 @@ Below returned responses propositions for each endpoint :
 
 ```json
 {
-    "id": "node-639d7",
-    "state": "RUNNING",
-    "timestamp": 123456789,
-    "cpu": {
-        "totalCpu": 12,
-        "currentUsage": 20 // Percentage
-    },
-    "memory": {
-        "totalMemory": 34359738368,
-        "currentUsage": 50 // Percentage
-    }
+  "id": "node-639d7",
+  "state": "RUNNING",
+  "timestamp": 123456789,
+  "cpu": {
+    "totalCpu": 12,
+    "currentUsage": 20 // Percentage
+  },
+  "memory": {
+    "totalMemory": 34359738368,
+    "currentUsage": 50 // Percentage
+  }
 }
 ```
 
@@ -76,57 +78,22 @@ Below returned responses propositions for each endpoint :
 
 ```json
 {
-    "appId": "nginx-56Ksl",
-    "state": "RUNNING",
-    "createdAt": 123456789, // Timestamp
-    "restartCount": 2,
-    "internalIp": "10.244.2.177",
-    "runsOn": "node-639d7",
-    "deployment": {
-        "name": "nginx",
-        "repository": "https://example.com/repo",
-        "version": "1.19.1"
-    },
+  "appId": "nginx-56Ksl",
+  "state": "RUNNING",
+  "createdAt": 123456789, // Timestamp
+  "restartCount": 2,
+  "internalIp": "10.244.2.177",
+  "runsOn": "node-639d7",
+  "deployment": {
+    "app": "nginx",
+    "repository": "https://example.com",
+    "version": "1.19.1"
+  }
 }
 ```
 
 ## 4) Node Proxy
 
-- Packets routing (TCP, UDP, SCTP)
-- Redirects entering trafic to the right app
-- Should be able to respond
+![](assets/nprx.png)
 
-<!-- ## App
-
-### Actions
-
-- Deploy
-
-    Deployment file example :
-    ```yaml
-    name: nginx
-    repo: https://example.com/nginx | /usr/share/nginx/html
-    version: 1.19.1
-    action: deploy
-    metadata:
-        name: app1
-    ```
-
-- List
-
-    ```sh
-    $ rik get apps
-    ```
-    ```
-    NAME          STATUS       AGE
-    helloworld    Completed    4h12m
-    ```
-
-- Destroy
-    ```sh
-    $ rik delete {app_name}
-    ```
-    ```
-    {app_name} deleted on {node_name}
-    ```
-     -->
+The Node Proxy should be responsible of the communication between client and applications. It supports TCP, UP et SCTP protocol.
