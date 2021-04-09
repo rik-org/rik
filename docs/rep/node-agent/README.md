@@ -1,6 +1,7 @@
-# RIK - Node Agent Architecture
+# RIK - Node Agent Architecture (Riklet)
 
 This document provides a technical reflexion about our component, the **node agent**. 
+
 Our component will be installed on each node of a cluster and it will be composed by 4 sub-components :
 
 - **Node Manager**
@@ -12,29 +13,20 @@ We will describe these components in more details throughout this document. Belo
 
 ![](assets/node-schema.png)    
 
-## Riklet
-
 The rikelet is the primary *node agent* that runs on each node.
 
-### 1) Node Manager
+## 1) Node Manager
 
+The Node Manager is the main sub-component of the Riklet. It should be able to :
 - Interprete Scheduler instructions
-- Run an app
-- Stop an app
-- List apps in the node
+- Run / Stop an application
+- List pods in the node
 
-### 2) Node Runtime Memory
+## 2) Node Runtime Memory
 
-The Node Runtime Memory is a simple runtime memory which allow us to manage all the running pods on the node.  
+The Node Runtime Memory is a simple runtime memory which allow us to manage all the running pods on the node. This component allow the Node Manager to get Pods instance fastly to execute actions on them. It saves the state of each pods.
 
-
-
-Enable to manager pods (bare metal apps or containers).
-
-- Tools to easily read informations about the current avalaible apps on the worker node,
-- Runtime memory (save states)
-
-### 3) Node Monitor
+## 3) Node Monitor
 
 The node monitor is responsible to aggregate and return node / pods metrics. It will be useful for the scheduler to different informations about the node. 
 
@@ -99,13 +91,13 @@ Below an example for each endpoint, of the response returned :
 }
 ```
 
-### 4) Node Proxy
+## 4) Node Proxy
 
 - Packets routing (TCP, UDP, SCTP)
 - Redirects entering traffic to the good app
 - Should be able to respond
 
-## App
+<!-- ## App
 
 ### Actions
 
@@ -138,4 +130,4 @@ Below an example for each endpoint, of the response returned :
     ```
     {app_name} deleted on {node_name}
     ```
-    
+     -->
