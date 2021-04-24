@@ -24,3 +24,25 @@ considering that, this service must be able to recover from a crash **quickly** 
 * Lift up informations from nodes to controller 
 * Handle various events from nodes 
 
+## Architecture overview
+
+
+## Communication protocol
+
+## Watcher 
+
+### Events 
+
+Every events handled by the watcher, they are all either coming from node or `scheduler`.
+
+### Recovery in case of crash
+
+As written above, `scheduler` is a SPOF, this part is about how we can manage a recovery. 
+
+## Controller
+
+This part must explain everything needed from a controller, why & a solution to implement it.
+
+## Node 
+
+This part must explain everything needed from a node, why & a solution to implement it.
