@@ -57,9 +57,17 @@ Components:
 * `api/handler`: Handle API calls and redirect them properly
 * `node/watcher`: Running continuous watch process to know when a node is down
 
-## Communication protocol
+## Communication over the cluster 
 
-Here we must define the communication protocol used on the cluster.
+The communication over the cluster must be designed so we can in the future easily scale. 
+
+Inside queue, there are mainly two solutions. Either having direction connections between components of the cluster or having
+message queues where information is centralized.
+
+The second solution can be a great improvment for scalability and performance as everything would be completly asynchronous. 
+However, we need synchronous communication between internal services so make sure every information is properly received & understood.
+That's why the first solution direct communication between major components is a good choice. The drawback of this solution is we have 
+to write APIs for each components, so each one can communicate with others. 
 
 ## Watcher 
 
