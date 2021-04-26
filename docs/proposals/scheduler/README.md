@@ -24,6 +24,13 @@ considering that, this service must be able to recover from a crash **quickly** 
 * Lift up informations from nodes to controller 
 * Handle various events from nodes 
 
+**Glossary:**
+
+* Worker: entity managing workloads and managed by the scheduler & controller
+* Workload: a unit of work needed to be deployed inside a worker
+* Cluster: the whole architecture containing every single component of this project. 
+* Server / Master: a server containing every administrative services (scheduler & controller)
+
 ## Architecture overview
 
 ![Architecture overview](./assets/arch_overview.png)
@@ -43,8 +50,6 @@ Components:
 the information to the proper sub-component.
 * `workload/manager`: Process an event related to a workload getting down, to be destroyed or needs to be moved
 * `workload/scheduler`: Process controller events needing to schedule a new workload on the cluster
-* `cluster/monitor`: Handle API calls relative to statistics and nodes monitoring
-* `cluster/state_save`: Save the current state of the cluster 
 
 **Watcher**
 
@@ -56,18 +61,21 @@ Components:
 * `watcher/api`: API which receive and send requests to needed services
 * `api/handler`: Handle API calls and redirect them properly
 * `node/watcher`: Running continuous watch process to know when a node is down
+* `cluster/monitor`: Handle API calls relative to statistics and nodes monitoring
+* `cluster/state_save`: Save the current state of the cluster 
 
 ## Communication over the cluster 
 
-The communication over the cluster must be designed so we can in the future easily scale. 
-
-Inside queue, there are mainly two solutions. Either having direction connections between components of the cluster or having
+There are mainly two solutions. Either having direct connections between components (HTTP, gRPC...) of the cluster or having
 message queues where information is centralized.
 
-The second solution can be a great improvment for scalability and performance as everything would be completly asynchronous. 
+The second solution can be a great improvement for scalability and performance as everything would be completely asynchronous. 
 However, we need synchronous communication between internal services so make sure every information is properly received & understood.
 That's why the first solution direct communication between major components is a good choice. The drawback of this solution is we have 
-to write APIs for each components, so each one can communicate with others. 
+to write APIs for each component. 
+
+On top of that, we will be using [gRPC](https://grpc.io/) for communication between components. It will be handy to use 
+as API definitions are defined through [protoBuf](https://developers.google.com/protocol-buffers). 
 
 ## Watcher 
 
@@ -83,7 +91,7 @@ As written above, `scheduler` is a SPOF, this part is about how we can manage a 
 
 This part must explain everything needed from a controller, why & a solution to implement it.
 
-* What are the informations, events the controller needs to know about the cluster ?
+* What are the informations and events the controller needs to know about the cluster ?
 
 ## Node 
 
