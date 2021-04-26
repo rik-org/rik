@@ -31,12 +31,18 @@ considering that, this service must be able to recover from a crash **quickly** 
 * Cluster: the whole architecture containing every single component of this project. 
 * Server / Master: a server containing every administrative services (scheduler & controller)
 
+---
+
 ## Architecture overview
 
 ![Architecture overview](./assets/arch_overview.png)
 
 
 The `scheduler` domain is composed of two main services, which are composed of multiple components.
+The main service is `scheduler` which communicate with the controller to know when to deploy a new
+workload, update or delete one. The `watcher` is a service to determine whether or not a worker
+is down or still up. It will also receive metrics & events coming from the workers and then redirect
+them to the scheduler.
 
 **Scheduler**
 
@@ -64,7 +70,7 @@ Components:
 * `cluster/monitor`: Handle API calls relative to statistics and nodes monitoring
 * `cluster/state_save`: Save the current state of the cluster 
 
-## Communication over the cluster 
+## Communication in the cluster 
 
 There are mainly two solutions. Either having direct connections between components (HTTP, gRPC...) of the cluster or having
 message queues where information is centralized.
@@ -77,6 +83,16 @@ to write APIs for each component.
 On top of that, we will be using [gRPC](https://grpc.io/) for communication between components. It will be handy to use 
 as API definitions are defined through [protoBuf](https://developers.google.com/protocol-buffers). 
 
+There is an interrogation around the controller & scheduler communication. They may be in the same 
+physical machine and not isolated one from another, so do we still need to use gRPC here ? Can't we 
+use any other solution of communication, as we are on the same physical machine ?
+
+The APIs exposed by our components must be defined through the need defined by the team 
+[controller](#controller) and the team [node](#node)
+
+---
+
+
 ## Watcher 
 
 ### Events 
@@ -86,6 +102,8 @@ Every events handled by the watcher, they are all either coming from node or `sc
 ### Recovery in case of crash
 
 As written above, `scheduler` is a SPOF, this part is about how we can manage a recovery. 
+
+--- 
 
 ## Controller
 
