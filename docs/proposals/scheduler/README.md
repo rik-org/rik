@@ -99,21 +99,27 @@ The APIs exposed by our components must be defined through the need defined by t
 
 Every events handled by the watcher, they are all either coming from node or `scheduler`.
 
+WIP
+
 ### Recovery in case of crash
 
 As written above, `scheduler` is a SPOF, this part is about how we can manage a recovery. 
 
+WIP
+
 --- 
 
-## Controller
+The following parts explains everything needed from other teams.
 
-This part must explain everything needed from a controller, why & a solution to implement it.
+## Controller
 
 * What are the informations and events the controller needs to know about the cluster ?
 
 ## Node 
 
-This part must explain everything needed from a node, why & a solution to implement it.
-
 * What is the sending frequency of informations ? Does it need to be dynamic, if so we need the controller to know that 
 as he will manage this state. 
+
+## Networking 
+
+- When are defined the networking rules and adressing over the network ? Also, does the networking modules are linked to the controller ?
