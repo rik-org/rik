@@ -97,15 +97,20 @@ The APIs exposed by our components must be defined through the need defined by t
 
 ### Events 
 
-Every events handled by the watcher, they are all either coming from node or `scheduler`.
+Watcher will work with an etcd to store usual and non highly dynamical data.
+The etcd will store:
+ - Number of workers
+ - workers alias (to improve/simplify communication)
+ - worker properties (such as cpu, RAM, memory, etc)
 
-WIP
+Watcher is here to handle worker data, requesting it to the node manager/agent throught an API.
+Watcher will store in RAM the actual state of each nodes (idle, running, reloading, crashing, etc) and can give this metrics to scheduler when needed. If a node crash/restart, watcher will update datas in etcd.
+Watcher is the only point of communication with workers, it mean that he have to transfert scheduler instructions to the appropriate worker by resolving it using etcd alias name.
 
 ### Recovery in case of crash
 
-As written above, `scheduler` is a SPOF, this part is about how we can manage a recovery. 
-
-WIP
+If the watcher die or crash, he will restart by himself or launched by the scheduler.
+At loading, it ask in etcd all workers location, and for each, ask their actual state throught API, so all required data to work will be recovered.
 
 --- 
 
