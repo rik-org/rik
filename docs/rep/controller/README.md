@@ -103,15 +103,20 @@ A typical payload for a pod will be something like :
           "port": 443,
           "targetPort": 443,
           "protocol": "TCP",
+          "type": "clusterIP/nodePort/loadBalancer"
         }
       }
     ]
   }
 }
 ```
-Payload for deployments will be quite the same with a replicas number and deployment strategy.  
 
-others endpoints TBD later
+Payload for deployments will be quite the same with a replicas number and deployment strategy. Deployment can be set to "none" or "once" (TBD) to be equivalent to a K8S replicaset.
+
+In comparison with K8S we bypass replicaset and services by using directly attributes in deployments and pods as we think it's more user friendly.
+
+We will add other kind as well as authentication/authorization later.  
+Others endpoints TBD later
 
 ## Internal API (with scheduler)
 
