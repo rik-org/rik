@@ -128,3 +128,15 @@ as he will manage this state.
 ## Networking 
 
 - When are defined the networking rules and adressing over the network ? Also, does the networking modules are linked to the controller ?
+
+
+---
+
+## Sidenotes 
+
+- A node going alive could register to the scheduler (or the controller, to be defined) so the cluster knows 
+its existence. 
+- Nodes have a constant connection (with gRPC & HTTP/2) with the scheduler. If one or another lose connection,
+they will know they lose connection and then take action based on that. 
+- In case a instance of a workload crashed we could lift up this information to the controller. So the controller
+can take actions to know if we need to schedule a new instance or not. 
