@@ -153,29 +153,13 @@ This definition is here to give a scope to what is needed in the V0 of the produ
 
 --- 
 
-The following parts explains everything needed from other teams.
+Following part is a list of questions needing answers.
 
 ## Controller
 
 * What are the informations and events the controller needs to know about the cluster ?
 
-## Node 
-
-* What is the sending frequency of informations ? Does it need to be dynamic, if so we need the controller to know that he will manage this state. 
-
 ## Networking 
 
 - When are defined the networking rules and adressing over the network ? Also, does the networking modules are linked to the controller ? 
 - In the V0 will be there any constraint from networking on scheduler ?
-
-
----
-
-## Sidenotes 
-
-- A node going alive could register to the scheduler (or the controller, to be defined) so the cluster knows 
-its existence. 
-- Nodes have a constant connection (with gRPC & HTTP/2) with the scheduler. If one or another lose connection,
-they will know they lose connection and then take action based on that. 
-- In case a instance of a workload crashed we could lift up this information to the controller. So the controller
-can take actions to know if we need to schedule a new instance or not. 
