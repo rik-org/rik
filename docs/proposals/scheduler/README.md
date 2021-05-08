@@ -92,7 +92,6 @@ The APIs exposed by our components must be defined through the need defined by t
 
 ---
 
-
 ## Watcher 
 
 ### Events 
@@ -112,6 +111,46 @@ Watcher is the only point of communication with workers, it mean that he have to
 If the watcher die or crash, he will restart by himself or launched by the scheduler.
 At loading, it ask in etcd all workers location, and for each, ask their actual state throught API, so all required data to work will be recovered.
 
+---
+
+## Authentication 
+
+We discovered that a worker isn't created at the start of the cluster. Workers will dynamically register themselves into the cluster. 
+
+I see two solutions:
+
+- The worker registration is done with the controller which gives a token (or something like) to authenticate itself to the scheduler. So the scheduler must be able to verify to authentication token to ensure no security issue. 
+- The worker registration is done with the scheduler, and the notification of a new worker is sent to the controller. 
+
+The first solution can be tricky as it involve some more requests that the second. But with this solution the controller would be able to completly ban or handle workers registrations and so apply policies. It can also be done in the scheduler but I think it is out of our scope. 
+
+The second is pretty simple to do, as we don't have to check a registration from the controller, we only have to register a worker and send a notification to the controller. As said above, I don't think handling the registration is in our scope. -- Alexandre
+
+---
+
+## 🎉 v0 Definition 
+
+This definition is here to give a scope to what is needed in the V0 of the product. The following list isn't exhaustive and may change in the near future. 
+
+*The V0 needs only a single worker and doesn't have a CLI.*
+
+### Backlog 
+
+- Communicate with the worker agent 
+- Communicate with the controller
+- Register / Unregister a worker
+- Schedule / Unschedule a workload on the worker 
+- Receive simple metrics from the worker
+- Knowing whether the worker can handle a workload
+- Lift up to the controller a workload when it gets stopped (expected or not)
+
+## Schematic
+
+![v0_schema](./assets/arch_v0.png)
+
+### API Definition 
+
+
 --- 
 
 The following parts explains everything needed from other teams.
@@ -122,12 +161,12 @@ The following parts explains everything needed from other teams.
 
 ## Node 
 
-* What is the sending frequency of informations ? Does it need to be dynamic, if so we need the controller to know that 
-as he will manage this state. 
+* What is the sending frequency of informations ? Does it need to be dynamic, if so we need the controller to know that he will manage this state. 
 
 ## Networking 
 
-- When are defined the networking rules and adressing over the network ? Also, does the networking modules are linked to the controller ?
+- When are defined the networking rules and adressing over the network ? Also, does the networking modules are linked to the controller ? 
+- In the V0 will be there any constraint from networking on scheduler ?
 
 
 ---
