@@ -108,8 +108,9 @@ Watcher is the only point of communication with workers, it mean that he have to
 
 ### Recovery in case of crash
 
-If the watcher die or crash, he will restart by himself or launched by the scheduler.
-At loading, it ask in etcd all workers location, and for each, ask their actual state throught API, so all required data to work will be recovered.
+Watcher self re-instanciate himself and get last data/metrics saved from etcd.
+etcd make sense because it provide a key/value storage that can be roles based ( leaders can read write update and other can readonly ). Provide safe cold storage on disk and great performance, can handle event on change (well to couple with watcher or controller maybe ). etcd is shared by all server components (read only), so we can get state metrics directly from controller or scheduler if it make sense.
+[source](https://www.ibm.com/cloud/learn/etcd)
 
 ---
 
