@@ -24,12 +24,25 @@ considering that, this service must be able to recover from a crash **quickly** 
 * Lift up informations from nodes to controller 
 * Handle various events from nodes 
 
+**Glossary:**
+
+* Worker: entity managing workloads and managed by the scheduler & controller
+* Workload: a unit of work needed to be deployed inside a worker
+* Cluster: the whole architecture containing every single component of this project. 
+* Server / Master: a server containing every administrative services (scheduler & controller)
+
+---
+
 ## Architecture overview
 
 ![Architecture overview](./assets/arch_overview.png)
 
 
 The `scheduler` domain is composed of two main services, which are composed of multiple components.
+The main service is `scheduler` which communicate with the controller to know when to deploy a new
+workload, update or delete one. The `watcher` is a service to determine whether or not a worker
+is down or still up. It will also receive metrics & events coming from the workers and then redirect
+them to the scheduler.
 
 **Scheduler**
 
@@ -43,8 +56,6 @@ Components:
 the information to the proper sub-component.
 * `workload/manager`: Process an event related to a workload getting down, to be destroyed or needs to be moved
 * `workload/scheduler`: Process controller events needing to schedule a new workload on the cluster
-* `cluster/monitor`: Handle API calls relative to statistics and nodes monitoring
-* `cluster/state_save`: Save the current state of the cluster 
 
 **Watcher**
 
@@ -56,24 +67,44 @@ Components:
 * `watcher/api`: API which receive and send requests to needed services
 * `api/handler`: Handle API calls and redirect them properly
 * `node/watcher`: Running continuous watch process to know when a node is down
+* `cluster/monitor`: Handle API calls relative to statistics and nodes monitoring
+* `cluster/state_save`: Save the current state of the cluster 
 
-## Communication over the cluster 
+## Communication in the cluster 
 
-The communication over the cluster must be designed so we can in the future easily scale. 
-
-Inside queue, there are mainly two solutions. Either having direction connections between components of the cluster or having
+There are mainly two solutions. Either having direct connections between components (HTTP, gRPC...) of the cluster or having
 message queues where information is centralized.
 
-The second solution can be a great improvment for scalability and performance as everything would be completly asynchronous. 
+The second solution can be a great improvement for scalability and performance as everything would be completely asynchronous. 
 However, we need synchronous communication between internal services so make sure every information is properly received & understood.
 That's why the first solution direct communication between major components is a good choice. The drawback of this solution is we have 
-to write APIs for each components, so each one can communicate with others. 
+to write APIs for each component. 
+
+On top of that, we will be using [gRPC](https://grpc.io/) for communication between components. It will be handy to use 
+as API definitions are defined through [protoBuf](https://developers.google.com/protocol-buffers). 
+
+There is an interrogation around the controller & scheduler communication. They may be in the same 
+physical machine and not isolated one from another, so do we still need to use gRPC here ? Can't we 
+use any other solution of communication, as we are on the same physical machine ?
+
+The APIs exposed by our components must be defined through the need defined by the team 
+[controller](#controller) and the team [node](#node)
+
+---
 
 ## Watcher 
 
 ### Events 
 
-Every events handled by the watcher, they are all either coming from node or `scheduler`.
+Watcher will work with an etcd to store usual and non highly dynamical data.
+The etcd will store:
+ - Number of workers
+ - workers alias (to improve/simplify communication)
+ - worker properties (such as cpu, RAM, memory, etc)
+
+Watcher is here to handle worker data, requesting it to the node manager/agent throught an API.
+Watcher will store in RAM the actual state of each nodes (idle, running, reloading, crashing, etc) and can give this metrics to scheduler when needed. If a node crash/restart, watcher will update datas in etcd.
+Watcher is the only point of communication with workers, it mean that he have to transfert scheduler instructions to the appropriate worker by resolving it using etcd alias name.
 
 ### Recovery in case of crash
 
@@ -81,15 +112,55 @@ Watcher self re-instanciate himself and get last data/metrics saved from etcd.
 etcd make sense because it provide a key/value storage that can be roles based ( leaders can read write update and other can readonly ). Provide safe cold storage on disk and great performance, can handle event on change (well to couple with watcher or controller maybe ). etcd is shared by all server components (read only), so we can get state metrics directly from controller or scheduler if it make sense.
 [source](https://www.ibm.com/cloud/learn/etcd)
 
+---
+
+## Authentication 
+
+We discovered that a worker isn't created at the start of the cluster. Workers will dynamically register themselves into the cluster. 
+
+I see two solutions:
+
+- The worker registration is done with the controller which gives a token (or something like) to authenticate itself to the scheduler. So the scheduler must be able to verify to authentication token to ensure no security issue. 
+- The worker registration is done with the scheduler, and the notification of a new worker is sent to the controller. 
+
+The first solution can be tricky as it involve some more requests that the second. But with this solution the controller would be able to completly ban or handle workers registrations and so apply policies. It can also be done in the scheduler but I think it is out of our scope. 
+
+The second is pretty simple to do, as we don't have to check a registration from the controller, we only have to register a worker and send a notification to the controller. As said above, I don't think handling the registration is in our scope. -- Alexandre
+
+---
+
+## 🎉 v0 Definition 
+
+This definition is here to give a scope to what is needed in the V0 of the product. The following list isn't exhaustive and may change in the near future. 
+
+*The V0 needs only a single worker and doesn't have a CLI.*
+
+### Backlog 
+
+- Communicate with the worker agent 
+- Communicate with the controller
+- Register / Unregister a worker
+- Schedule / Unschedule a workload on the worker 
+- Receive simple metrics from the worker
+- Knowing whether the worker can handle a workload
+- Lift up to the controller a workload when it gets stopped (expected or not)
+
+## Schematic
+
+![v0_schema](./assets/arch_v0.png)
+
+### API Definition 
+
+
+--- 
+
+Following part is a list of questions needing answers.
+
 ## Controller
 
-This part must explain everything needed from a controller, why & a solution to implement it.
+* What are the informations and events the controller needs to know about the cluster ?
 
-* What are the informations, events the controller needs to know about the cluster ?
+## Networking 
 
-## Node 
-
-This part must explain everything needed from a node, why & a solution to implement it.
-
-* What is the sending frequency of informations ? Does it need to be dynamic, if so we need the controller to know that 
-as he will manage this state. 
+- When are defined the networking rules and adressing over the network ? Also, does the networking modules are linked to the controller ? 
+- In the V0 will be there any constraint from networking on scheduler ?
