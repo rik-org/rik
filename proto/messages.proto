@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package scheduler;
+
+message Empty {}
+
+message Contener {
+  string name = 1;
+  string image = 2;
+  repeated string command = 3;
+}
+
+message WorkLoad {
+  string name = 1;
+  Contener contener = 2;
+}
+
+enum ResourceStatus {
+  PENDING = 0;
+  RUNNING = 1;
+  SUCCEEDED = 2;
+  FAILED = 3;
+  UNKNOWN = 4;
+}
+
+message WorkerMetric {
+  ResourceStatus status = 1;
+}
+
+message WorkerMetricResponse {
+  repeated ResourceStatus status = 1;
+}
+
+message WorkLoadMetric {
+  ResourceStatus status = 1;
+  optional int32 memory = 2;
+  optional int32 cpu = 3;
+}
+
+message WorkLoadMetricResponse {
+  repeated ResourceStatus status = 1;
+}

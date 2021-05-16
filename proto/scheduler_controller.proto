@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+message Worker {
+  // TO BE DEFINED 
+  string data = 1;
+}
+
+enum RegisterStatus {
+  OK = 0;
+  REJECTED = 1;
+}
+
+message RegisterReponse {
+  RegisterStatus status = 1;
+}
+
+service Worker {
+  rpc register(Worker) returns (RegisterReponse);
+}
