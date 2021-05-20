@@ -1,15 +1,18 @@
-# RIK CLI
+# RIK Command Line Interface
 
-RIK CLI is a user interface for the rustlang based cloud orchestrator **Rust In Kube**.
+`riktl` is RIK's command interface and tool.
 It will send and receive HTTP requests to/from the REST API developed by the controler team.
 
 It will use the crate [clap](https://crates.io/crates/clap), a command line argument parser.
 
-# Cluster connection
+## Cluster connection
 
-RIK CLI will use a `rik.config.yaml` file to establish the connection with the REST API.
+---
+
+`riktl` use a `rik.config.yaml` file to connects to a REST API server, and then calls into the exposed REST API.
 
 TBD : will the API need an authentication token to allow the connection ?
+Update : Not for the first version.
 
 > _rik.config.yaml_ :
 
@@ -23,36 +26,85 @@ cluster:
 The CLI will parse this file on every command, to get the API address and the auth token.
 Each request will contain the authentication token in the headers, and the YAML file in the payload.
 
+## Syntax
+
+---
+
+Use the following syntax to run `riktl` commands from your terminal window.
+
+`riktl COMMAND TYPE [--NAME <id>] [OPTIONS]`
+
+- `riktl` supports the following `commands`:
+  - riktl `create`
+  - riktl `delete`
+  - riktl `get`
+  -
+- `riktl` supports the following resource `types`:
+
+  - instance
+  - workload
+
+- `riktl` supports the following `options`:
+  - --workload
+  - -f | --file
+  - --id
+  - --replicas
+
 ## Commands
 
-- **List of all pods**
+---
 
-  `> rik pods|pod|po list|ls`
+### Create a workload
 
-- **Apply a workload**
+- In a full command line
 
-  `> rik pods|pod|po apply workload.yaml`
+  `riktl create workload --name NAME --image IMAGE ...`
 
-- **Delete a pod**
+- With a YAML file
 
-  `> rik pods|pod|po delete <POD_NAME>`
+  `riktl create workload -f work.yaml`
 
-- **Lint a YAML file**
+### Delete a workload.
 
-  Lint Yaml file with [Yaml validator crate](https://crates.io/crates/yaml-validator)  
-  `> rik lint workload.yaml`  
-  _Linter auto triggers on rik deploy but can be executed manually before deploy._
+- `riktl delete workload --workload <workload-id>`
 
-- **Help**
+### Create an instance
 
-  Global help
-  `> rik --help`
-  `> rik -h`
+- ` riktl create instance --workload <workload-id> [--replicas N]`
 
-  Help on a specific entity
-  `> rik pods|pod|po --help|-h`
+### Delete an instance
+
+- `riktl delete instance --instance <instance-id>`
+
+### View a workload
+
+- `riktl get workload [--id <workload-id>]`
+
+### View an instance
+
+- `riktl get instance [--id <instance-id>]`
+
+### Lint a YAML file
+
+Lint Yaml file with [Yaml validator crate](https://crates.io/crates/yaml-validator)
+
+- `riktl lint workload.yaml`
+
+Linter auto triggers on rik deploy but can be executed manually before deploy.\_
+
+### Help
+
+#### Global help
+
+- `riktl --help`
+
+#### Help on a specific entity
+
+- `rik pods|pod|po --help|-h`
 
 ## Workload description
+
+---
 
 > _workload.yaml_ :
 
@@ -71,11 +123,14 @@ env:
 
 ## Next RIK versions
 
+---
+
 - Authentication system for multi tenant usage ? (`rik register`, `rik login`)
 - Possibility to use the CLI in an imperative way ?
-- Provide multiple nodes ? Node management (create, list, delete).
 
-### Authors
+## Authors
+
+---
 
 - [Julian Labatut](https://github.com/jlabatut)
 - [Mathias Flagey](https://github.com/NelopsisCode)
