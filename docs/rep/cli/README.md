@@ -11,20 +11,16 @@ It will use the crate [clap](https://crates.io/crates/clap), a command line argu
 
 `riktl` use a `rik.config.yaml` file to connects to a REST API server, and then calls into the exposed REST API.
 
-TBD : will the API need an authentication token to allow the connection ?
-Update : Not for the first version.
-
 > _rik.config.yaml_ :
 
 ```
 cluster:
   name: cluster name
   server: API-address
-  auth-token: ApyTUlpd0JnNmRXVGpnaG5BNGhMRXVYVldNSHd1d3gxT0Nac3RmMWpqdEIv
 ```
 
-The CLI will parse this file on every command, to get the API address and the auth token.
-Each request will contain the authentication token in the headers, and the YAML file in the payload.
+The CLI will parse this file on every command, to get the API address.
+Each request will contain the YAML file in the payload.
 
 ## Syntax
 
@@ -98,18 +94,18 @@ Linter auto triggers on rik deploy but can be executed manually before deploy.\_
 
 - `riktl --help`
 
-#### Help on a specific entity
+####  Help on a specific entity
 
 - `rik pods|pod|po --help|-h`
 
 ## Workload description
 
----
+TBD (we need openapi of the controller to determine this)
 
 > _workload.yaml_ :
 
 ```
-kind: pod
+kind: instance
 name: nginx-server
 replicas: 3
 image: nginx:1.9.0 or url
