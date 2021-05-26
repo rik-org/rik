@@ -1,99 +1,96 @@
-# RIK - Node Agent Architecture (Riklet)
+# RIK - Riklet Architecture
 
-This document provides a technical reflection about our component, the **node agent**.
+This document provides a technical reflexion about our component, the **riklet**. Our component and the [rik-proxy]("https://example.com") will be installed on each worker node of a rik cluster. We will describe this component in more details throughout this document.
 
-Our component will be installed on each node of a cluster and it will be composed of 4 sub-components :
+Below a diagram to illustrate how these components work together :
 
-- **Node Manager**
-- **Node Runtime Memory**
-- **Node Proxy**
-- **Node Monitor**
+![Global architecture](https://i.imgur.com/ZwLWFYV.png)
 
-We will describe these components in more details throughout this document. Here is a diagram to illustrate how these components works together :
+The **riklet** is the primary _node agent_ that runs on each node.
 
-![High-level view of Rikelet](assets/node-schema.png)
+## Glossary
 
-## 1) Node Manager
+- `Pod`: Execution unit in Rik. It should be able to execute docker containers for the first release.
+- `Node`: A cluster unit that executes a workload and contains only one `pod` for the first release.
 
-The Node Manager is the main sub-component of the Riklet. It should be able to :
+## Riklet
 
-- Interprete Scheduler instructions
-- Run / Stop an application
-- List pods in the node
+### Objectives
 
-## 2) Node Runtime Memory
+Riklet is responsible to interpret scheduling instructions and run workloads in a dedicated pod.
 
-![](assets/nrm.png)
+Also, it should be able to send metrics about node and pods regularly to the scheduler.
 
-The Node Runtime Memory is a simple runtime memory which allow us to manage all the running pods on the node. This component allow the Node Manager to get Pods instance fastly to execute actions on them. It saves the state of each pods.
+### Communication
 
-## 3) Node Monitor
+In order to communicate with the scheduler and potentially other rik components, **riklet** had to expose an API.
 
-The node monitor is responsible to aggregate and return node / pods metrics. It will be useful for the scheduler to get system resources informations about the node.
+This API will use the [gRPC](https://grpc.io) protocol to send & receive requests. API definitions will be defined through [protobuf](https://developers.google.com/protocol-buffers) files that allow us to define the API easily, and generate the associated code.
 
-For optimization purposes, it will be able to return **node resources**, **realtime node resources** and **realtime pods resources**. Theses informations aim to be used by the Scheduler.
+### Metrics
 
-Below returned responses propositions for each endpoint :
+Riklet is responsible to fetch metrics of the host node and the pods that runs on the latter.
 
-- Node resources
+For that, it should implement a push model in order to report metrics. That means that every `x` seconds for example, the **riklet** will fetch and send metrics to the scheduler which is reponsible to keep the node metrics and forward the pod metrics to the controller.
 
-```json
-{
-    "id": "node-639d7", // An unique identifier for the node
-    "cpu": 12, // Logical CPU cores
-    "memory": 34359738368, // Bytes
-    "disksize": 536870912000, // Bytes
-    "distrib": "Debian",
-    "version": 10,
-    "type": "linux",
-    "arch": "amd64",
-    "kernelVersion": "4.19.0-11-amd64",
-    "networking": {
-        "hostname": "node-639d7",
-        "internalip":  "10.114.0.8",
-        "externalip":  "134.209.252.162"
-    }
-}
-```
+Metrics resolution interval has to be configurable with a flag, for example :
+`riklet --metric-resolution=5s`
 
-- Realtime node resources
+#### Node metrics
+
+Node metrics payload should contain at least **CPU**, **Memory** and **Disk** usage. Without these informations, the scheduler will not be able to correctly schedule workloads.
 
 ```json
 {
-  "id": "node-639d7",
-  "state": "RUNNING",
-  "timestamp": 123456789,
   "cpu": {
-    "totalCpu": 12,
+    "totalCpu": 12, // number of cores
     "currentUsage": 20 // Percentage
   },
   "memory": {
-    "totalMemory": 34359738368,
-    "currentUsage": 50 // Percentage
-  }
+    "totalMemory": 34359738368, // Bytes
+    "freeMemory": 17179869184, // Bytes
+    "freeMemoryAmount": 50 //Percentage
+  },
+  "disks": [
+      {
+          "diskName": "/dev/sda1"
+          "total": 356448698, // Bytes
+          "used": 12564, // Bytes
+          "available": 3564428698 // Bytes
+      }
+  ]
 }
 ```
 
-- Realtime app resources
+#### Pod metrics
+
+Pod metrics payload should contain at least **CPU** and **Memory** usage. Without these informations, the scheduler will not be able to correctly schedule workloads.
 
 ```json
 {
-    "appId": "nginx-56Ksl",
-    "state": "RUNNING",
-    "createdAt": 123456789, // Timestamp
-    "restartCount": 2,
-    "internalIp": "10.244.2.177",
-    "runsOn": "node-639d7",
-    "deployment": {
-        "name": "nginx",
-        "repository": "https://example.com/repo",
-        "version": "1.19.1"
-    },
+	"cpu": {
+		"totalCpu": 12, // number of cores
+		"currentUsage": 20 // Percentage
+	},
+	"memory": {
+		"totalMemory": 34359738368, // Bytes
+		"freeMemory": 17179869184, // Bytes
+		"freeMemoryAmount": 50 //Percentage
+	}
 }
 ```
 
-## 4) Node Proxy
+## Pod
 
-![Node Proxy schema](assets/nprx.png)
+### Lifecycle
 
-The Node Proxy should be responsible of the communication between client and applications. It supports TCP, UP et SCTP protocol.
+The lifecycle of a pod is quite simple and it looks like a simple process on a computer. A pod can be in different states at a specific moment :
+
+- `Creating`: The pod is in creation.
+- `Running` : The pod is running and is healthy.
+- `Error` : The pod has crashed.
+- `Terminating` : The pod is terminated and it'll be deleted.
+
+**Riklet has to manage each of these states, and on every state update, it should inform the scheduler of what happening on the pod.**
+
+Also, it can be in `Pending` state but this is not the riklet responsibility to manage this state. This state means that there is no available node where the pod can be scheduled and it's the scheduler responsibility to take care of it.
