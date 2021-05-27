@@ -1,0 +1,298 @@
+openapi: 3.0.2
+info:
+  title: Rik
+  version: 0.1.0
+paths:
+  /api/v0/workloads.list:
+    get:
+      tags:
+        - Workloads
+      description: List all workload
+      parameters:
+        - required: false
+          schema:
+            title: limit
+            minimum: 1
+            type: integer
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                 $ref: '#/components/schemas/WorkloadList'
+  /api/v0/workloads.create:
+    post:
+      tags:
+        - Workloads
+      description: Create a new workload
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkloadCreate'
+      responses:
+        '200':
+          description: Successful Response
+  /api/v0/workloads.delete:
+    post:
+      tags:
+        - Workloads
+      description: Delete a workload
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkloadId'
+            
+      responses:
+        '200':
+          description: Successful Response
+  /api/v0/tenants.list:
+    get:
+      tags:
+        - Tenants
+      description: List all deployment
+      parameters:
+        - required: false
+          schema:
+            title: limit
+            minimum: 1
+            type: integer
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                 $ref: '#/components/schemas/TenantList'
+  /api/v0/tenants.create:
+    post:
+      tags:
+        - Tenants
+      description: List all deployment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tenant'
+      responses:
+        '200':
+          description: Successful Response
+  /api/v0/tenants.delete:
+    post:
+      tags:
+        - Tenants
+      description: Delete a tenant
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantDelete'
+      responses:
+        '200':
+          description: Successful Response
+  /api/v1/instances.list:
+    get:
+      tags:
+        - Instances
+      description: List all instances
+      parameters:
+        - required: false
+          schema:
+            title: limit
+            minimum: 1
+            type: integer
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                 $ref: '#/components/schemas/InstanceList'
+          
+  /api/v1/instances.create:
+    post:
+      tags:
+        - Instances
+      description: Create a new instance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstanceCreate'
+      responses:
+        '200':
+          description: Successful Response
+  /api/v0/instance.delete:
+    post:
+      tags:
+        - Instances
+      description: Delete an instance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstanceId'
+      responses:
+        '200':
+          description: Successful Response
+        
+components:
+  schemas:
+    Tenant:   
+      type: object
+      properties:
+        name:
+          type: string
+          example: <name>
+        verb:
+          type: string
+          example: create
+        resource:
+          type: string
+          example: workload
+          
+    TenantList:   
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            example: <name>
+          verb:
+            type: string
+            example: create
+          resource:
+            type: string
+            example: workload
+    
+    TenantDelete:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "<tenant name>"
+          
+    WorkloadCreate:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+          example: "v1"
+        kind:
+          type: string
+          example: pod
+        metadate:
+          type: object
+          properties:
+            name:
+              type: string
+              example: workload name
+        spec:
+          type: object
+          properties:
+            containers:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: <name>
+                  image:
+                    type: string
+                    example: <image>
+                  env:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: key1
+                        value:
+                          type: string
+                          example: value1
+                  ports:
+                    type: object
+                    properties:
+                      port:
+                        type: number
+                        example: 80
+                      targetPort:
+                        type: number
+                        example: 80
+                      protocol:
+                        type: string
+                        example: TCP
+                      type:
+                        type: string
+                        example: clusterIP|nodePort|loadBalancer
+                  
+                  
+    WorkloadId:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "<workload id>"
+        name:
+          type: string
+          example: "<workload name>"
+          
+    WorkloadList:
+      type: object
+      properties:
+        workloads:
+          type: array
+          items:
+            type: object
+            example: { "id": "<id>", "name": "<workload name>", "kind": "<kind>"}
+              
+        
+    InstanceCreate: 
+      type: object
+      properties:
+        name:
+          type: string
+          example: "instance name"
+        workload:
+          type: string
+          example: "workload name"
+        replicas:
+          type: integer
+          example: 3
+    
+    InstanceList:
+      type: object
+      properties:
+        instances:
+          type: array
+          items:
+            type: object
+            example: { "id": "<id>", "name": "<instance name>", "worload": "<workload name>", "status": "<status>"}
+    
+    InstanceId:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "<instance id>"
+        name:
+          type: string
+          example: "<instance name>"
+
+          
+          
+          
+          
+          
+          
