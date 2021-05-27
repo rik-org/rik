@@ -16,107 +16,24 @@ After validating user requests, it interacts with the scheduler for orchestratin
 
 REST API
 
-Can receive YAML file for cluster, deployment, pods, configurations the controller has to check that the given rules are compliant and gives instructions to scheduler accordingly.
+Receive request to manage workloads, instances and tenants the controller has to check that the given rules are compliant and gives instructions to scheduler accordingly.
 
-We may use [Rocket](https://rocket.rs/) as a web server framework.
+We think of going with Actix web framework.
+Even though it might seem too big for our use case, it is as a big community and well documented so by using it we should avoid a lot of headache as it seem easy to use.
+
 
 ### Endpoints :
 
-```
-// get all pods of a cluster
-GET /api/v1/pods
-```
+See endpoints definition [here](./openapi.yaml).
 
-```
-// get all deployments of a cluster
-GET /api/v1/deployments
-```
 
-```
-// get all namespaces of a cluster
-GET /api/v1/namespaces
-```
-
-For the beginning we will use a namespace called "default"
-
-```
-// get all pods of a specified namespace
-GET /api/v1/namespaces/{namespace}/pods
-```
-
-```
-// get all deployments of a specified namespace
-GET /api/v1/namespaces/{namespace}/deployments
-```
-
-```
-// Create new pod in a specified namespace
-POST /api/v1/namespaces/{namespace}/pods
-```
-
-```
-// Create new deployment in a specified namespace
-POST /api/v1/namespaces/{namespace}/deployments
-```
-
-```
-// Delete pod by name in a specified namespace
-DELETE /api/v1/namespaces/{namespace}/pods/{name}
-```
-
-```
-// Delete deployment by name in a specified namespace
-DELETE /api/v1/namespaces/{namespace}/deployments/{name}
-```
-
-```
-// Change current namespace
-UPDATE /api/v1/namespaces/{namespace}
-```
-
-A typical payload for a pod will be something like :
-
-```json
-{
-  "apiVersion": "v1",
-  "kind": "Pod",
-  "metadata": {
-    "name": "<name>",
-    "namespace": "default"
-  },
-  "spec": {
-    "containers": [
-      {
-        "name": "<name>",
-        "image": "<image>",
-        "env": [
-          {
-            "name": "key1",
-            "value": "value1"
-          },
-          {
-            "name": "key2",
-            "value": "value2"
-          }
-        ],
-        "ports": {
-          "port": 443,
-          "targetPort": 443,
-          "protocol": "TCP",
-          "type": "clusterIP/nodePort/loadBalancer"
-        }
-      }
-    ]
-  }
-}
-```
-
-Payload for deployments will be quite the same with a replicas number and deployment strategy. Deployment can be set to "none" or "once" (TBD) to be equivalent to a K8S replicaset.
-
-In comparison with K8S we bypass replicaset and services by using directly attributes in deployments and pods as we think it's more user friendly.
+In comparison with K8S we bypass services and replicaset by using directly attributes in workload and instance endpoint to run as many replicas of workload as we want, as we think it's more user friendly.
 
 We will add other kind as well as authentication/authorization later.  
-Others endpoints TBD later
+
+
+The part we will be working mostly for the moment wil be workloads and instances.  
+Tenants will come later and for now, we are not sure about the exact purpose of a tenants, are they a role with permisions (verb and resources) ?
 
 ## Internal API (with scheduler)
 
@@ -124,9 +41,14 @@ Use a gRPC (with protobuf) API has it is best suited for actions that imply most
 
 We may use [tonic](https://github.com/hyperium/tonic) to implement gRPC
 
+
+
+Scheduler send information to the controller about instance and node status being run etc ...
+When a node disconnect (or instance crash), the scheduler as to sends to the controller the information that instances on this node have failed and the controller as to decide what to do. (certainly recreate those same workload instances)
+
 ### Endpoints :
 
-TBD
+Defined in scheduler proto files.
 
 ## Database
 
