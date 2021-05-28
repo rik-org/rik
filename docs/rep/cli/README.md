@@ -50,15 +50,9 @@ Use the following syntax to run `riktl` commands from your terminal window.
 
 ---
 
-### Create a workload
+### Create a workload from a YAML file
 
-- In a full command line
-
-  `riktl create workload --name NAME --image IMAGE ...`
-
-- With a YAML file
-
-  `riktl create workload -f work.yaml`
+- `riktl create workload -f work.yaml`
 
 ### Delete a workload.
 
@@ -123,6 +117,7 @@ env:
 
 - Authentication system for multi tenant usage ? (`rik register`, `rik login`)
 - Possibility to use the CLI in an imperative way ?
+- Create workload in a full command line ? (`riktl create workload --name NAME --image IMAGE ...`)
 
 ## Authors
 
