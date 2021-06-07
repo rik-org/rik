@@ -1,8 +1,8 @@
 [package]
 name = "riktl"
 version = "0.1.0"
-authors = ["mfl ops <mfldev@polddddee.fr>"]
-edition = "2018"
+authors = ["Julian Labatut <julian.labatut@etu.umontpellier.fr>", "Mathias Flagey <mathias.flagey@etu.umontpellier.fr>"]
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
