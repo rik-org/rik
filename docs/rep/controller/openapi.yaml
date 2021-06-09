@@ -7,7 +7,7 @@ paths:
     get:
       tags:
         - Workloads
-      description: List all workload
+      description: List all workloads
       parameters:
         - required: false
           schema:
@@ -22,7 +22,12 @@ paths:
           content:
             text/plain:
               schema:
-                 $ref: '#/components/schemas/WorkloadList'
+                type: object
+                properties:
+                  workloads:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Workload'
   /api/v0/workloads.create:
     post:
       tags:
@@ -32,10 +37,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkloadCreate'
+              $ref: '#/components/schemas/WorkloadDefinition'
       responses:
         '200':
           description: Successful Response
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/WorkloadName'
   /api/v0/workloads.delete:
     post:
       tags:
@@ -45,7 +54,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkloadId'
+              $ref: '#/components/schemas/WorkloadName'
             
       responses:
         '200':
@@ -54,7 +63,7 @@ paths:
     get:
       tags:
         - Tenants
-      description: List all deployment
+      description: List all tenants
       parameters:
         - required: false
           schema:
@@ -69,17 +78,22 @@ paths:
           content:
             text/plain:
               schema:
-                 $ref: '#/components/schemas/TenantList'
+                type: object
+                properties:
+                  tenants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tenant'
   /api/v0/tenants.create:
     post:
       tags:
         - Tenants
-      description: List all deployment
+      description: Create a new tenant
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Tenant'
+              $ref: '#/components/schemas/TenantDefinition'
       responses:
         '200':
           description: Successful Response
@@ -92,7 +106,11 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TenantDelete'
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "28dcac69-33ef-4b13-a42f-0d07c7acc1a6"
       responses:
         '200':
           description: Successful Response
@@ -115,7 +133,12 @@ paths:
           content:
             text/plain:
               schema:
-                 $ref: '#/components/schemas/InstanceList'
+                type: object
+                properties:
+                  instances:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Instance'
           
   /api/v1/instances.create:
     post:
@@ -126,7 +149,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InstanceCreate'
+              $ref: '#/components/schemas/InstanceDefinition'
       responses:
         '200':
           description: Successful Response
@@ -139,14 +162,35 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InstanceId'
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "28dcac69-33ef-4b13-a42f-0d07c7acc1a6"
       responses:
         '200':
           description: Successful Response
         
 components:
   schemas:
+  
     Tenant:   
+      type: object
+      properties:
+        id:
+          type: string
+          example: "f13563b8-8a0b-4867-81f7-6890d6fe9fcd"
+        name:
+          type: string
+          example: <name>
+        verb:
+          type: string
+          example: create
+        resource:
+          type: string
+          example: workload
+    
+    TenantDefinition:   
       type: object
       properties:
         name:
@@ -158,30 +202,9 @@ components:
         resource:
           type: string
           example: workload
+
           
-    TenantList:   
-      type: array
-      items:
-        type: object
-        properties:
-          name:
-            type: string
-            example: <name>
-          verb:
-            type: string
-            example: create
-          resource:
-            type: string
-            example: workload
-    
-    TenantDelete:
-      type: object
-      properties:
-        name:
-          type: string
-          example: "<tenant name>"
-          
-    WorkloadCreate:
+    WorkloadDefinition:
       type: object
       properties:
         apiVersion:
@@ -236,29 +259,80 @@ components:
                       type:
                         type: string
                         example: clusterIP|nodePort|loadBalancer
-                  
-                  
-    WorkloadId:
+                        
+    Workload:
       type: object
       properties:
         id:
           type: string
-          example: "<workload id>"
+          example: "c540eaf0-e41b-4de8-bbda-d1c815443b6e"
+        apiVersion:
+          type: string
+          example: "v1"
+        kind:
+          type: string
+          example: pod
+        metadate:
+          type: object
+          properties:
+            name:
+              type: string
+              example: workload name
+        spec:
+          type: object
+          properties:
+            containers:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: <name>
+                  image:
+                    type: string
+                    example: <image>
+                  env:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: key1
+                        value:
+                          type: string
+                          example: value1
+                  ports:
+                    type: object
+                    properties:
+                      port:
+                        type: number
+                        example: 80
+                      targetPort:
+                        type: number
+                        example: 80
+                      protocol:
+                        type: string
+                        example: TCP
+                      type:
+                        type: string
+                        example: clusterIP|nodePort|loadBalancer
+                  
+                  
+    WorkloadName:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "c346030b-aa9e-45a9-85eb-ec38d51dfa44"
         name:
           type: string
           example: "<workload name>"
           
-    WorkloadList:
-      type: object
-      properties:
-        workloads:
-          type: array
-          items:
-            type: object
-            example: { "id": "<id>", "name": "<workload name>", "kind": "<kind>"}
-              
-        
-    InstanceCreate: 
+    
+    
+    InstanceDefinition: 
       type: object
       properties:
         name:
@@ -271,24 +345,22 @@ components:
           type: integer
           example: 3
     
-    InstanceList:
-      type: object
-      properties:
-        instances:
-          type: array
-          items:
-            type: object
-            example: { "id": "<id>", "name": "<instance name>", "worload": "<workload name>", "status": "<status>"}
-    
-    InstanceId:
+    Instance:
       type: object
       properties:
         id:
           type: string
-          example: "<instance id>"
+          example: "c346030b-aa9e-45a9-85eb-ec38d51dfa44"
         name:
           type: string
-          example: "<instance name>"
+          example: "instance name"
+        workload:
+          type: string
+          example: "workload name"
+        status:
+          type: integer
+          example: "<status>"
+    
 
           
           
