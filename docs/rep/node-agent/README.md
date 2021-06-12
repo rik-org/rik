@@ -42,23 +42,21 @@ Node metrics payload should contain at least **CPU**, **Memory** and **Disk** us
 
 ```json
 {
-  "cpu": {
-    "totalCpu": 12, // number of cores
-    "currentUsage": 20 // Percentage
-  },
-  "memory": {
-    "totalMemory": 34359738368, // Bytes
-    "freeMemory": 17179869184, // Bytes
-    "freeMemoryAmount": 50 //Percentage
-  },
-  "disks": [
-      {
-          "diskName": "/dev/sda1"
-          "total": 356448698, // Bytes
-          "used": 12564, // Bytes
-          "available": 3564428698 // Bytes
-      }
-  ]
+	"cpu": {
+		"total": 12, // number of cores
+		"free": 20 // Percentage
+	},
+	"memory": {
+		"total": 1234, // Bytes
+		"free": 123 // Bytes
+	},
+	"disks": [
+		{
+			"diskName": "/dev/sda1",
+			"total": 1234, // Bytes
+			"free": 123 // Bytes
+		}
+	]
 }
 ```
 
@@ -69,13 +67,12 @@ Pod metrics payload should contain at least **CPU** and **Memory** usage. Withou
 ```json
 {
 	"cpu": {
-		"totalCpu": 12, // number of cores
-		"currentUsage": 20 // Percentage
+		"total": 12, // number of cores
+		"free": 20 // Percentage
 	},
 	"memory": {
-		"totalMemory": 34359738368, // Bytes
-		"freeMemory": 17179869184, // Bytes
-		"freeMemoryAmount": 50 //Percentage
+		"total": 1234, // Bytes
+		"free": 123 // Bytes
 	}
 }
 ```
