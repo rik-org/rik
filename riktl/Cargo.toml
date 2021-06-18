@@ -1,9 +1,15 @@
 [package]
-name = "riktl"
+name = "cli"
 version = "0.1.0"
-authors = ["mfl ops <mfldev@polddddee.fr>"]
+authors = ["Flagey <mathias.flagey@etu.umontpellier.fr>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+httpclient = { path = "httpclient" }
+
+[workspace]
+members = [
+    "httpclient"
+]
