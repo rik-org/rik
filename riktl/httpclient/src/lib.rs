@@ -2,10 +2,13 @@ extern crate reqwest;
 
 #[derive(Debug)]
 pub enum ApiError {
-    BadURI(&'static str),
+    BadURI(String),
     BadStatus(reqwest::StatusCode),
     CantReadResponse,
     EmptyBody,
+    CantOpenConfigFile,
+    CantReadConfigFile,
+    BadConfigFile
 }
 
 pub enum HttpVerb {
@@ -15,3 +18,4 @@ pub enum HttpVerb {
 }
 
 pub mod api;
+pub mod config;

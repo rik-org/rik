@@ -3,7 +3,7 @@ use httpclient::ApiError;
 //use std::collections::HashMap;
 
 
-fn main() -> Result<(), ApiError>{
-    let api_request = ApiRequest::new("sameo","",None);
+fn main() -> Result<(), ApiError>{  
+    let api_request = ApiRequest::new("sameo",None,None)?;
     api_request.get()
 }
