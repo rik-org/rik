@@ -6,6 +6,18 @@ A rustlang based cloud orchestrator
 
 A Software-defined Networking technology is an approach to network management that enables dynamic, programmatically efficient network configuration in order to improve network performance and monitoring. In this part, we will speak about services that can deserve this component.
 
+### Objective
+
+Configure the entire network in a namespace.
+
+### API
+
+| Verb | Path |  Description
+|-|-| -
+| GET | /newip | Get a new IP
+| GET | /[ip] | Get infos on IP
+| DELETE | /[ip] | Free IP
+
 ### Proposal of services
 
 Our SDN will implement a kind of DHCP server. If you ask him for an IP address, he will give you one available in the network `192.168.12.0/24` . The SDN has always the IP `192.168.12.254`
