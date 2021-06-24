@@ -23,15 +23,15 @@ Also, it should be able to send metrics about node and pods regularly to the sch
 
 ### Communication
 
-In order to communicate with the scheduler and potentially other rik components, **riklet** had to expose an API.
+The **riklet** will connect to th exposed [gRPC](https://grpc.io) API of the scheduler.
 
-This API will use the [gRPC](https://grpc.io) protocol to send & receive requests. API definitions will be defined through [protobuf](https://developers.google.com/protocol-buffers) files that allow us to define the API easily, and generate the associated code.
+See the scheduler API definitions that are defined through [protobuf](https://developers.google.com/protocol-buffers) and that can be found [here](https://github.com/AlexandreBrg/rik/tree/main/proto).
 
 ### Metrics
 
 Riklet is responsible to fetch metrics of the host node and the pods that runs on the latter.
 
-For that, it should implement a push model in order to report metrics. That means that every `x` seconds for example, the **riklet** will fetch and send metrics to the scheduler which is reponsible to keep the node metrics and forward the pod metrics to the controller.
+For that, it should implement a push model in order to report metrics. When a change is detected, the **riklet** will fetch and send metrics to the scheduler which is reponsible to keep the node metrics and forward the pod metrics to the controller.
 
 Metrics resolution interval has to be configurable with a flag, for example :
 `riklet --metric-resolution=5s`
@@ -86,7 +86,7 @@ The lifecycle of a pod is quite simple and it looks like a simple process on a c
 - `Creating`: The pod is in creation.
 - `Running` : The pod is running and is healthy.
 - `Error` : The pod has crashed.
-- `Terminating` : The pod is terminated and it'll be deleted.
+- `Terminated` : The pod is terminated and it'll be deleted.
 
 **Riklet has to manage each of these states, and on every state update, it should inform the scheduler of what happening on the pod.**
 
