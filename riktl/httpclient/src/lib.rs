@@ -8,7 +8,7 @@ pub enum ApiError {
     EmptyBody,
     CantOpenConfigFile,
     CantReadConfigFile,
-    BadConfigFile
+    BadConfigFile,
 }
 
 pub enum HttpVerb {

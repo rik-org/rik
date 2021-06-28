@@ -1,23 +1,20 @@
 extern crate yaml_rust;
-use yaml_rust::{YamlLoader};
+use crate::ApiError;
+use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use crate::{ApiError};
-use std::env;
+use yaml_rust::YamlLoader;
 
 #[derive(Debug)]
-pub struct Config {
-}
+pub struct Config {}
 
 impl Config {
-    
     pub fn get_uri() -> Result<String, ApiError> {
         //fix current dir to project root to find rik.config.yml
         match project_root::get_project_root() {
             Ok(p) => assert!(env::set_current_dir(&p).is_ok()),
-            Err(_) => return Err(ApiError::CantReadConfigFile)
+            Err(_) => return Err(ApiError::CantReadConfigFile),
         }
-        
         match File::open("rik.config.yml") {
             Ok(mut file) => {
                 let mut contents = String::new();
@@ -30,10 +27,10 @@ impl Config {
                         }
                         Ok(uri.unwrap().to_string())
                     }
-                    Err(_) => Err(ApiError::CantReadConfigFile)
+                    Err(_) => Err(ApiError::CantReadConfigFile),
                 }
             }
-            Err(_) => Err(ApiError::CantOpenConfigFile)
+            Err(_) => Err(ApiError::CantOpenConfigFile),
         }
     }
 }
