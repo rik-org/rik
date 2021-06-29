@@ -1,0 +1,15 @@
+
+syntax = "proto3";
+
+import "./common.proto";
+
+// The Scheduler service for the Controller
+service Controller {
+  // A request for scheduling an instance of a workload.
+  // Success means the instance is pending.
+  rpc ScheduleInstance(scheduler.Workload) returns (google.protobuf.Empty);
+
+  // Get worker and instances status updates.
+  // Returns a stream of Status messages.
+  rpc GetStatusUpdates(google.protobuf.Empty) returns (stream Status);
+}
