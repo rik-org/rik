@@ -1,3 +1,3 @@
 cluster:
   name: cluster name
-  server: https://github.com/
+  server: http://127.0.0.1:5000/

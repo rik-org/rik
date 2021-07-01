@@ -8,7 +8,9 @@ edition = "2018"
 
 [dependencies]
 httpclient = { path = "httpclient" }
-
+serde = { version = "1.0.126", features = ["derive"] }
+serde_json = "1.0.64"
+prettytable-rs = "^0.8"
 [workspace]
 members = [
     "httpclient"

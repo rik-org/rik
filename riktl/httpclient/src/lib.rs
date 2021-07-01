@@ -11,11 +11,5 @@ pub enum ApiError {
     BadConfigFile,
 }
 
-pub enum HttpVerb {
-    GET,
-    POST,
-    DELETE,
-}
-
 pub mod api;
 pub mod config;

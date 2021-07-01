@@ -1,10 +1,11 @@
-use httpclient::api::ApiRequest;
 use httpclient::ApiError;
-//use std::collections::HashMap;
+mod services;
+mod types;
+use services::workload_service::WorkloadService;
+#[macro_use]
+extern crate prettytable;
 
 fn main() -> Result<(), ApiError> {
-    let api_request = ApiRequest::new("sameo", None, None)?;
-    let resp: String = api_request.get()?;
-    println!("{}", resp);
-    return Ok(());
+    WorkloadService::list()?;
+    Ok(())
 }
