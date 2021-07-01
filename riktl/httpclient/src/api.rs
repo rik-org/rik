@@ -1,21 +1,21 @@
 extern crate reqwest;
 use crate::config::Config;
-use crate::{ApiError, HttpVerb};
-use std::collections::HashMap;
+use crate::ApiError;
+use serde_json::Value;
 
 #[derive(Debug)]
 pub struct ApiRequest {
     uri: String,
-    endpoint: &'static str,
-    header: Option<&'static str>,
-    body: Option<HashMap<&'static str, &'static str>>,
+    endpoint: String,
+    header: Option<String>,
+    body: Option<String>,
 }
 
 impl ApiRequest {
     pub fn new(
-        endpoint: &'static str,
-        body: Option<HashMap<&'static str, &'static str>>,
-        header: Option<&'static str>,
+        endpoint: String,
+        body: Option<String>,
+        header: Option<String>,
     ) -> Result<Self, ApiError> {
         let uri = Config::get_uri()?;
         let api_request = ApiRequest {
@@ -28,79 +28,53 @@ impl ApiRequest {
         Ok(api_request)
     }
 
-    pub fn get(self) -> Result<String, ApiError> {
-        self.send_request(HttpVerb::GET)
+    pub fn get(self) -> Result<Vec<Value>, ApiError> {
+        //Get request
+        match reqwest::blocking::get(format!("{}{}", self.uri, self.endpoint)) {
+            Ok(response) => {
+                if response.status() == reqwest::StatusCode::OK {
+                    match response.text() {
+                        Ok(text) => {
+                            let body_value: Vec<Value> = serde_json::from_str(&text).unwrap();
+                            Ok(body_value)
+                        }
+                        Err(_) => Err(ApiError::CantReadResponse),
+                    }
+                } else {
+                    Err(ApiError::BadStatus(response.status()))
+                }
+            }
+            Err(_) => Err(ApiError::BadURI(self.uri)),
+        }
     }
 
-    pub fn post(self) -> Result<String, ApiError> {
+    pub fn post(self) -> Result<Value, ApiError> {
         if self.body == None {
             return Err(ApiError::EmptyBody);
         }
-        self.send_request(HttpVerb::POST)
-    }
-
-    pub fn delete(self) -> Result<String, ApiError> {
-        self.send_request(HttpVerb::DELETE)
-    }
-
-    fn send_request(self, request_type: HttpVerb) -> Result<String, ApiError> {
-        println!(
-            "Sending request to {}",
-            format!("{}{}", self.uri, self.endpoint)
-        );
-
-        match request_type {
-            HttpVerb::GET => {
-                //Get request
-                match reqwest::blocking::get(format!("{}{}", self.uri, self.endpoint)) {
-                    Ok(response) => {
-                        if response.status() == reqwest::StatusCode::OK {
-                            match response.text() {
-                                Ok(text) => Ok(text),
-                                Err(_) => Err(ApiError::CantReadResponse),
-                            }
-                        } else {
-                            Err(ApiError::BadStatus(response.status()))
-                        }
+        //Post Request
+        let client = reqwest::blocking::Client::new();
+        if let Some(body) = self.body {
+            let body_value: Value = serde_json::from_str(&body).unwrap();
+            match client
+                .post(format!("{}{}", self.uri, self.endpoint))
+                .json(&body_value)
+                .header("Content-Type", "application/json")
+                .send()
+            {
+                Ok(response) => {
+                    if response.status() == reqwest::StatusCode::CREATED
+                        || response.status() == reqwest::StatusCode::NO_CONTENT
+                    {
+                        return Ok(Value::Null);
+                    } else {
+                        return Err(ApiError::BadStatus(response.status()));
                     }
-                    Err(_) => Err(ApiError::BadURI(self.uri)),
                 }
+                Err(_) => return Err(ApiError::BadURI(self.uri)),
             }
-            HttpVerb::POST => {
-                //Post Request
-                let client = reqwest::blocking::Client::new();
-                match client
-                    .post(format!("{}{}", self.uri, self.endpoint))
-                    .json(&self.body)
-                    .send()
-                {
-                    Ok(response) => {
-                        if response.status() == reqwest::StatusCode::CREATED {
-                            return Ok("Test".to_string());
-                        } else {
-                            return Err(ApiError::BadStatus(response.status()));
-                        }
-                    }
-                    Err(_) => return Err(ApiError::BadURI(self.uri)),
-                }
-            }
-            HttpVerb::DELETE => {
-                //Delete Request
-                let client = reqwest::blocking::Client::new();
-                match client
-                    .delete(format!("{}{}", self.uri, self.endpoint))
-                    .send()
-                {
-                    Ok(response) => {
-                        if response.status() == reqwest::StatusCode::OK {
-                            return Ok("Test".to_string());
-                        } else {
-                            return Err(ApiError::BadStatus(response.status()));
-                        }
-                    }
-                    Err(_) => return Err(ApiError::BadURI(self.uri)),
-                }
-            }
+        } else {
+            return Err(ApiError::EmptyBody);
         }
     }
 }
@@ -112,14 +86,15 @@ mod tests {
 
     #[test]
     fn post_empty_body_return_error() -> Result<(), ApiError> {
-        let api_request = ApiRequest::new("/NelopsisCode", None, None)?;
+        let api_request = ApiRequest::new("/NelopsisCode".to_string(), None, None)?;
         assert!(api_request.post().is_err());
 
         Ok(())
     }
     #[test]
     fn invalid_endpoint_return_error() -> Result<(), ApiError> {
-        let api_request = ApiRequest::new("/fez5f4e6157ae6f4faf7ef5aze4f3fa56", None, None)?;
+        let api_request =
+            ApiRequest::new("/fez5f4e6157ae6f4faf7ef5aze4f3fa56".to_string(), None, None)?;
         assert!(api_request.get().is_err());
 
         Ok(())
