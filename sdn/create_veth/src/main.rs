@@ -1,7 +1,7 @@
 use rtnetlink::new_connection;
 
 #[tokio::main]
-async fn main() -> Result<(), String> {
+async fn create_veth() -> Result<(), String> {
     let (connection, handle, _) = new_connection().unwrap();
     tokio::spawn(connection);
     handle
@@ -11,4 +11,8 @@ async fn main() -> Result<(), String> {
         .execute()
         .await
         .map_err(|e| format!("{}", e))
+}
+
+fn main() -> Result<(), String> {
+    create_veth()
 }
