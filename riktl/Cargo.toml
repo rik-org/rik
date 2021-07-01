@@ -1,5 +1,5 @@
 [package]
-name = "cli"
+name = "riktl"
 version = "0.1.0"
 authors = ["Julian Labatut <julian.labatut@etu.umontpellier.fr>", "Mathias Flagey <mathias.flagey@etu.umontpellier.fr>"]
 edition = "2018"
@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 httpclient = { path = "httpclient" }
+clap = { git = "https://github.com/clap-rs/clap", rev = "89d1519"}
 
 [workspace]
 members = [
