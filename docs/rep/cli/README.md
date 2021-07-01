@@ -31,10 +31,11 @@ Use the following syntax to run `riktl` commands from your terminal window.
 `riktl COMMAND TYPE [--NAME <id>] [OPTIONS]`
 
 - `riktl` supports the following `commands`:
+
   - riktl `create`
   - riktl `delete`
   - riktl `get`
-  -
+
 - `riktl` supports the following resource `types`:
 
   - instance
@@ -42,17 +43,17 @@ Use the following syntax to run `riktl` commands from your terminal window.
 
 - `riktl` supports the following `options`:
   - --workload
+  - --instance
   - -f | --file
-  - --id
-  - --replicas
+  - -n | --replicas
 
 ## Commands
 
 ---
 
-### Create a workload from a YAML file
+### Create a workload from a JSON file
 
-- `riktl create workload -f work.yaml`
+- `riktl create workload -f work.json`
 
 ### Delete a workload.
 
@@ -66,49 +67,44 @@ Use the following syntax to run `riktl` commands from your terminal window.
 
 - `riktl delete instance --instance <instance-id>`
 
-### View a workload
-
-- `riktl get workload [--id <workload-id>]`
-
-### View an instance
-
-- `riktl get instance [--id <instance-id>]`
-
-### Lint a YAML file
-
-Lint Yaml file with [Yaml validator crate](https://crates.io/crates/yaml-validator)
-
-- `riktl lint workload.yaml`
-
-Linter auto triggers on rik deploy but can be executed manually before deploy.\_
-
 ### Help
 
-#### Global help
-
-- `riktl --help`
-
-####  Help on a specific entity
-
-- `rik pods|pod|po --help|-h`
+- `riktl --help | -h`
 
 ## Workload description
 
-TBD (we need openapi of the controller to determine this)
+> _workload.json_ :
 
-> _workload.yaml_ :
-
-```
-kind: instance
-name: nginx-server
-replicas: 3
-image: nginx:1.9.0 or url
-env:
-  - name: ENV
-    value: prod
- - name: USER
-    value: john
- ...
+```json
+{
+  "api_version": "v0",
+  "kind": "pods",
+  "name": "workload-name",
+  "spec": {
+    "containers": [
+      {
+        "name": "<name>",
+        "image": "<image>",
+        "env": [
+          {
+            "name": "key1",
+            "value": "value1"
+          },
+          {
+            "name": "key2",
+            "value": "value2"
+          }
+        ],
+        "ports": {
+          "port": 80,
+          "target_port": 80,
+          "protocol": "TCP",
+          "type": "clusterIP|nodePort|loadBalancer"
+        }
+      }
+    ]
+  }
+}
 ```
 
 ## Next RIK versions
@@ -118,6 +114,7 @@ env:
 - Authentication system for multi tenant usage ? (`rik register`, `rik login`)
 - Possibility to use the CLI in an imperative way ?
 - Create workload in a full command line ? (`riktl create workload --name NAME --image IMAGE ...`)
+- Lint JSON workload file. Linter should auto triggers on rik deploy but can be executed manually before deploy. (`riktl lint workload.yaml`)
 
 ## Authors
 
