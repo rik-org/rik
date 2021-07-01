@@ -46,15 +46,15 @@ async fn add_address(link_name: &str, ip: IpNetwork, handle: Handle) -> Result<(
 fn usage() {
     eprintln!(
         "usage:
-    cargo run --example add_address -- <link_name> <ip_address>
+    cargo run -- <link_name> <ip_address>
 
 Note that you need to run this program as root. Instead of running cargo as root,
 build the example normally:
 
-    cd rtnetlink ; cargo build --example add_address
+    cargo build
 
 Then find the binary in the target directory:
 
-    cd ../target/debug/example ; sudo ./add_address <link_name> <ip_address>"
+    sudo ./target/debug/add_address <link_name> <ip_address>"
     );
 }
