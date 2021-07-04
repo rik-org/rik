@@ -67,6 +67,10 @@ Use the following syntax to run `riktl` commands from your terminal window.
 
 - `riktl delete instance --instance <instance-id>`
 
+### Get all workloads
+
+- `riktl get workload`
+
 ### Help
 
 - `riktl --help | -h`
