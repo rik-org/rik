@@ -4,7 +4,7 @@ mod types;
 
 use cli::{Action, Cli, CliError, Entity};
 use httpclient::ApiError;
-use services::workload_service::WorkloadService;
+use services::{instance_service::InstanceService, workload_service::WorkloadService};
 
 #[macro_use]
 extern crate prettytable;
@@ -28,7 +28,15 @@ fn main() -> Result<(), ApiError> {
             WorkloadService::list()?;
         }
     } else if app.entity == Entity::INSTANCE {
-        panic!("Instance is not implemented yet.")
+        if app.action == Action::CREATE {
+            InstanceService::create(app.workload_id.clone())?;
+            println!("Instance created");
+        } else if app.action == Action::DELETE {
+            InstanceService::delete(app.instance_id.clone())?;
+            println!("Instance {} deleted.", &app.instance_id);
+        } else if app.action == Action::GET {
+            InstanceService::list()?;
+        }
     }
     Ok(())
 }

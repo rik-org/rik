@@ -111,7 +111,7 @@ impl Cli {
             Some(i) => workload_id = i,
             None => {
                 if action == Action::DELETE && entity == Entity::WORKLOAD {
-                    return Err(CliError::MissingArg(String::from("workload_id")));
+                    return Err(CliError::MissingArg(String::from("workload")));
                 } else {
                     workload_id = ""
                 }
@@ -123,7 +123,7 @@ impl Cli {
             Some(i) => instance_id = i,
             None => {
                 if action == Action::DELETE && entity == Entity::INSTANCE {
-                    return Err(CliError::MissingArg(String::from("instance_id")));
+                    return Err(CliError::MissingArg(String::from("instance")));
                 } else {
                     instance_id = ""
                 }
