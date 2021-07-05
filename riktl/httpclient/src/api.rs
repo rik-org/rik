@@ -7,22 +7,16 @@ use serde_json::Value;
 pub struct ApiRequest {
     uri: String,
     endpoint: String,
-    header: Option<String>,
     body: Option<String>,
 }
 
 impl ApiRequest {
-    pub fn new(
-        endpoint: String,
-        body: Option<String>,
-        header: Option<String>,
-    ) -> Result<Self, ApiError> {
+    pub fn new(endpoint: String, body: Option<String>) -> Result<Self, ApiError> {
         let uri = Config::get_uri()?;
 
         Ok(ApiRequest {
             uri,
             endpoint,
-            header,
             body,
         })
     }
@@ -97,15 +91,14 @@ mod tests {
 
     #[test]
     fn post_empty_body_return_error() -> Result<(), ApiError> {
-        let api_request = ApiRequest::new("/NelopsisCode".to_string(), None, None)?;
+        let api_request = ApiRequest::new("/NelopsisCode".to_string(), None)?;
         assert!(api_request.post().is_err());
 
         Ok(())
     }
     #[test]
     fn invalid_endpoint_return_error() -> Result<(), ApiError> {
-        let api_request =
-            ApiRequest::new("/fez5f4e6157ae6f4faf7ef5aze4f3fa56".to_string(), None, None)?;
+        let api_request = ApiRequest::new("/fez5f4e6157ae6f4faf7ef5aze4f3fa56".to_string(), None)?;
         assert!(api_request.get().is_err());
 
         Ok(())

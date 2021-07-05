@@ -110,13 +110,11 @@ pub struct Controller {
     /// This channel is used to communicate between the manager
     /// and the controller
     channel: Sender<Result<WorkerStatus, Status>>,
-    /// Remote addr of the controller
-    addr: SocketAddr,
 }
 
 impl Controller {
-    pub fn new(channel: Sender<Result<WorkerStatus, Status>>, addr: SocketAddr) -> Controller {
-        Controller { channel, addr }
+    pub fn new(channel: Sender<Result<WorkerStatus, Status>>) -> Controller {
+        Controller { channel }
     }
 
     pub async fn send(

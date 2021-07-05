@@ -293,7 +293,7 @@ impl StateManager {
         }
 
         let mut to_be_deleted = Vec::new();
-        for  key in self.state.keys().clone() {
+        for key in self.state.keys().clone() {
             if let Some(workload) = self.state.get(key) {
                 if workload.replicas == 0 && workload.instances.is_empty() {
                     to_be_deleted.push(key.clone());
