@@ -11,7 +11,7 @@ service Worker {
     // Worker registration.
     // A successful registration means the scheduler can start sending
     // a stream of workload instances to be scheduled.
-    rpc Register(google.protobuf.Empty) returns (stream common.Workload);
+    rpc Register(common.WorkerRegistration) returns (stream common.Workload);
 
     // Worker metrics udpates (push model)
     rpc SendStatusUpdates(stream common.WorkerStatus) returns (google.protobuf.Empty);
