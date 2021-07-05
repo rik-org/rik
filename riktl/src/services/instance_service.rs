@@ -11,8 +11,7 @@ const ENDPOINT: &'static str = "api/v0/instances.";
 
 impl InstanceService {
     pub fn list() -> Result<(), ApiError> {
-        let api_request: ApiRequest =
-            ApiRequest::new(format!("{}{}", ENDPOINT, "list"), None, None)?;
+        let api_request: ApiRequest = ApiRequest::new(format!("{}{}", ENDPOINT, "list"), None)?;
         let instances = api_request.get()?;
         let mut table = Table::new();
         table.set_titles(row!["id", "name", "status"]);
@@ -44,14 +43,14 @@ impl InstanceService {
             id, nb_replicas
         );
         let api_request: ApiRequest =
-            ApiRequest::new(format!("{}{}", ENDPOINT, "create"), Some(body), None)?;
+            ApiRequest::new(format!("{}{}", ENDPOINT, "create"), Some(body))?;
         api_request.post()
     }
 
     pub fn delete(id: String) -> Result<Value, ApiError> {
         let body = format!(r#"{{"id": "{}"}}"#, id);
         let api_request: ApiRequest =
-            ApiRequest::new(format!("{}{}", ENDPOINT, "delete"), Some(body), None)?;
+            ApiRequest::new(format!("{}{}", ENDPOINT, "delete"), Some(body))?;
         api_request.post()
     }
 }
