@@ -125,13 +125,13 @@ impl Manager {
                 Event::Subscribe(channel, addr) => {
                     if let Some(controller) = &self.controller {
                         if controller.is_channel_closed() {
-                            self.controller = Some(Controller::new(channel.clone(), addr));
+                            self.controller = Some(Controller::new(channel.clone()));
                         } else {
                             error!("Can only have one controller at a time");
                         }
                     } else {
                         info!("A controller is now connected");
-                        self.controller = Some(Controller::new(channel.clone(), addr));
+                        self.controller = Some(Controller::new(channel.clone()));
                     }
                 }
                 Event::WorkerMetric(identifier, data) => {
