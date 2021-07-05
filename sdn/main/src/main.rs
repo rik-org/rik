@@ -14,5 +14,6 @@ async fn create_veth() -> Result<(), String> {
 }
 
 fn main() -> Result<(), String> {
-    create_veth()
+    let _ = create_veth();
+    Ok(())
 }
