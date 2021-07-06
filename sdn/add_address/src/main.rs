@@ -6,14 +6,8 @@ use rtnetlink::{new_connection, Error, Handle};
 
 #[tokio::main]
 async fn main() -> Result<(), ()> {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 3 {
-        usage();
-        return Ok(());
-    }
-
-    let link_name = &args[1];
-    let ip: IpNetwork = args[2].parse().unwrap_or_else(|_| {
+    let link_name = "lo";
+    let ip = "1.1.1.1/32".parse().unwrap_or_else(|_| {
         eprintln!("invalid address");
         std::process::exit(1);
     });
@@ -41,20 +35,4 @@ async fn add_address(link_name: &str, ip: IpNetwork, handle: Handle) -> Result<(
             .await?
     }
     Ok(())
-}
-
-fn usage() {
-    eprintln!(
-        "usage:
-    cargo run -- <link_name> <ip_address>
-
-Note that you need to run this program as root. Instead of running cargo as root,
-build the example normally:
-
-    cargo build
-
-Then find the binary in the target directory:
-
-    sudo ./target/debug/add_address <link_name> <ip_address>"
-    );
 }
