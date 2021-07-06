@@ -38,20 +38,24 @@ async fn add_address(link_name: &str, ip: IpNetwork) -> Result<(), Error> {
 }
 
 #[derive(Clap, Debug)]
-#[clap(name = "netns parse")]
+#[clap(name = "Netowrk NameSpace Configurator v0.3")]
 struct Args {
 
     /// Path of the netns to use
     #[clap(short, long)]
     netns_path: String,
 
-    ///
+    /// Name of the link created and set on the host
     #[clap(short, long, default_value = "host-link")]
     host_link_name: String,
 
-    ///
+    /// Name of the link created and set on the container
     #[clap(short, long, default_value = "container-link")]
     container_link_name: String,
+
+    /// Globally unique identifier of the container
+    #[clap(short, long)]
+    guid: String,
 
 }
 
