@@ -2,7 +2,8 @@ use clap::Clap;
 use clap::{App, Arg};
 use futures::stream::TryStreamExt;
 use ipnetwork::IpNetwork;
-use rtnetlink::{new_connection, Error};
+use rtnetlink::{new_connection, Error, LinkSetRequest, NetworkNamespace};
+use std::process::Command;
 
 #[tokio::main]
 async fn create_veth(link_name1: String, link_name2: String) -> Result<(), Error> {
@@ -57,6 +58,16 @@ struct Args {
     guid: String,
 }
 
+fn move_veth_to_netns(veth: String, netns: String) -> Result<(), Error> {
+    println!("ip link set {} netns {}", veth, netns);
+    Command::new("sh")
+        .arg("-c")
+        .arg("ip link set ".to_string() + veth.as_str() + " netns " + netns.as_str())
+        .output()
+        .expect("failed to execute process");
+    Ok(())
+}
+
 fn main() -> Result<(), String> {
     let args = Args::parse();
 
@@ -83,6 +94,14 @@ fn main() -> Result<(), String> {
         Ok(yes) => yes,
         Err(error) => {
             eprintln!("Error add_address: {}", error.to_string());
+            std::process::exit(1);
+        }
+    };
+
+    match move_veth_to_netns("host-link".to_string(), "test-jerem".to_string()) {
+        Ok(yes) => yes,
+        Err(error) => {
+            eprintln!("Error move_veth_to_netns: {}", error.to_string());
             std::process::exit(1);
         }
     };
