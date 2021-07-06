@@ -4,7 +4,7 @@ package common;
 
 // Simple WorkLoad description
 message Workload {
-    uint32 instance_id = 1;
+    string instance_id = 1;
     string definition = 2;
 }
 

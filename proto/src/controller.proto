@@ -11,6 +11,9 @@ service Controller {
     // Success means the instance is pending.
     rpc ScheduleInstance(common.Workload) returns (google.protobuf.Empty);
 
+    // Request to unschedule the instantiation of a workload
+    rpc UnscheduleInstance(common.Workload) returns (google.protobuf.Empty);
+
     // Get worker and instances status updates.
     // Returns a stream of Status messages.
     rpc GetStatusUpdates(google.protobuf.Empty) returns (stream common.WorkerStatus);
