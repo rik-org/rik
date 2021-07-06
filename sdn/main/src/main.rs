@@ -1,6 +1,8 @@
+use clap::{App, Arg};
+use clap::Clap;
 use futures::stream::TryStreamExt;
 use ipnetwork::IpNetwork;
-use rtnetlink::{new_connection, Error};
+use rtnetlink::{Error, new_connection};
 
 #[tokio::main]
 async fn create_veth(link_name1: &str, link_name2: &str) -> Result<(), String> {
@@ -35,17 +37,42 @@ async fn add_address(link_name: &str, ip: IpNetwork) -> Result<(), Error> {
     Ok(())
 }
 
+#[derive(Clap, Debug)]
+#[clap(name = "netns parse")]
+struct Args {
+
+    /// Path of the netns to use
+    #[clap(short, long)]
+    netns_path: String,
+
+    ///
+    #[clap(short, long, default_value = "host-link")]
+    host_link_name: String,
+
+    ///
+    #[clap(short, long, default_value = "container-link")]
+    container_link_name: String,
+
+}
+
 fn main() -> Result<(), String> {
-    //mock variables
-    let link_name1 = "veth-rs-1";
-    let link_name2 = "veth-rs-2";
-    let ip: IpNetwork = "1.1.1.1".parse().unwrap_or_else(|_| {
+    let args = Args::parse();
+
+    println!("The netns path is {}!", args.netns_path);
+    let namespace_name: String = args.netns_path.split("/").collect();
+
+//mock variables
+
+
+    let link_name1 = args.container_link_name;
+    let link_name2 = args.host_link_name;
+    let ip = "10.1.1.1".parse().unwrap_or_else(|_| {
         eprintln!("invalid address");
         std::process::exit(1);
     });
 
-    let _ = create_veth(link_name1, link_name2);
-    let _ = add_address(link_name1, ip);
+    let _ = create_veth(&link_name1, &link_name2);
+    let _ = add_address(&link_name1, ip);
 
     Ok(())
 }
