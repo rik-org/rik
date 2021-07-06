@@ -38,7 +38,7 @@ async fn add_address(link_name: &str, ip: IpNetwork) -> Result<(), Error> {
 }
 
 #[derive(Clap, Debug)]
-#[clap(name = "Netowrk NameSpace Configurator v0.3")]
+#[clap(name = "Network NameSpace Configurator v0.3")]
 struct Args {
 
     /// Path of the netns to use
