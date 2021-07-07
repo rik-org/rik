@@ -15,13 +15,6 @@ enum WorkloadRequestKind {
     DESTROY = 1;
 }
 
-// Simple WorkLoad description
-message Workload {
-    string workload_id = 1;
-    string definition = 2;
-    WorkloadRequestKind request = 3;
-}
-
 message WorkerRegistration {
     string hostname = 1;
 }

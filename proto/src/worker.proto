@@ -6,12 +6,20 @@ import "google/protobuf/empty.proto";
 
 package worker;
 
+
+// Simple WorkLoad description
+message InstanceScheduling {
+    string instance_id = 1;
+    string definition = 2;
+    common.WorkloadRequestKind action = 3;
+}
+
 // The Scheduler service for the Workers
 service Worker {
     // Worker registration.
     // A successful registration means the scheduler can start sending
     // a stream of workload instances to be scheduled.
-    rpc Register(common.WorkerRegistration) returns (stream common.Workload);
+    rpc Register(common.WorkerRegistration) returns (stream InstanceScheduling);
 
     // Worker metrics udpates (push model)
     rpc SendStatusUpdates(stream common.WorkerStatus) returns (google.protobuf.Empty);
