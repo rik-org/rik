@@ -1,6 +1,6 @@
 [package]
 name = "proto"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Alexandre Burgoni <alexandre.burgoni@etu.umontpellier.fr>"]
 edition = "2018"
 

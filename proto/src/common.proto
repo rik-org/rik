@@ -2,16 +2,6 @@ syntax = "proto3";
 
 package common;
 
-// Simple WorkLoad description
-message Workload {
-    string instance_id = 1;
-    string definition = 2;
-}
-
-message WorkerRegistration {
-    string hostname = 1;
-}
-
 enum ResourceStatus {
     UNKNOWN = 0;
     PENDING = 1;
@@ -19,6 +9,23 @@ enum ResourceStatus {
     FAILED = 3;
     TERMINATED = 4;
 }
+
+enum WorkloadRequestKind {
+    CREATE = 0;
+    DESTROY = 1;
+}
+
+// Simple WorkLoad description
+message Workload {
+    string workload_id = 1;
+    string definition = 2;
+    WorkloadRequestKind request = 3;
+}
+
+message WorkerRegistration {
+    string hostname = 1;
+}
+
 
 // Metrics definition for Workers
 message WorkerMetric {
@@ -30,6 +37,7 @@ message WorkerMetric {
 message InstanceMetric {
     ResourceStatus status = 1;
     string metrics = 2;
+    string instance_id = 3;
 }
 
 // Definition of metrics send by node
