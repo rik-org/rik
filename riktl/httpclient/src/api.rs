@@ -65,6 +65,7 @@ impl ApiRequest {
                 Ok(response) => {
                     if response.status() == reqwest::StatusCode::CREATED
                         || response.status() == reqwest::StatusCode::NO_CONTENT
+                        || response.status() == reqwest::StatusCode::OK
                     {
                         return Ok(Value::Null);
                     } else {
