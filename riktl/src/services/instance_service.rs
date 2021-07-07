@@ -31,8 +31,15 @@ impl InstanceService {
         Ok(())
     }
 
-    pub fn create(id: String) -> Result<Value, ApiError> {
-        let body = format!(r#"{{"workload_id": {}}}"#, id);
+    pub fn create(id: String, replica: Option<String>) -> Result<Value, ApiError> {
+        let nb_replicas: String;
+        if replica != None {
+            nb_replicas = replica.unwrap();
+        } else {
+            nb_replicas = "1".to_string();
+        }
+        let body = format!(r#"{{"workload_id": {},
+        "replicas": {}}}"#, id, nb_replicas);
         let api_request: ApiRequest =
             ApiRequest::new(format!("{}{}", ENDPOINT, "create"), Some(body), None)?;
         api_request.post()

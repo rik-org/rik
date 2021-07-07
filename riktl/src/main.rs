@@ -29,7 +29,7 @@ fn main() -> Result<(), ApiError> {
         }
     } else if app.entity == Entity::INSTANCE {
         if app.action == Action::CREATE {
-            InstanceService::create(app.workload_id.clone())?;
+            InstanceService::create(app.workload_id.clone(), Some("2".to_string()))?;
             println!("Instance created");
         } else if app.action == Action::DELETE {
             InstanceService::delete(app.instance_id.clone())?;
