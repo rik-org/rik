@@ -1,5 +1,5 @@
+use common::{InstanceMetric, ResourceStatus, WorkerMetric, WorkloadRequestKind};
 use std::fmt;
-use common::{WorkerMetric, InstanceMetric};
 
 pub mod common {
     tonic::include_proto!("common");
@@ -22,6 +22,17 @@ impl fmt::Display for WorkerMetric {
 impl fmt::Display for InstanceMetric {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({}, {})", self.status, self.metrics)
+    }
+}
+
+impl fmt::Display for ResourceStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+impl fmt::Display for WorkloadRequestKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
