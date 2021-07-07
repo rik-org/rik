@@ -6,7 +6,7 @@ pub enum ApiError {
     BadStatus(reqwest::StatusCode),
     CantReadResponse,
     EmptyBody,
-    CantOpenConfigFile,
+    CantOpenConfigFile(String),
     CantReadConfigFile,
     BadConfigFile,
 }
