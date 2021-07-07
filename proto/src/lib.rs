@@ -30,9 +30,33 @@ impl fmt::Display for ResourceStatus {
         write!(f, "{}", self)
     }
 }
+
 impl fmt::Display for WorkloadRequestKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)
+    }
+}
+
+impl From<i32> for WorkloadRequestKind {
+    fn from(w: i32) -> Self {
+        match w {
+            1 => WorkloadRequestKind::Destroy,
+            _ => WorkloadRequestKind::Create,
+        }
+    }
+}
+
+impl From<i32> for ResourceStatus {
+    fn from(w: i32) -> Self {
+        match w {
+            6 => ResourceStatus::Destroying,
+            5 => ResourceStatus::Creating,
+            4 => ResourceStatus::Terminated,
+            3 => ResourceStatus::Failed,
+            2 => ResourceStatus::Running,
+            1 => ResourceStatus::Pending,
+            _ => ResourceStatus::Unknown,
+        }
     }
 }
 
