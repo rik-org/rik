@@ -9,6 +9,7 @@ enum ResourceStatus {
     FAILED = 3;
     TERMINATED = 4;
     CREATING = 5;
+    DESTROYING = 6;
 }
 
 enum WorkloadRequestKind {
