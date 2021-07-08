@@ -1,0 +1,14 @@
+[Unit]
+AssertPathExists=/usr/bin/rik-scheduler
+
+[Service]
+WorkingDirectory=~
+ExecStart=/usr/bin/rik-scheduler
+Restart=always
+
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+Alias=rik-scheduler
+WantedBy=default.target

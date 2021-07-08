@@ -1,0 +1,43 @@
+[package]
+name = "rik-scheduler"
+version = "1.0.0"
+authors = ["Protocole <burgoni.alexandre@protonmail.com>"]
+edition = "2018"
+
+[package.metadata.deb]
+depends = "$auto, systemd"
+extended-description = "rik scheduler daemon"
+section = "admin"
+priority = "optional"
+assets = [
+    ["target/release/rik-scheduler", "usr/bin/rik-scheduler", "755"],
+    ["service/rik-scheduler.service", "/lib/systemd/system/rik-scheduler.service", "644"],
+]
+
+[dependencies]
+tonic = "0.4.3"
+tokio-stream = "0.1.6"
+env_logger = "0.8.3"
+log = "0.4.14"
+rand = "0.8.4"
+clap = "2.33.3"
+serde = "1.0.126"
+serde_json = "1.0.64"
+
+[dependencies.tokio]
+version = "1.6.1"
+features = ["rt-multi-thread", "macros", "sync", "time"]
+
+[dependencies.proto]
+git = "https://github.com/AlexandreBrg/rik"
+branch = "protolib"
+
+[dependencies.node_metrics]
+git = "https://github.com/thomasgouveia/rik"
+branch = "main"
+
+
+[dependencies.definition]
+git = "https://github.com/croumegous/rik"
+branch = "definition"
+
