@@ -156,8 +156,6 @@ impl StateManager {
         identifier: String,
         metrics: WorkerMetric,
     ) -> Result<(), SchedulerError> {
-        error!("Metrics update is not implemented for now but are received",);
-
         let mut lock = self.workers.lock().unwrap();
         if let Some(worker) = lock.iter_mut().find(|worker| worker.id.eq(&identifier)) {
             if int_to_resource_status(&metrics.status) == ResourceStatus::Running {
