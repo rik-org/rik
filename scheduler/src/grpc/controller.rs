@@ -1,5 +1,5 @@
 use crate::grpc::GRPCService;
-use log::{error, info};
+use log::error;
 use proto::common::WorkerStatus;
 use proto::controller::controller_server::Controller as ControllerClient;
 use proto::controller::WorkloadScheduling;
