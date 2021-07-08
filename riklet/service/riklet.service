@@ -3,7 +3,8 @@ AssertPathExists=/usr/bin/riklet
 
 [Service]
 WorkingDirectory=~
-ExecStart=/usr/bin/riklet
+EnvironmentFile=/tmp/.rikletconf
+ExecStart=/usr/bin/riklet $ARG1
 Restart=always
 PrivateTmp=true
 NoNewPrivileges=true

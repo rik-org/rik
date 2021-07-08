@@ -6,3 +6,4 @@ target
 target
 *.log
 .vagrant
+workload.json
