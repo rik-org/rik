@@ -1,6 +1,6 @@
-# Scheduler 
+# Scheduler
 
-Scheduler is one of the main component which aims to provide workers workloads they need to run. 
+Scheduler is one of the main component which aims to provide workers workloads they need to run.
 
 ## Design
 
