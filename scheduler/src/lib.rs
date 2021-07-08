@@ -89,7 +89,7 @@ impl fmt::Display for SchedulerError {
 
 impl Error for SchedulerError {}
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum WorkerState {
     /// Worker is ready to receive workloads
     Ready,
