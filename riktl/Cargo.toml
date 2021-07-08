@@ -12,8 +12,3 @@ serde = { version = "1.0.126", features = ["derive"] }
 serde_json = "1.0.64"
 prettytable-rs = "^0.8"
 clap = { git = "https://github.com/clap-rs/clap", rev = "89d1519"}
-
-[workspace]
-members = [
-    "httpclient"
-]
