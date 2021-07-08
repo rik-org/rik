@@ -2,6 +2,12 @@ syntax = "proto3";
 
 package common;
 
+// Simple WorkLoad description
+message Workload {
+    string instance_id = 1;
+    string definition = 2;
+}
+
 enum ResourceStatus {
     UNKNOWN = 0;
     PENDING = 1;
