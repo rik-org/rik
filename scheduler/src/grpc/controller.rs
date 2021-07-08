@@ -47,7 +47,8 @@ impl ControllerClient for GRPCService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use definition::workload::{Spec, WorkloadDefinition};
+    use definition::workload::{Container, Spec, WorkloadDefinition};
+    use proto::common::{WorkerStatus, WorkloadRequestKind};
     use std::net::SocketAddr;
     use tokio::sync::mpsc::error::SendError;
     use tonic::{Code, Request};
@@ -57,16 +58,25 @@ mod tests {
         let (sender, mut receiver) = channel::<Event>(1024);
 
         let service = GRPCService::new(sender);
-        let workload = WorkloadRequest {
+
+        let workload = WorkloadScheduling {
             workload_id: "test".to_string(),
-            definition: WorkloadDefinition {
-                api_version: "v1".to_string(),
-                kind: "Pod".to_string(),
-                name: "Test".to_string(),
-                spec: Spec { containers: vec![] },
-                replicas: Some(1),
-            },
-            action: WorkloadRequestKind::Create,
+            definition: serde_json::to_string(&WorkloadDefinition {
+                api_version: "v0".to_string(),
+                kind: "pods".to_string(),
+                name: "workload-debian".to_string(),
+                replicas: Some(2),
+                spec: Spec {
+                    containers: vec![Container {
+                        name: " debian".to_string(),
+                        image: "debian:latest".to_string(),
+                        env: None,
+                        ports: None,
+                    }],
+                },
+            })
+            .map_err(|e| Status::invalid_argument(e.to_string()))?,
+            action: WorkloadRequestKind::Create.into(),
         };
 
         let mock_request = Request::new(workload.clone());
@@ -75,7 +85,12 @@ mod tests {
 
         let message = receiver.recv().await.unwrap();
         match message {
-            Event::ScheduleRequest(content) => assert_eq!(workload, content),
+            Event::ScheduleRequest(content) => assert_eq!(
+                workload
+                    .unpack()
+                    .map_err(|e| { Status::invalid_argument(e.to_string()) })?,
+                content
+            ),
             _ => assert!(false),
         };
         Ok(())
