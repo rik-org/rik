@@ -47,7 +47,12 @@ impl WorkloadDefinition {
     pub fn get_containers(&self, instance_id: &String) -> Vec<Container> {
         let mut containers = Vec::<Container>::new();
         for mut container in self.spec.containers.clone() {
-            container.id = Some(format!("{}-{}-{}", instance_id, container.name, container.get_uuid()));
+            container.id = Some(format!(
+                "{}-{}-{}",
+                instance_id,
+                container.name,
+                container.get_uuid()
+            ));
             containers.push(container);
         }
         containers
