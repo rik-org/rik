@@ -22,9 +22,9 @@ impl InstanceService {
             let name = &instance["name"];
             let values = &instance.get("value").unwrap();
             table.add_row(Row::new(vec![
-                Cell::new(id.to_string().as_str()),
-                Cell::new(name.to_string().as_str()),
-                Cell::new(values.get("status").unwrap().to_string().as_str()),
+                Cell::new(id.as_str().unwrap()),
+                Cell::new(name.as_str().unwrap()),
+                Cell::new(values.get("status").unwrap().as_str().unwrap()),
             ]));
         }
         table.printstd();
