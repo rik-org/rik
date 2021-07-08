@@ -1,12 +1,9 @@
 mod controller;
 mod worker;
 
-use crate::state_manager::Workload;
-use definition::workload::{Spec, WorkloadDefinition};
 use log::error;
-use proto::controller::WorkloadScheduling;
 use rik_scheduler::Send;
-use rik_scheduler::{Event, WorkloadRequest};
+use rik_scheduler::Event;
 use tokio::sync::mpsc::Sender;
 use tonic::{Code, Status};
 

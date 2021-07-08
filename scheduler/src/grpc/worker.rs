@@ -2,8 +2,7 @@ use crate::grpc::GRPCService;
 use proto::common::worker_status::Status;
 use proto::common::{WorkerRegistration, WorkerStatus};
 use proto::worker::worker_server::Worker as WorkerClient;
-use proto::worker::InstanceScheduling;
-use rik_scheduler::{Event, WorkloadChannelType};
+use rik_scheduler::Event;
 use rik_scheduler::{Send, WorkerRegisterChannelType};
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
@@ -59,7 +58,6 @@ impl WorkerClient for GRPCService {
                     self.send(Event::InstanceMetricsUpdate(identifier, metrics))
                         .await?
                 }
-                _ => unimplemented!("This kind of metrics isn't implemented"),
             };
         }
 
