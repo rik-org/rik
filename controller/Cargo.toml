@@ -1,0 +1,47 @@
+[package]
+name = "controller"
+version = "1.0.0"
+authors = ["Malo <malo.polese@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[package.metadata.deb]
+depends = "$auto, systemd"
+extended-description = "rik-controller daemon"
+section = "admin"
+priority = "optional"
+assets = [
+    ["target/release/controller", "usr/bin/rik-controller", "755"],
+    ["service/rik-controller.service", "/lib/systemd/system/rik-controller.service", "644"],
+]
+
+[dependencies]
+tiny_http = "0.8.2"
+chrono = "0.4"
+colored = "2"
+route-recognizer = "0.3.0"
+serde = { version = "1.0.126", features = ["derive"] }
+serde_json = "1.0.64"
+names = "0.11.0"
+tonic = "0.4.3"
+prost = "0.7.0"
+tokio = { version = "1.6.1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tokio-stream = "0.1.6"
+dotenv = "0.15.0"
+nix = "0.21.0"
+rstest = "0.10.0"
+proto = { git = "https://github.com/AlexandreBrg/rik", branch="protolib" }
+definition = { git = "https://github.com/croumegous/rik", branch="definition" }
+uuid = { version = "0.8.2", features = ["serde", "v4"] }
+
+[build-dependencies]
+tonic-build = "0.4.2"
+
+
+[dev-dependencies]
+rstest = "0.10.0"
+
+[dependencies.rusqlite]
+version = "0.25.1"
+features = ["bundled"]
+

@@ -1,0 +1,41 @@
+use crate::api::ApiChannel;
+use crate::database::RikDataBase;
+use crate::logger::LoggingChannel;
+use rstest::fixture;
+use std::sync::mpsc::channel;
+use std::sync::mpsc::{Receiver, Sender};
+
+#[fixture]
+pub fn db_connection() -> std::sync::Arc<RikDataBase> {
+    let db = RikDataBase::new(String::from("test"));
+    db.init_tables().unwrap();
+    return db;
+}
+
+#[fixture]
+pub fn mock_logger() -> Sender<LoggingChannel> {
+    let (logging_sender, _) = channel::<LoggingChannel>();
+    return logging_sender.clone();
+}
+
+#[fixture]
+pub fn mock_internal_sender() -> Sender<ApiChannel> {
+    let (internal_sender, _) = channel::<ApiChannel>();
+    return internal_sender.clone();
+}
+
+#[fixture]
+pub fn mock_external_receiver() -> Receiver<ApiChannel> {
+    let (_, external_receiver) = channel::<ApiChannel>();
+    return external_receiver;
+}
+
+// #[fixture]
+// pub fn mock_server(db_connection: Connection) {
+//     let external_api = external::Server::new(
+//         logging_sender.clone(),
+//         internal_sender.clone(),
+//         external_receiver,
+//     );
+//     external_api.run(db_connection);
+// }
