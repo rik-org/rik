@@ -4,5 +4,6 @@ members = [
     "scheduler",
     "node_metrics",
     "riklet",
-    "controller"
+    "controller",
+    "proto"
 ]
