@@ -1,6 +1,5 @@
+.vscode/*
 .idea/
 target
 .run
 **/.DS_Store
-target
-.DS_Store

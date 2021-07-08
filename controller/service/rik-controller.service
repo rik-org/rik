@@ -1,0 +1,16 @@
+[Unit]
+AssertPathExists=/usr/bin/rik-controller
+After=rik-scheduler.service
+
+[Service]
+WorkingDirectory=~
+ExecStart=/usr/bin/rik-controller
+Restart=always
+PrivateTmp=true
+NoNewPrivileges=true
+RestartSec=3
+User=root
+
+[Install]
+Alias=rik-controller
+WantedBy=default.target
