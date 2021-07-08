@@ -20,5 +20,4 @@
 
 This is due to missing packages in your system, install `libssl-dev` to fix this.
 
-* Ubuntu: `sudo apt install libssl-dev`
-
+- Ubuntu: `sudo apt install libssl-dev`

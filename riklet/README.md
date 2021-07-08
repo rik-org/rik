@@ -36,7 +36,6 @@ You should see something like that :
         |    /  | | |    \ | |    |  __|  | |
         | |\ \ _| |_| |\  \| |____| |___  | |
         \_| \_|\___/\_| \_/\_____/\____/  \_/
-
 [2021-07-03T15:04:09Z INFO  riklet::core] Riklet (v0.1.0) is ready to accept connections.
 ```
 
