@@ -1,5 +1,5 @@
 MASTER_COUNT = 1
-WORKER_COUNT = 2
+WORKER_COUNT = 6
 IMAGE = "ubuntu/focal64"
 
 $install_riklet = <<-SCRIPT
