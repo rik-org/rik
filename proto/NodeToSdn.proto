@@ -1,0 +1,18 @@
+syntax = "proto3";
+package nts;
+
+service Getter {
+    // Our GetId rpc accepts NtsRequests and returns NtsReplies
+    rpc GetId (NtsRequest) returns (NtsReply);
+}
+
+message NtsRequest {
+    // Request message contains the id of a container
+    string id = 1;
+}
+
+message NtsReply {
+    // Reply contains a status message
+    // May be modified by a status code
+    string message = 1;
+}
