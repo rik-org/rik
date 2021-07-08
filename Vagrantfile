@@ -17,9 +17,11 @@ echo "ARG2=-v" >> /tmp/.rikletconf
 systemctl start riklet.service
 SCRIPT
 
-$install_scheduler = <<-SCRIPT
-dpkg -i /tmp/scheduler.deb
+$install_master = <<-SCRIPT
+dpkg -i /tmp/scheduler.deb && dpkg -i /tmp/controller.deb
+
 systemctl start rik-scheduler.service
+systemctl start rik-controller.service
 SCRIPT
 
 Vagrant.configure("2") do |config|
@@ -35,9 +37,10 @@ Vagrant.configure("2") do |config|
         vb.memory = 1024
         vb.cpus = 2
       end
-      rikmasters.vm.provision :file, source: "./riklet/fixtures/rik-scheduler_0.1.0_amd64.deb", destination: "/tmp/scheduler.deb"
+      rikmasters.vm.provision :file, source: "./target/debian/rik-scheduler_1.0.0_amd64.deb", destination: "/tmp/scheduler.deb"
+      rikmasters.vm.provision :file, source: "./target/debian/controller_1.0.0_amd64.deb", destination: "/tmp/controller.deb"
       rikmasters.vm.synced_folder ".", "/vagrant", type: "rsync", rsync__exclude: "target/"
-      rikmasters.vm.provision :shell, inline: $install_scheduler
+      rikmasters.vm.provision :shell, inline: $install_master
     end
   end
 
@@ -52,7 +55,7 @@ Vagrant.configure("2") do |config|
         vb.memory = 512
         vb.cpus = 1
       end
-      riknodes.vm.provision :file, source: "./riklet/target/debian/riklet_0.1.0_amd64.deb", destination: "/tmp/riklet.deb"
+      riknodes.vm.provision :file, source: "./target/debian/riklet_1.0.0_amd64.deb", destination: "/tmp/riklet.deb"
       riknodes.vm.provision :file, source: "./riklet/fixtures/umoci.amd64", destination: "/tmp/umoci"
       riknodes.vm.provision :shell, inline: $install_riklet
       riknodes.vm.synced_folder ".", "/vagrant", type: "rsync", rsync__exclude: "target/"

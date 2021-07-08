@@ -156,8 +156,6 @@ impl StateManager {
         identifier: String,
         metrics: WorkerMetric,
     ) -> Result<(), SchedulerError> {
-        error!("Metrics update is not implemented for now but are received",);
-
         let mut lock = self.workers.lock().unwrap();
         if let Some(worker) = lock.iter_mut().find(|worker| worker.id.eq(&identifier)) {
             if int_to_resource_status(&metrics.status) == ResourceStatus::Running {
@@ -291,7 +289,7 @@ impl StateManager {
         }
 
         let mut to_be_deleted = Vec::new();
-        for  key in self.state.keys().clone() {
+        for key in self.state.keys().clone() {
             if let Some(workload) = self.state.get(key) {
                 if workload.replicas == 0 && workload.instances.len() == 0 {
                     to_be_deleted.push(key.clone());
