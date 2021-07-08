@@ -7,3 +7,8 @@ target
 *.log
 .vagrant
 workload.json
+.idea/
+target
+Cargo.lock
+.run
+.idea
