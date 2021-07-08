@@ -49,7 +49,7 @@ impl Server {
     }
 
     fn run_server(&self, db: Arc<RikDataBase>) {
-        let host = String::from("127.0.0.1");
+        let host = String::from("0.0.0.0");
         dotenv().ok();
         let port: usize = match std::env::var("PORT") {
             Ok(val) => val.parse().unwrap(),

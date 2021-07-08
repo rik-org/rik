@@ -13,6 +13,7 @@ mv /tmp/umoci /usr/local/bin/umoci
 chmod +x /usr/local/bin/umoci
 dpkg -i /tmp/riklet.deb
 echo "ARG1=--master-ip 10.0.0.11:4995" >> /tmp/.rikletconf
+echo "ARG2=-v" >> /tmp/.rikletconf
 systemctl start riklet.service
 SCRIPT
 
@@ -20,7 +21,7 @@ $install_master = <<-SCRIPT
 dpkg -i /tmp/scheduler.deb && dpkg -i /tmp/controller.deb
 
 systemctl start rik-scheduler.service
-systemctl start controller.service
+systemctl start rik-controller.service
 SCRIPT
 
 Vagrant.configure("2") do |config|
