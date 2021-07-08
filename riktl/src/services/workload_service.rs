@@ -22,7 +22,7 @@ impl WorkloadService {
             let id = &workload["id"];
             let values = workload.get("value").unwrap();
             table.add_row(Row::new(vec![
-                Cell::new(id.to_string().as_str()),
+                Cell::new(id.as_str().unwrap()),
                 Cell::new(values.get("name").unwrap().as_str().unwrap()),
                 Cell::new(values.get("kind").unwrap().as_str().unwrap()),
             ]));
