@@ -1,6 +1,6 @@
 mod lib;
 
-use crate::state_manager::lib::{get_random_hash, int_to_resource_status};
+use crate::state_manager::lib::{get_random_hash, int_to_resource_status, resource_status_to_int};
 use definition::workload::WorkloadDefinition;
 use log::{debug, error, info};
 use proto::common::{InstanceMetric, ResourceStatus, WorkerMetric, WorkloadRequestKind};
@@ -27,6 +27,14 @@ impl fmt::Display for StateManagerEvent {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+enum WorkloadStatus {
+    PENDING,
+    CREATING,
+    DESTROYING,
+    RUNNING,
+}
+
 pub struct StateManager {
     state: HashMap<String, Workload>,
     workers: Arc<Mutex<Vec<Worker>>>,
@@ -37,7 +45,7 @@ impl StateManager {
     pub async fn new(
         manager_channel: Sender<Event>,
         workers: Arc<Mutex<Vec<Worker>>>,
-        receiver: Receiver<StateManagerEvent>,
+        mut receiver: Receiver<StateManagerEvent>,
     ) -> Result<(), SchedulerError> {
         debug!("Creating StateManager...");
         let mut state_manager = StateManager {
@@ -95,7 +103,7 @@ impl StateManager {
 
         // In the case we deactivated any worker, we want to reschedule the instances linked to that
         let mut instances_to_delete = Vec::new();
-        let instances = self.state.iter_mut();
+        let mut instances = self.state.iter_mut();
         {
             for (id, workload) in instances {
                 for (instance_id, instance) in workload.instances.iter() {
@@ -184,7 +192,7 @@ impl StateManager {
         // Well I'm sorry for this piece of code which isn't a art piece! Had some trouble with
         // ownership
         for (id, workload) in self.state.iter_mut() {
-            let length_diff: i32 = workload.replicas as i32 - (workload.instances.len() as i32);
+            let length_diff: i32 = (workload.replicas as i32 - (workload.instances.len() as i32));
 
             if length_diff > 0 {
                 debug!(
@@ -220,7 +228,7 @@ impl StateManager {
                     if let Some((id, instance)) = workload
                         .instances
                         .iter_mut()
-                        .find(|(id, _)| !removed.contains(id))
+                        .find(|(id, instance)| !removed.contains(id))
                     {
                         instance.status = ResourceStatus::Destroying;
                         debug!(
@@ -293,7 +301,7 @@ impl StateManager {
         }
 
         let mut to_be_deleted = Vec::new();
-        for key in self.state.keys().clone() {
+        for  key in self.state.keys().clone() {
             if let Some(workload) = self.state.get(key) {
                 if workload.replicas == 0 && workload.instances.is_empty() {
                     to_be_deleted.push(key.clone());
@@ -349,7 +357,7 @@ impl StateManager {
         workload_id: &str,
         replicas: &u16,
     ) -> Result<(), SchedulerError> {
-        let workload = match self.state.get_mut(workload_id) {
+        let mut workload = match self.state.get_mut(workload_id) {
             Some(wk) => Ok(wk),
             None => Err(SchedulerError::WorkloadDontExists(workload_id.to_string())),
         }?;
@@ -368,7 +376,7 @@ impl StateManager {
         workload_id: &str,
         replicas: &u16,
     ) -> Result<(), SchedulerError> {
-        let workload = match self.state.get_mut(workload_id) {
+        let mut workload = match self.state.get_mut(workload_id) {
             Some(wk) => Ok(wk),
             None => Err(SchedulerError::WorkloadDontExists(workload_id.to_string())),
         }?;
@@ -383,7 +391,7 @@ impl StateManager {
     }
 
     fn action_destroy_workload(&mut self, request: WorkloadRequest) -> Result<(), SchedulerError> {
-        let workload = self.state.get_mut(&request.workload_id);
+        let mut workload = self.state.get_mut(&request.workload_id);
 
         if workload.is_none() {
             error!(
