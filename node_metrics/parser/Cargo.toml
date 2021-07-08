@@ -1,0 +1,10 @@
+[package]
+authors = ["sylvain.reynaud <sylvain.reynaud@etu.umontpellier.fr>"]
+edition = "2018"
+name = "parser"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+node_metrics = {path = "../../node_metrics", version = "0.2.0", features = ["parser"]}
