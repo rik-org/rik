@@ -68,6 +68,7 @@ impl WorkerClient for GRPCService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proto::worker::InstanceScheduling;
     use std::net::SocketAddr;
     use tokio::sync::mpsc::error::SendError;
     use tonic::{Code, Request};
@@ -135,7 +136,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_register_stream() -> Result<(), SendError<WorkloadChannelType>> {
+    async fn test_register_stream(
+    ) -> Result<(), SendError<Result<InstanceScheduling, tonic::Status>>> {
         let (sender, mut receiver) = channel::<Event>(1024);
 
         let service = GRPCService::new(sender);

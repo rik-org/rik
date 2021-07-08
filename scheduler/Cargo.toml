@@ -38,6 +38,6 @@ branch = "protolib"
 path = "../node_metrics"
 
 [dependencies.definition]
-git = "https://github.com/croumegous/rik"
-branch = "definition"
-
+# git = "https://github.com/croumegous/rik"
+# branch = "definition"
+path = "../definition"
