@@ -9,6 +9,8 @@ target
 workload.json
 .idea/
 target
-Cargo.lock
 .run
 .idea
+**/.DS_Store
+target
+.DS_Store
