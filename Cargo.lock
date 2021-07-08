@@ -837,15 +837,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "node-metrics"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "sysinfo",
-]
-
-[[package]]
 name = "node_metrics"
 version = "0.2.0"
 dependencies = [
@@ -1324,7 +1315,7 @@ dependencies = [
  "libc",
  "log",
  "nix",
- "node-metrics",
+ "node_metrics",
  "oci",
  "prost",
  "proto 0.2.1",
