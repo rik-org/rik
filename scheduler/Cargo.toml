@@ -35,7 +35,7 @@ branch = "protolib"
 [dependencies.node_metrics]
 # git = "https://github.com/thomasgouveia/rik"
 # branch = "main"
-path = "../node_metrics"
+path = "../riklet/src/crates/node_metrics"
 
 [dependencies.definition]
 git = "https://github.com/croumegous/rik"
