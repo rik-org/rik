@@ -223,7 +223,7 @@ dependencies = [
  "names",
  "nix",
  "prost",
- "proto 0.2.1",
+ "proto",
  "route-recognizer",
  "rstest",
  "rusqlite",
@@ -1100,16 +1100,6 @@ dependencies = [
 
 [[package]]
 name = "proto"
-version = "0.1.0"
-dependencies = [
- "prost",
- "protobuf",
- "tonic",
- "tonic-build",
-]
-
-[[package]]
-name = "proto"
 version = "0.2.1"
 source = "git+https://github.com/AlexandreBrg/rik?branch=protolib#e2e5711e28be1ff95dac5c24e277c13487dd0fac"
 dependencies = [
@@ -1293,7 +1283,7 @@ dependencies = [
  "env_logger",
  "log",
  "node_metrics",
- "proto 0.2.1",
+ "proto",
  "rand 0.8.4",
  "serde",
  "serde_json",
@@ -1319,7 +1309,7 @@ dependencies = [
  "node-metrics",
  "oci",
  "prost",
- "proto 0.2.1",
+ "proto",
  "serde",
  "serde_json",
  "shared",
