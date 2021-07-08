@@ -53,7 +53,7 @@ pub enum Event {
     /// let metrics = InstanceMetric {
     ///     status: 1,
     ///     metrics: "{metricA: 10, metricB: 100}".to_string(),
-    ///     instance_id: "test"
+    ///     instance_id: "test".to_string()
     /// };
     /// ```
     InstanceMetric(String, InstanceMetric),
@@ -148,11 +148,10 @@ pub struct Worker {
     ///
     /// The following code is used in order to schedule an instance
     /// ```
-    /// use rik_scheduler::{Worker, WorkloadChannelType};
-    /// use proto::common::{Workload};
+    /// use rik_scheduler::{Worker, WorkerRegisterChannelType};
     /// use tokio::sync::mpsc::{channel, Receiver, Sender};
     /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
-    /// let (sender, receiver) = channel::<WorkloadChannelType>(1024);
+    /// let (sender, receiver) = channel::<WorkerRegisterChannelType>(1024);
     /// let worker = Worker::new("debian-test".to_string(), sender, "127.0.0.1:8080".parse().unwrap());
     /// ```
     pub channel: Sender<WorkerRegisterChannelType>,
@@ -229,7 +228,7 @@ pub trait Send<T> {
     async fn send(&self, data: T) -> Result<(), Status>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct WorkloadRequest {
     pub workload_id: String,
     pub definition: WorkloadDefinition,

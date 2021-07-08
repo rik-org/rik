@@ -218,12 +218,12 @@ version = "1.0.0"
 dependencies = [
  "chrono",
  "colored",
- "definition",
+ "definition 0.1.0 (git+https://github.com/croumegous/rik?branch=definition)",
  "dotenv",
  "names",
  "nix",
  "prost",
- "proto",
+ "proto 0.2.1",
  "route-recognizer",
  "rstest",
  "rusqlite",
@@ -321,6 +321,14 @@ checksum = "70c24513e34f53b640819f0ac9f705b673fcf4006d7aab8778bee72ebfc89815"
 dependencies = [
  "boxfnonce",
  "libc",
+]
+
+[[package]]
+name = "definition"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1100,6 +1108,16 @@ dependencies = [
 
 [[package]]
 name = "proto"
+version = "0.1.0"
+dependencies = [
+ "prost",
+ "protobuf",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
+name = "proto"
 version = "0.2.1"
 source = "git+https://github.com/AlexandreBrg/rik?branch=protolib#e2e5711e28be1ff95dac5c24e277c13487dd0fac"
 dependencies = [
@@ -1279,11 +1297,11 @@ name = "rik-scheduler"
 version = "1.0.0"
 dependencies = [
  "clap 2.33.3",
- "definition",
+ "definition 0.1.0",
  "env_logger",
  "log",
  "node_metrics",
- "proto",
+ "proto 0.2.1",
  "rand 0.8.4",
  "serde",
  "serde_json",
@@ -1309,7 +1327,7 @@ dependencies = [
  "node-metrics",
  "oci",
  "prost",
- "proto",
+ "proto 0.2.1",
  "serde",
  "serde_json",
  "shared",
