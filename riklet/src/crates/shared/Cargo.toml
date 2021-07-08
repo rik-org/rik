@@ -1,0 +1,13 @@
+[package]
+name = "shared"
+version = "0.1.0"
+authors = ["Thomas Gouveia <thomas.gouveia@ioterop.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+flate2 = "1.0.20"
+tar = "0.4.35"
+log = "0.4.14"
+rand = "0.8.4"

@@ -1,0 +1,15 @@
+[package]
+name = "oci"
+version = "0.1.0"
+authors = ["Hugo Amalric <hugoamalric@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+shared = { path = "../shared" }
+log = "0.4.14"
+snafu = "0.6.10"
+tokio = { version = "1.7.0", features = ["full"] }
+async-trait = "0.1.50"
+serde = { version = "1.0", features = ["derive"] }

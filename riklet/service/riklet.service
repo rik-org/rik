@@ -1,0 +1,14 @@
+[Unit]
+AssertPathExists=/usr/bin/riklet
+
+[Service]
+WorkingDirectory=~
+ExecStart=/usr/bin/riklet
+Restart=always
+PrivateTmp=true
+NoNewPrivileges=true
+RestartSec=3
+
+[Install]
+Alias=riklet
+WantedBy=default.target

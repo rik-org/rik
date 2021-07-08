@@ -1,0 +1,1 @@
+pub const DEFAULT_COMMAND_TIMEOUT: u64 = 30000;
