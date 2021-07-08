@@ -1,6 +1,6 @@
 .idea/
 target
-Cargo.lock
 .run
 .idea
 target
+.DS_Store
