@@ -181,8 +181,10 @@ impl Worker {
     }
 
     pub fn set_state(&mut self, state: WorkerState) {
-        self.state = state;
-        info!("Worker {} flipped to {} state", self.id, self.state);
+        if self.state != state {
+            self.state = state;
+            info!("Worker {} flipped to {} state", self.id, self.state);
+        }
     }
 
     pub fn get_state(&self) -> &WorkerState {
