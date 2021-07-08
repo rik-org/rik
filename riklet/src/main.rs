@@ -1,9 +1,9 @@
-mod structs;
-mod core;
-mod traits;
-mod emitters;
 mod config;
 mod constants;
+mod core;
+mod emitters;
+mod structs;
+mod traits;
 
 use crate::core::Riklet;
 
@@ -19,7 +19,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(instance) => instance,
         Err(error) => {
             // if there is an error during the boostrap process of the riklet, log & error
-            log::error!("An error occured during the bootstraping process of the Riklet. Details : {}", error.to_string());
+            log::error!(
+                "An error occured during the bootstraping process of the Riklet. Details : {}",
+                error.to_string()
+            );
             std::process::exit(2);
         }
     };
