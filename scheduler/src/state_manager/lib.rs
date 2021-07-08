@@ -10,18 +10,6 @@ pub fn get_random_hash(size: usize) -> String {
         .collect()
 }
 
-pub fn resource_status_to_int(status: &ResourceStatus) -> i32 {
-    match status {
-        ResourceStatus::Destroying => 6,
-        ResourceStatus::Creating => 5,
-        ResourceStatus::Terminated => 4,
-        ResourceStatus::Failed => 3,
-        ResourceStatus::Running => 2,
-        ResourceStatus::Pending => 1,
-        ResourceStatus::Unknown => 0,
-    }
-}
-
 pub fn int_to_resource_status(status: &i32) -> ResourceStatus {
     match status {
         6 => ResourceStatus::Destroying,

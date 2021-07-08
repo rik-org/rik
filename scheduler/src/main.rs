@@ -4,22 +4,18 @@ mod state_manager;
 
 use crate::config_parser::ConfigParser;
 use crate::grpc::GRPCService;
-use crate::state_manager::{StateManager, StateManagerEvent, Workload};
+use crate::state_manager::{StateManager, StateManagerEvent};
 use env_logger::Env;
 use log::{debug, error, info, warn};
 use proto::common::worker_status::Status;
-use proto::common::{InstanceMetric, WorkerStatus};
+use proto::common::WorkerStatus;
 use proto::controller::controller_server::ControllerServer;
 use proto::worker::worker_server::WorkerServer;
-use proto::worker::InstanceScheduling;
-use rand::seq::IteratorRandom;
 use rik_scheduler::{Controller, SchedulerError, Worker, WorkerRegisterChannelType};
-use rik_scheduler::{Event, WorkloadChannelType};
-use std::collections::HashMap;
+use rik_scheduler::Event;
 use std::default::Default;
 use std::net::{SocketAddr, SocketAddrV4};
 use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tonic::transport::Server;
 
@@ -168,29 +164,22 @@ impl Manager {
                     }
                 }
                 Event::InstanceMetricsUpdate(_, metrics) => {
-                    self.state_manager
+                    if let Err(_) = self.state_manager
                         .send(StateManagerEvent::InstanceUpdate(metrics))
-                        .await;
+                        .await {
+                        error!("StateManager is in failed state, cannot forward InstanceMetricsUpdate");
+                    }
                 }
                 Event::WorkerMetricsUpdate(identifier, metrics) => {
-                    self.state_manager
+                    if let Err(_) = self.state_manager
                         .send(StateManagerEvent::WorkerUpdate(identifier, metrics))
-                        .await;
+                        .await {
+                        error!("StateManager is in failed state, cannot forward WorkerMetricsUpdate");
+                    }
                 }
-                _ => unimplemented!("You think I'm not implemented ? Hold my beer"),
             }
         }
         Ok(())
-    }
-
-    fn get_next_id(&mut self) -> Result<u8, SchedulerError> {
-        match self.worker_increment {
-            u8::MAX => Err(SchedulerError::ClusterFull),
-            _ => {
-                self.worker_increment += 1;
-                Ok(self.worker_increment)
-            }
-        }
     }
 
     fn get_worker_sender(&self, hostname: &str) -> Option<Sender<WorkerRegisterChannelType>> {
