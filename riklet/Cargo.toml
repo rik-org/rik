@@ -25,7 +25,7 @@ assets = [
 cri = { path = "src/crates/cri" }
 oci = { path = "src/crates/oci" }
 shared = { path = "src/crates/shared" }
-node-metrics = { path = "src/crates/node-metrics" }
+node_metrics = { path = "src/crates/node_metrics" }
 serde_json = "1.0.64"
 daemonize = "0.4.1"
 log = "0.4.14"

@@ -5,6 +5,7 @@ use crate::traits::EventEmitter;
 use clap::crate_version;
 use cri::console::ConsoleSocket;
 use cri::container::{CreateArgs, DeleteArgs, Runc};
+use node_metrics::metrics_manager::MetricsManager;
 use oci::image_manager::ImageManager;
 use proto::common::{InstanceMetric, WorkerMetric, WorkerRegistration, WorkerStatus};
 use proto::worker::worker_client::WorkerClient;
@@ -223,8 +224,9 @@ impl Riklet {
         let hostname = self.hostname.clone();
 
         tokio::spawn(async move {
+            let mut metrics_manager = MetricsManager::new();
             loop {
-                let node_metric = node_metrics::Metrics::new();
+                let node_metric = metrics_manager.fetch();
                 MetricsEmitter::emit_event(
                     client.clone(),
                     vec![WorkerStatus {
