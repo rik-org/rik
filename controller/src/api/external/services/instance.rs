@@ -13,7 +13,7 @@ pub fn send_create_instance(
 ) {
     let mut random_name_generator = Generator::default();
     let random_name = random_name_generator.next().unwrap();
-    let instance_name = match name {
+    let _instance_name = match name {
         Some(name) => name,
         None => &random_name,
     };

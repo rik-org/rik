@@ -10,7 +10,6 @@ use crate::database::RikDataBase;
 use api::{external, internal, ApiChannel};
 use logger::{Logger, LoggingChannel};
 
-use nix;
 use tokio::runtime::Builder;
 
 fn main() {

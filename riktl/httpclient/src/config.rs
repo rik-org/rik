@@ -41,7 +41,7 @@ impl Config {
                     Err(_) => Err(ApiError::CantReadConfigFile),
                 }
             }
-            Err(_) => Err(ApiError::CantOpenConfigFile(path.clone())),
+            Err(_) => Err(ApiError::CantOpenConfigFile(path)),
         }
     }
 }

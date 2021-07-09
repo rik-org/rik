@@ -104,7 +104,7 @@ mod tests {
 
         let mock_request = Request::new(());
 
-        service.get_status_updates(mock_request).await;
+        let _ = service.get_status_updates(mock_request).await;
 
         let message = receiver.recv().await.unwrap();
         match message {
@@ -133,7 +133,7 @@ mod tests {
 
         let message = receiver.recv().await.unwrap();
         match message {
-            Event::Subscribe(sender, socket) => {
+            Event::Subscribe(sender, _socket) => {
                 sender.send(Err(Status::cancelled("Sample"))).await?;
                 let rcv = stream.recv().await.unwrap();
                 assert!(rcv.is_err());

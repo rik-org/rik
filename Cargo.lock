@@ -1403,7 +1403,7 @@ dependencies = [
 [[package]]
 name = "proto"
 version = "0.2.1"
-source = "git+https://github.com/AlexandreBrg/rik?branch=protolib#e2e5711e28be1ff95dac5c24e277c13487dd0fac"
+source = "git+https://github.com/dev-sys-do/rik?branch=main#09b81a6955e6a20800e6c25b6c86eef9ecd501fa"
 dependencies = [
  "prost",
  "protobuf",
