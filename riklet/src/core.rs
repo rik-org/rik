@@ -143,8 +143,7 @@ impl Riklet {
                     }
                 }
             });
-            &self
-                .container_runtime
+            self.container_runtime
                 .run(
                     &id[..],
                     &image.bundle.as_ref().unwrap(),
@@ -200,14 +199,14 @@ impl Riklet {
         Ok(())
     }
 
-    async fn send_status(&self, status: i32, instance_id: &String) {
+    async fn send_status(&self, status: i32, instance_id: &str) {
         MetricsEmitter::emit_event(
             self.client.clone(),
             vec![WorkerStatus {
                 identifier: self.hostname.clone(),
                 status: Some(proto::common::worker_status::Status::Instance(
                     InstanceMetric {
-                        instance_id: instance_id.clone(),
+                        instance_id: instance_id.to_string().clone(),
                         status,
                         metrics: "".to_string(),
                     },
@@ -248,10 +247,10 @@ impl Riklet {
     pub async fn accept(&mut self) -> Result<(), Box<dyn Error>> {
         log::info!("Riklet (v{}) is running.", crate_version!());
         // Start the metrics updater
-        &self.start_metrics_updater();
+        self.start_metrics_updater();
 
         while let Some(workload) = &self.stream.message().await? {
-            &self.handle_workload(&workload).await;
+            let _ = self.handle_workload(&workload).await;
         }
         Ok(())
     }

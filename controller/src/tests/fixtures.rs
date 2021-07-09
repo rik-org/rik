@@ -7,6 +7,7 @@ use std::sync::mpsc::{Receiver, Sender};
 
 #[fixture]
 pub fn db_connection() -> std::sync::Arc<RikDataBase> {
+    std::env::set_var("DATABASE_LOCATION", "/tmp/riktest");
     let db = RikDataBase::new(String::from("test"));
     db.init_tables().unwrap();
     return db;

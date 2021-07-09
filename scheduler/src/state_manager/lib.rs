@@ -18,6 +18,6 @@ pub fn int_to_resource_status(status: &i32) -> ResourceStatus {
         3 => ResourceStatus::Failed,
         2 => ResourceStatus::Running,
         1 => ResourceStatus::Pending,
-        0 | _ => ResourceStatus::Unknown,
+        _ => ResourceStatus::Unknown,
     }
 }

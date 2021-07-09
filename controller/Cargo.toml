@@ -30,7 +30,7 @@ tokio-stream = "0.1.6"
 dotenv = "0.15.0"
 nix = "0.21.0"
 rstest = "0.10.0"
-proto = { git = "https://github.com/AlexandreBrg/rik", branch="protolib" }
+proto = { git = "https://github.com/dev-sys-do/rik", branch="main" }
 definition = { git = "https://github.com/croumegous/rik", branch="definition" }
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
 

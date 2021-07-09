@@ -58,7 +58,7 @@ impl Metrics {
                 None => String::from("unknown"),
             };
             disks.push(DiskMetrics {
-                disk_name: disk_name,
+                disk_name,
                 total: disk.total_space(),
                 free: disk.available_space(),
             })
@@ -73,7 +73,7 @@ impl Metrics {
                 total: 1024 * memory_total,
                 free: 1024 * (memory_total - sys.used_memory()),
             },
-            disks: disks,
+            disks,
         }
     }
 

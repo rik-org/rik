@@ -1,12 +1,12 @@
-use std::path::PathBuf;
-use shared::utils::find_binary;
-use snafu::{OptionExt, ResultExt, ensure};
-use std::time::Duration;
-use log::debug;
 use crate::*;
-use tokio::process::Command;
+use log::debug;
+use serde::{Deserialize, Serialize};
+use shared::utils::find_binary;
+use snafu::{ensure, OptionExt, ResultExt};
+use std::path::PathBuf;
 use std::process::Stdio;
-use serde::{Serialize, Deserialize};
+use std::time::Duration;
+use tokio::process::Command;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UmociConfiguration {
@@ -24,11 +24,10 @@ pub struct Umoci {
     timeout: Duration,
     bundles_directory: PathBuf,
     verbose: bool,
-    log_level: Option<String>
+    log_level: Option<String>,
 }
 
 impl Umoci {
-
     /// Create an Umoci instance to interact with the binary
     pub fn new(config: UmociConfiguration) -> Result<Self> {
         let command = config
@@ -36,7 +35,10 @@ impl Umoci {
             .or_else(|| find_binary("umoci"))
             .context(UmociNotFoundError {})?;
 
-        let timeout = config.timeout.or(Some(Duration::from_millis(5000))).unwrap();
+        let timeout = config
+            .timeout
+            .or_else(|| Some(Duration::from_millis(5000)))
+            .unwrap();
 
         let bundles_directory = config
             .bundles_directory
@@ -55,15 +57,11 @@ impl Umoci {
         })
     }
 
-    fn get_bundle_path(&self, bundle_id: &String) -> String {
-        format!(
-            "{}/{}",
-            self.bundles_directory.to_str().unwrap(),
-            bundle_id
-        )
+    fn get_bundle_path(&self, bundle_id: &str) -> String {
+        format!("{}/{}", self.bundles_directory.to_str().unwrap(), bundle_id)
     }
 
-    pub async fn unpack(&self, bundle_id: &String, opts: Option<&UnpackArgs>) -> Result<String> {
+    pub async fn unpack(&self, bundle_id: &str, opts: Option<&UnpackArgs>) -> Result<String> {
         let mut args = vec![String::from("unpack")];
         Self::append_opts(&mut args, opts.map(|opts| opts as &dyn Args))?;
         let bundle_path = self.get_bundle_path(bundle_id);
@@ -86,7 +84,7 @@ impl Args for Umoci {
 
         if let Some(log_level) = &self.log_level {
             args.push(String::from("--log"));
-            args.push(String::from(log_level.to_string()));
+            args.push(log_level.to_string());
         }
 
         Ok(args)
@@ -105,7 +103,11 @@ impl Executable for Umoci {
             .spawn()
             .context(ProcessSpawnError {})?;
 
-        debug!("{} {}", self.command.to_str().unwrap(), &args.clone().join(" "));
+        debug!(
+            "{} {}",
+            self.command.to_str().unwrap(),
+            &args.clone().join(" ")
+        );
 
         let result = tokio::time::timeout(self.timeout, process.wait_with_output())
             .await
@@ -115,17 +117,14 @@ impl Executable for Umoci {
         let stdout = String::from_utf8(result.stdout.clone()).unwrap();
         let stderr = String::from_utf8(result.stderr.clone()).unwrap();
 
-        if stderr != "" {
+        if !stderr.is_empty() {
             if stderr.contains("config.json already exists") {
                 log::warn!("A config.json already exists for this image.");
             } else {
                 error!("Umoci error : {}", stderr);
                 ensure!(
                     result.status.success(),
-                    UmociCommandFailedError {
-                        stdout: stdout,
-                        stderr: stderr
-                    }
+                    UmociCommandFailedError { stdout, stderr }
                 );
             }
         }
@@ -139,7 +138,7 @@ pub struct UnpackArgs {
     pub uid_map: Option<String>,
     pub gid_map: Option<String>,
     pub rootless: bool,
-    pub image: PathBuf
+    pub image: PathBuf,
 }
 
 impl Args for UnpackArgs {

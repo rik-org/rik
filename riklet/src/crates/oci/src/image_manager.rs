@@ -38,7 +38,7 @@ impl ImageManager {
 
     /// Format the image for skopeo with the following format:
     /// docker://<IMAGE>
-    fn format_image_src(&self, image: &String) -> String {
+    fn format_image_src(&self, image: &str) -> String {
         format!("docker://{}", image)
     }
 
@@ -68,7 +68,7 @@ impl ImageManager {
             .skopeo
             .copy(
                 &src,
-                &format!("{}", &image.get_hashed_oci()),
+                &image.get_hashed_oci().to_string(),
                 Default::default(),
             )
             .await?;

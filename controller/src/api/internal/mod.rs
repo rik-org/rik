@@ -10,7 +10,6 @@ use proto::controller::WorkloadScheduling;
 use rusqlite::Connection;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
-use tonic;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -140,7 +139,7 @@ impl Server {
                         if let Some(workload_definition) = notification.workload_definition {
                             client
                                 .schedule_instance(WorkloadScheduling {
-                                    workload_id: workload_id,
+                                    workload_id,
                                     definition: serde_json::to_string(&workload_definition)
                                         .unwrap(),
                                     action: CRUD::Create as i32,
@@ -166,7 +165,7 @@ impl Server {
                         if let Some(workload_definition) = notification.workload_definition {
                             client
                                 .schedule_instance(WorkloadScheduling {
-                                    workload_id: workload_id,
+                                    workload_id,
                                     definition: serde_json::to_string(&workload_definition)
                                         .unwrap(),
                                     action: CRUD::Delete as i32,
