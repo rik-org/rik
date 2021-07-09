@@ -18,14 +18,13 @@ impl ApiRequest {
         header: Option<String>,
     ) -> Result<Self, ApiError> {
         let uri = Config::get_uri()?;
-        let api_request = ApiRequest {
+
+        Ok(ApiRequest {
+            uri,
             endpoint,
             header,
             body,
-            uri,
-        };
-
-        Ok(api_request)
+        })
     }
 
     pub fn get(self) -> Result<Vec<Value>, ApiError> {
@@ -69,7 +68,7 @@ impl ApiRequest {
                     {
                         match response.text() {
                             Ok(text) => {
-                                if text == "" {
+                                if text.is_empty() {
                                     return Ok(Value::Null);
                                 }
                                 let body_value: Value = serde_json::from_str(&text).unwrap();
@@ -78,15 +77,15 @@ impl ApiRequest {
                             Err(_) => Err(ApiError::CantReadResponse),
                         }
                     } else {
-                        let error = response.status().clone();
+                        let error = response.status();
                         println!("{}", &response.text().unwrap());
                         Err(ApiError::BadStatus(error))
                     }
                 }
-                Err(_) => return Err(ApiError::BadURI(self.uri)),
+                Err(_) => Err(ApiError::BadURI(self.uri)),
             }
         } else {
-            return Err(ApiError::EmptyBody);
+            Err(ApiError::EmptyBody)
         }
     }
 }

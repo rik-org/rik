@@ -1,6 +1,6 @@
 on: [push, pull_request]
 
-name: Continuous integration
+name: RIK CI
 
 jobs:
   check:
@@ -61,4 +61,3 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings

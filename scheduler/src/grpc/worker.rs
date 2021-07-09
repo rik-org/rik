@@ -84,7 +84,7 @@ mod tests {
             hostname: hostname.clone(),
         });
 
-        service.register(mock_request).await;
+        let _ = service.register(mock_request).await;
 
         let message = receiver.recv().await.unwrap();
         match message {

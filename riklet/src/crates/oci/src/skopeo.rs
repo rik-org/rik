@@ -1,13 +1,13 @@
-use std::time::Duration;
-use std::path::PathBuf;
-use shared::utils::find_binary;
-use snafu::{OptionExt, ResultExt};
 use crate::*;
-use std::process::Stdio;
-use tokio::process::Command;
 use log::debug;
+use serde::{Deserialize, Serialize};
+use shared::utils::find_binary;
 use snafu::ensure;
-use serde::{Serialize, Deserialize};
+use snafu::{OptionExt, ResultExt};
+use std::path::PathBuf;
+use std::process::Stdio;
+use std::time::Duration;
+use tokio::process::Command;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SkopeoConfiguration {
@@ -40,14 +40,16 @@ pub struct Skopeo {
 }
 
 impl Skopeo {
-
     pub fn new(config: SkopeoConfiguration) -> Result<Self> {
         let command = config
             .command
             .or_else(|| find_binary("skopeo"))
             .context(SkopeoNotFoundError {})?;
 
-        let timeout = config.timeout.or(Some(Duration::from_millis(5000))).unwrap();
+        let timeout = config
+            .timeout
+            .or_else(|| Some(Duration::from_millis(5000)))
+            .unwrap();
 
         let images_directory = config
             .images_directory
@@ -68,11 +70,11 @@ impl Skopeo {
             override_variant: config.override_variant,
             policy: config.policy,
             registries: config.registries,
-            tmp_dir: config.tmp_dir
+            tmp_dir: config.tmp_dir,
         })
     }
 
-    fn get_pull_path(&self, directory: &String) -> String {
+    fn get_pull_path(&self, directory: &str) -> String {
         format!(
             "oci:{}/{}",
             self.images_directory.to_str().unwrap(),
@@ -80,8 +82,8 @@ impl Skopeo {
         )
     }
 
-    pub async fn copy(&self, src: &String, uuid: &String, opts: Option<&CopyArgs>) -> Result<String> {
-        let mut args = vec![String::from("copy"), src.clone()];
+    pub async fn copy(&self, src: &str, uuid: &str, opts: Option<&CopyArgs>) -> Result<String> {
+        let mut args = vec![String::from("copy"), src.to_string()];
         Self::append_opts(&mut args, opts.map(|opts| opts as &dyn Args))?;
 
         let image_pull_path = self.get_pull_path(uuid);
@@ -90,7 +92,7 @@ impl Skopeo {
 
         self.exec(&args).await?;
 
-        let splitted = image_pull_path.split(":").collect::<Vec<&str>>();
+        let splitted = image_pull_path.split(':').collect::<Vec<&str>>();
         Ok(String::from(*splitted.get(1).unwrap()))
     }
 }
@@ -155,7 +157,11 @@ impl Executable for Skopeo {
             .spawn()
             .context(ProcessSpawnError {})?;
 
-        debug!("{} {}", self.command.to_str().unwrap(), &args.clone().join(" "));
+        debug!(
+            "{} {}",
+            self.command.to_str().unwrap(),
+            &args.clone().join(" ")
+        );
 
         let result = tokio::time::timeout(self.timeout, process.wait_with_output())
             .await
@@ -165,16 +171,13 @@ impl Executable for Skopeo {
         let stdout = String::from_utf8(result.stdout.clone()).unwrap();
         let stderr = String::from_utf8(result.stderr.clone()).unwrap();
 
-        if stderr != "" {
+        if !stderr.is_empty() {
             error!("Skopeo error : {}", stderr);
         }
 
         ensure!(
             result.status.success(),
-            SkopeoCommandFailedError {
-                stdout: stdout,
-                stderr: stderr
-            }
+            SkopeoCommandFailedError { stdout, stderr }
         );
 
         Ok(stdout)
@@ -182,7 +185,7 @@ impl Executable for Skopeo {
 }
 
 pub struct CopyArgs {
-    pub auth_file: Option<PathBuf>
+    pub auth_file: Option<PathBuf>,
 }
 
 impl Args for CopyArgs {
