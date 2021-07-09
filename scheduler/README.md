@@ -34,5 +34,4 @@ This component is using [`env_logger`](https://docs.rs/env_logger/0.8.4/env_logg
 to log information to `stdout`. You can define the logging level either by command line options or
 by setting `RUST_LOG`. Levels available are: `debug`, `trace`, `info`, `warn`, `error`.
 
-**Note**: `Debug` mode will output gRPC logs, which can make your logs too much verbose. You can scope these logs
-by setting `RUST_LOG=rik-scheduler=debug`.
+**Note**: `Debug` mode will output gRPC logs, which can make your logs too much verbose. You can scope these logs by setting `RUST_LOG=rik-scheduler=debug`.
