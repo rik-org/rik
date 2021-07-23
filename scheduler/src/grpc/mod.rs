@@ -2,8 +2,8 @@ mod controller;
 mod worker;
 
 use log::error;
-use rik_scheduler::Event;
-use rik_scheduler::Send;
+use scheduler::Event;
+use scheduler::Send;
 use tokio::sync::mpsc::Sender;
 use tonic::{Code, Status};
 

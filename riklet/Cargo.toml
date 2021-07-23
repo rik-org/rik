@@ -46,5 +46,4 @@ nix="0.21.0"
 gethostname = "0.2.1"
 
 [dependencies.proto]
-git = "https://github.com/dev-sys-do/rik"
-branch = "main"
+path = "../proto"

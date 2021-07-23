@@ -300,12 +300,12 @@ version = "1.0.0"
 dependencies = [
  "chrono",
  "colored",
- "definition 0.1.0 (git+https://github.com/croumegous/rik?branch=definition)",
+ "definition",
  "dotenv",
  "names",
  "nix",
  "prost",
- "proto 0.2.1",
+ "proto",
  "route-recognizer",
  "rstest",
  "rusqlite",
@@ -440,15 +440,6 @@ dependencies = [
 [[package]]
 name = "definition"
 version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "definition"
-version = "0.1.0"
-source = "git+https://github.com/croumegous/rik?branch=definition#357f0701846260aba723481bd4da27f26af0f0e5"
 dependencies = [
  "serde",
  "serde_json",
@@ -1392,18 +1383,7 @@ dependencies = [
 
 [[package]]
 name = "proto"
-version = "0.1.0"
-dependencies = [
- "prost",
- "protobuf",
- "tonic",
- "tonic-build",
-]
-
-[[package]]
-name = "proto"
 version = "0.2.1"
-source = "git+https://github.com/dev-sys-do/rik?branch=main#09b81a6955e6a20800e6c25b6c86eef9ecd501fa"
 dependencies = [
  "prost",
  "protobuf",
@@ -1635,24 +1615,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rik-scheduler"
-version = "1.0.0"
-dependencies = [
- "clap 2.33.3",
- "definition 0.1.0",
- "env_logger",
- "log",
- "node_metrics",
- "proto 0.2.1",
- "rand 0.8.4",
- "serde",
- "serde_json",
- "tokio",
- "tokio-stream",
- "tonic",
-]
-
-[[package]]
 name = "riklet"
 version = "1.0.0"
 dependencies = [
@@ -1669,7 +1631,7 @@ dependencies = [
  "node_metrics",
  "oci",
  "prost",
- "proto 0.2.1",
+ "proto",
  "serde",
  "serde_json",
  "shared",
@@ -1761,6 +1723,24 @@ checksum = "8f05ba609c234e60bee0d547fe94a4c7e9da733d1c962cf6e59efa4cd9c8bc75"
 dependencies = [
  "lazy_static",
  "winapi",
+]
+
+[[package]]
+name = "scheduler"
+version = "1.0.0"
+dependencies = [
+ "clap 2.33.3",
+ "definition",
+ "env_logger",
+ "log",
+ "node_metrics",
+ "proto",
+ "rand 0.8.4",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+ "tonic",
 ]
 
 [[package]]
