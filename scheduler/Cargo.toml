@@ -1,7 +1,7 @@
 [package]
-name = "rik-scheduler"
+name = "scheduler"
 version = "1.0.0"
-authors = ["Protocole <burgoni.alexandre@protonmail.com>"]
+authors = ["Protocole <alexandre.burgoni@etu.umontpellier.fr>"]
 edition = "2018"
 
 [package.metadata.deb]
@@ -10,8 +10,8 @@ extended-description = "rik scheduler daemon"
 section = "admin"
 priority = "optional"
 assets = [
-    ["target/release/rik-scheduler", "usr/bin/rik-scheduler", "755"],
-    ["service/rik-scheduler.service", "/lib/systemd/system/rik-scheduler.service", "644"],
+    ["target/release/scheduler", "usr/bin/scheduler", "755"],
+    ["service/scheduler.service", "/lib/systemd/system/scheduler.service", "644"],
 ]
 
 [dependencies]
@@ -29,8 +29,7 @@ version = "1.6.1"
 features = ["rt-multi-thread", "macros", "sync", "time"]
 
 [dependencies.proto]
-git = "https://github.com/dev-sys-do/rik"
-branch = "main"
+path = "../proto"
 
 [dependencies.node_metrics]
 path = "../riklet/src/crates/node_metrics"

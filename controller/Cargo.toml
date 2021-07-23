@@ -30,13 +30,10 @@ tokio-stream = "0.1.6"
 dotenv = "0.15.0"
 nix = "0.21.0"
 rstest = "0.10.0"
-proto = { git = "https://github.com/dev-sys-do/rik", branch="main" }
-definition = { git = "https://github.com/croumegous/rik", branch="definition" }
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
 
 [build-dependencies]
 tonic-build = "0.4.2"
-
 
 [dev-dependencies]
 rstest = "0.10.0"
@@ -45,3 +42,8 @@ rstest = "0.10.0"
 version = "0.25.1"
 features = ["bundled"]
 
+[dependencies.proto]
+path = "../proto"
+
+[dependencies.definition]
+path = "../definition"

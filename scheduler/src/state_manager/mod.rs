@@ -6,7 +6,7 @@ use log::{debug, error, info};
 use proto::common::{InstanceMetric, ResourceStatus, WorkerMetric, WorkloadRequestKind};
 use proto::worker::InstanceScheduling;
 use rand::seq::IteratorRandom;
-use rik_scheduler::{Event, SchedulerError, Worker, WorkerState, WorkloadRequest};
+use scheduler::{Event, SchedulerError, Worker, WorkerState, WorkloadRequest};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;

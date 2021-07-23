@@ -147,7 +147,7 @@ pub struct Worker {
     ///
     /// The following code is used in order to schedule an instance
     /// ```
-    /// use rik_scheduler::{Worker, WorkerRegisterChannelType};
+    /// use scheduler::{Worker, WorkerRegisterChannelType};
     /// use tokio::sync::mpsc::{channel, Receiver, Sender};
     /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
     /// let (sender, receiver) = channel::<WorkerRegisterChannelType>(1024);
