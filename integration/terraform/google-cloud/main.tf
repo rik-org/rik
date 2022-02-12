@@ -1,5 +1,7 @@
 locals {
-  username = "rik"
+  username     = "rik"
+  cluster_name = "rik-${var.cluster_name}"
+  os           = "debian-cloud/debian-11"
 }
 
 # Create the private key which will be
@@ -11,24 +13,24 @@ resource "tls_private_key" "ssh" {
 
 # Creates the compute network
 resource "google_compute_network" "rik" {
-  name                    = "rik-vpc"
+  name                    = "${local.cluster_name}-vpc"
   auto_create_subnetworks = true
 }
 
 # Create the master static ip
 resource "google_compute_address" "master_static" {
-  name = "rik-master"
+  name = "${local.cluster_name}-master"
 }
 
 # Create the worker static ip
 resource "google_compute_address" "worker_static" {
   count = var.workers_count
-  name  = "rik-worker-${count.index}"
+  name  = "${local.cluster_name}-worker-${count.index}"
 }
 
 # Authorize SSH
 resource "google_compute_firewall" "ssh" {
-  name    = "rik-allow-ssh"
+  name    = "${local.cluster_name}-allow-ssh"
   network = google_compute_network.rik.name
 
   allow {
@@ -42,7 +44,7 @@ resource "google_compute_firewall" "ssh" {
 
 # Authorize external access to the RIK API
 resource "google_compute_firewall" "api_server" {
-  name    = "rik-allow-api-server"
+  name    = "${local.cluster_name}-allow-api-server"
   network = google_compute_network.rik.name
 
   allow {
@@ -56,7 +58,7 @@ resource "google_compute_firewall" "api_server" {
 
 # Authorize external access to the RIK API
 resource "google_compute_firewall" "workers" {
-  name    = "rik-allow-internal-workers"
+  name    = "${local.cluster_name}-allow-internal-workers"
   network = google_compute_network.rik.name
 
   allow {
@@ -65,16 +67,18 @@ resource "google_compute_firewall" "workers" {
   }
 
   priority      = 1000
-  source_ranges = [for i in range(var.workers_count): "${google_compute_address.worker_static[i].address}/32"]
-  source_tags = []
+  source_ranges = [for i in range(var.workers_count) : "${google_compute_address.worker_static[i].address}/32"]
+  source_tags   = []
 }
 
 # Creates the rik master node
 resource "google_compute_instance" "master" {
-  name         = "rik-master"
+  name         = "${local.cluster_name}-master"
   machine_type = "e2-micro"
   zone         = "europe-west1-b"
 
+  # Add the generated SSH key to the instance
+  # So we can use SSH provisioner to copy files & configure the instance
   metadata = {
     ssh-keys = "${local.username}:${tls_private_key.ssh.public_key_openssh}"
   }
@@ -88,24 +92,24 @@ resource "google_compute_instance" "master" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-11"
+      image = local.os
     }
   }
 
   connection {
     type        = "ssh"
-    user        = "rik"
+    user        = local.username
     host        = google_compute_address.master_static.address
     private_key = tls_private_key.ssh.private_key_pem
   }
 
   provisioner "file" {
-    source      = "utils/controller.deb"
+    source      = "${path.root}/../../../target/debian/controller_1.0.0_amd64.deb"
     destination = "/tmp/controller.deb"
   }
 
   provisioner "file" {
-    source      = "utils/scheduler.deb"
+    source      = "${path.root}/../../../target/debian/scheduler_1.0.0_amd64.deb"
     destination = "/tmp/scheduler.deb"
   }
 
@@ -122,9 +126,12 @@ resource "google_compute_instance" "master" {
 # Creates the workers instances
 resource "google_compute_instance" "worker" {
   count        = var.workers_count
-  name         = "rik-worker-${count.index}"
+  name         = "${local.cluster_name}-worker-${count.index}"
   machine_type = "e2-micro"
   zone         = "europe-west1-b"
+
+  # Add the generated SSH key to the instance
+  # So we can use SSH provisioner to copy files & configure the instance
   metadata = {
     ssh-keys = "${local.username}:${tls_private_key.ssh.public_key_openssh}"
   }
@@ -138,19 +145,19 @@ resource "google_compute_instance" "worker" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-11"
+      image = local.os
     }
   }
 
   connection {
     type        = "ssh"
-    user        = "rik"
+    user        = local.username
     host        = google_compute_address.worker_static[count.index].address
     private_key = tls_private_key.ssh.private_key_pem
   }
 
   provisioner "file" {
-    source      = "utils/riklet.deb"
+    source      = "${path.root}/../../../target/debian/riklet_1.0.0_amd64.deb"
     destination = "/tmp/riklet.deb"
   }
 
