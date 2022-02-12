@@ -1,0 +1,18 @@
+{
+	"api_version": "v0",
+	"kind": "pods",
+	"name": "replicated",
+	"replicas": 3,
+	"spec": {
+		"containers": [
+			{
+				"name": "ubuntu",
+				"image": "ubuntu:latest"
+			},
+			{
+				"name": "alpine",
+				"image": "alpine:latest"
+			}
+		]
+	}
+}
