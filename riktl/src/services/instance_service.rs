@@ -1,6 +1,6 @@
 use httpclient::api::ApiRequest;
 use httpclient::ApiError;
-use prettytable::{format, Cell, Row, Table};
+use prettytable::{ format, Cell, Row, Table };
 
 use serde_json::Value;
 
@@ -20,11 +20,15 @@ impl InstanceService {
             let id = &instance["id"];
             let name = &instance["name"];
             let values = &instance.get("value").unwrap();
-            table.add_row(Row::new(vec![
-                Cell::new(id.as_str().unwrap()),
-                Cell::new(name.as_str().unwrap()),
-                Cell::new(values.get("status").unwrap().as_str().unwrap()),
-            ]));
+            table.add_row(
+                Row::new(
+                    vec![
+                        Cell::new(id.as_str().unwrap()),
+                        Cell::new(name.as_str().unwrap()),
+                        Cell::new(values.get("status").unwrap().as_str().unwrap())
+                    ]
+                )
+            );
         }
         table.printstd();
         Ok(())
@@ -37,20 +41,21 @@ impl InstanceService {
         } else {
             nb_replicas = "1".to_string();
         }
-        let body = format!(
-            r#"{{"workload_id": "{}",
-        "replicas": {}}}"#,
-            id, nb_replicas
-        );
-        let api_request: ApiRequest =
-            ApiRequest::new(format!("{}{}", ENDPOINT, "create"), Some(body))?;
+        let body = format!(r#"{{"workload_id": "{}",
+        "replicas": {}}}"#, id, nb_replicas);
+        let api_request: ApiRequest = ApiRequest::new(
+            format!("{}{}", ENDPOINT, "create"),
+            Some(body)
+        )?;
         api_request.post()
     }
 
     pub fn delete(id: String) -> Result<Value, ApiError> {
         let body = format!(r#"{{"id": "{}"}}"#, id);
-        let api_request: ApiRequest =
-            ApiRequest::new(format!("{}{}", ENDPOINT, "delete"), Some(body))?;
+        let api_request: ApiRequest = ApiRequest::new(
+            format!("{}{}", ENDPOINT, "delete"),
+            Some(body)
+        )?;
         api_request.post()
     }
 }
