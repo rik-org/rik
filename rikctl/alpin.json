@@ -1,0 +1,14 @@
+{
+  "api_version": "v0",
+  "kind": "pods",
+  "name": "alpine",
+  "replicas": 1,
+  "spec": {
+    "containers": [
+      {
+        "name": "alpin",
+        "image": "alpibe:latest"
+      }
+    ]
+  }
+}

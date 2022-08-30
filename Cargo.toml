@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "rikctl",
     "scheduler",
     "riklet",
     "controller",
