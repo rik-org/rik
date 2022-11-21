@@ -4,8 +4,11 @@ use crate::database::RikDataBase;
 use crate::database::RikRepository;
 use crate::instance::Instance;
 use crate::logger::{LogType, LoggingChannel};
+use anyhow::{Context, Result};
+use colored::Colorize;
 use definition::workload::WorkloadDefinition;
 use dotenv::dotenv;
+use log::{error, info};
 use proto::common::worker_status::Status;
 use proto::controller::controller_client::ControllerClient;
 use proto::controller::WorkloadScheduling;
@@ -21,29 +24,26 @@ struct RikControllerClient {
 
 #[allow(dead_code)]
 impl RikControllerClient {
-    pub async fn connect() -> Result<RikControllerClient, tonic::transport::Error> {
+    pub async fn connect() -> Result<RikControllerClient> {
         dotenv().ok();
         let scheduler_url = match std::env::var("SCHEDULER_URL") {
             Ok(val) => val,
             Err(_e) => "http://127.0.0.1:4996".to_string(),
         };
-        let client = ControllerClient::connect(scheduler_url).await?;
+        let client = ControllerClient::connect(scheduler_url)
+            .await
+            .context("Fail to connect to scheduler")?;
+        info!("{}", "Connected to scheduler".green());
         Ok(RikControllerClient { client })
     }
 
-    pub async fn schedule_instance(
-        &mut self,
-        instance: WorkloadScheduling,
-    ) -> Result<(), tonic::Status> {
+    pub async fn schedule_instance(&mut self, instance: WorkloadScheduling) -> Result<()> {
         let request = tonic::Request::new(instance);
         self.client.schedule_instance(request).await?;
         Ok(())
     }
 
-    pub async fn get_status_updates(
-        &mut self,
-        database: Arc<RikDataBase>,
-    ) -> Result<(), tonic::Status> {
+    pub async fn get_status_updates(&mut self, database: Arc<RikDataBase>) -> Result<()> {
         let connection: Connection = database.open().unwrap();
         let request = tonic::Request::new(());
         let mut stream = self.client.get_status_updates(request).await?.into_inner();
@@ -93,35 +93,31 @@ impl RikControllerClient {
 
 #[allow(dead_code)]
 pub struct Server {
-    logger: Sender<LoggingChannel>,
     external_sender: Sender<ApiChannel>,
     internal_receiver: Receiver<ApiChannel>,
 }
 
 impl Server {
     pub fn new(
-        logger_sender: Sender<LoggingChannel>,
         external_sender: Sender<ApiChannel>,
         internal_receiver: Receiver<ApiChannel>,
     ) -> Server {
         Server {
-            logger: logger_sender,
             external_sender,
             internal_receiver,
         }
     }
 
-    pub async fn run(&self, database: Arc<RikDataBase>) {
-        let client: RikControllerClient = RikControllerClient::connect().await.unwrap();
+    pub async fn run(&self, database: Arc<RikDataBase>) -> Result<()> {
+        let client: RikControllerClient = RikControllerClient::connect().await?;
 
         let mut client_clone = client.clone();
         let database = database.clone();
 
-        tokio::spawn(async move {
-            client_clone.get_status_updates(database).await.unwrap();
-        });
+        tokio::spawn(async move { client_clone.get_status_updates(database).await });
 
-        self.listen_notification(client).await;
+        self.listen_notification(client).await?;
+        Ok(())
     }
 
     async fn handle_create(
@@ -129,25 +125,19 @@ impl Server {
         instance: Instance,
         workload_def: WorkloadDefinition,
         client: &mut RikControllerClient,
-    ) {
-        self.logger
-            .send(LoggingChannel {
-                message: format!(
-                    "Ctrl to scheduler schedule instance workload_id : {:?}",
-                    &instance.workload_id
-                ),
-                log_type: LogType::Log,
-            })
-            .unwrap();
-        client
+    ) -> Result<()> {
+        info!(
+            "Ctrl to scheduler schedule instance workload_id : {:?}",
+            &instance.workload_id
+        );
+        Ok(client
             .schedule_instance(WorkloadScheduling {
                 workload_id: instance.workload_id,
                 definition: serde_json::to_string(&workload_def).unwrap(),
                 action: CRUD::Create as i32,
                 instance_id: instance.id,
             })
-            .await
-            .unwrap();
+            .await?)
     }
 
     async fn handle_delete(
@@ -155,41 +145,46 @@ impl Server {
         instance: Instance,
         workload_def: WorkloadDefinition,
         client: &mut RikControllerClient,
-    ) {
-        self.logger
-            .send(LoggingChannel {
-                message: format!(
-                    "Ctrl to scheduler delete workload: {:?}",
-                    instance.workload_id
-                ),
-                log_type: LogType::Log,
-            })
-            .unwrap();
-        client
+    ) -> Result<()> {
+        info!(
+            "Ctrl to scheduler delete workload: {:?}",
+            instance.workload_id
+        );
+        Ok(client
             .schedule_instance(WorkloadScheduling {
                 workload_id: instance.workload_id,
                 definition: serde_json::to_string(&workload_def).unwrap(),
                 action: CRUD::Delete as i32,
                 instance_id: instance.id,
             })
-            .await
-            .unwrap();
+            .await?)
     }
 
-    async fn listen_notification(&self, mut client: RikControllerClient) {
+    async fn listen_notification(&self, mut client: RikControllerClient) -> Result<()> {
         for notification in &self.internal_receiver {
             match notification.action {
                 CRUD::Create => {
+                    info!(
+                        "Ctrl to scheduler schedule instance workload_id : {:?}",
+                        notification.workload_id
+                    );
                     let definition = notification.workload_definition.as_ref().unwrap().clone();
                     let instance: Instance = notification.into();
-                    self.handle_create(instance, definition, &mut client).await;
+                    self.handle_create(instance, definition, &mut client)
+                        .await?;
                 }
                 CRUD::Delete => {
+                    info!(
+                        "Ctrl to scheduler delete workload: {:?}",
+                        notification.workload_id
+                    );
                     let definition = notification.workload_definition.as_ref().unwrap().clone();
                     let instance: Instance = notification.into();
-                    self.handle_delete(instance, definition, &mut client).await;
+                    self.handle_delete(instance, definition, &mut client)
+                        .await?;
                 }
             }
         }
+        Ok(())
     }
 }

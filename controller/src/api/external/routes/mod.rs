@@ -1,12 +1,13 @@
+use anyhow::Result;
+use log::error;
 use route_recognizer;
 use rusqlite::Connection;
 use std::io;
 use std::sync::mpsc::Sender;
 use tiny_http::Method;
 
-use crate::api;
 use crate::api::ApiChannel;
-use crate::logger::{LogType, LoggingChannel};
+use tiny_http::{Method, Response, StatusCode};
 
 mod instance;
 mod tenant;
@@ -17,15 +18,14 @@ type Handler = fn(
     &route_recognizer::Params,
     &Connection,
     &Sender<ApiChannel>,
-    &Sender<LoggingChannel>,
-) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError>;
+) -> Result<Response<io::Cursor<Vec<u8>>>>;
 
 pub struct Router {
-    routes: Vec<(tiny_http::Method, route_recognizer::Router<Handler>)>,
+    routes: Vec<(Method, route_recognizer::Router<Handler>)>,
 }
 
 impl Router {
-    pub fn new() -> Router {
+    pub fn new() -> Result<Router> {
         let mut get = route_recognizer::Router::<Handler>::new();
         let mut post = route_recognizer::Router::<Handler>::new();
 
@@ -50,9 +50,9 @@ impl Router {
         post.add(&format!("{}/instances.create", base_path), instance::create);
         post.add(&format!("{}/instances.delete", base_path), instance::delete);
 
-        Router {
+        Ok(Router {
             routes: vec![(Method::Get, get), (Method::Post, post)],
-        }
+        })
     }
 
     pub fn handle(
@@ -60,24 +60,18 @@ impl Router {
         request: &mut tiny_http::Request,
         connection: &Connection,
         internal_sender: &Sender<ApiChannel>,
-        logger: &Sender<LoggingChannel>,
-    ) -> Option<tiny_http::Response<io::Cursor<Vec<u8>>>> {
+    ) -> Option<Response<io::Cursor<Vec<u8>>>> {
         self.routes
             .iter()
             .find(|&&(ref method, _)| method == request.method())
             .and_then(|&(_, ref routes)| {
                 if let Ok(res) = routes.recognize(request.url()) {
                     Some(
-                        res.handler()(request, res.params(), connection, internal_sender, logger)
+                        res.handler()(request, &res.params(), connection, internal_sender)
                             .unwrap_or_else(|error| {
-                                logger
-                                    .send(LoggingChannel {
-                                        message: error.to_string(),
-                                        log_type: LogType::Error,
-                                    })
-                                    .unwrap();
-                                tiny_http::Response::from_string(error.to_string())
-                                    .with_status_code(tiny_http::StatusCode::from(400))
+                                error!("{}", error);
+                                Response::from_string(error.to_string())
+                                    .with_status_code(StatusCode::from(400))
                             }),
                     )
                 } else {
