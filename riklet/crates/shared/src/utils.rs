@@ -45,7 +45,7 @@ pub fn create_file_with_parent_folders(path: &Path) -> std::io::Result<File> {
     if !parent.exists() {
         std::fs::create_dir_all(parent)?;
     }
-    let file = File::create(&path)?;
+    let file = File::create(path)?;
 
     log::debug!("File {} created.", path.display());
 

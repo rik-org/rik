@@ -99,7 +99,7 @@ impl Runc {
     pub async fn state(&self, id: &str) -> Result<Container> {
         let args = vec![String::from("state"), String::from(id)];
         let output = self.exec(&args).await?;
-        Ok(serde_json::from_str(&output).context(JsonDeserializationError {})?)
+        serde_json::from_str(&output).context(JsonDeserializationError {})
     }
 
     /// Delete a container

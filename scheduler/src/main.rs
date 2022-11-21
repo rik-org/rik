@@ -25,7 +25,6 @@ pub struct Manager {
     workers: Arc<Mutex<Vec<Worker>>>,
     channel: Receiver<Event>,
     controller: Option<Controller>,
-    worker_increment: u8,
     state_manager: Sender<StateManagerEvent>,
 }
 
@@ -41,7 +40,6 @@ impl Manager {
             workers: Arc::new(Mutex::new(Vec::new())),
             channel: receiver,
             controller: None,
-            worker_increment: 0,
             state_manager: state_sender,
         };
         instance.run_workers_listener(workers_listener, sender.clone());
@@ -122,7 +120,7 @@ impl Manager {
                         );
                     }
                 }
-                Event::Subscribe(channel, addr) => {
+                Event::Subscribe(channel, _) => {
                     if let Some(controller) = &self.controller {
                         if controller.is_channel_closed() {
                             self.controller = Some(Controller::new(channel.clone()));

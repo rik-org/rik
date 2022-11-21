@@ -15,7 +15,7 @@ assets = [
 ]
 
 [dependencies]
-tonic = "0.4.3"
+tonic.workspace = true
 tokio-stream = "0.1.6"
 env_logger = "0.8.3"
 log = "0.4.14"

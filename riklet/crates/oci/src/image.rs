@@ -21,8 +21,8 @@ impl Image {
     /// Create a new image
     pub fn from(img: &str) -> Self {
         let splitted_image: Vec<&str> = img.split(':').collect();
-        let image_name = *splitted_image.get(0).unwrap();
-        let image_tag = *splitted_image.get(1).unwrap();
+        let image_name = *splitted_image.first().unwrap();
+        let image_tag = *splitted_image.first().unwrap();
 
         Image {
             oci: String::from(img),
