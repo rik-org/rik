@@ -31,15 +31,16 @@ dotenv = "0.15.0"
 nix = "0.21.0"
 rstest = "0.10.0"
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
+anyhow = "1.0.66"
 
 [build-dependencies]
 tonic-build.workspace = true
 
 [dev-dependencies]
-rstest = "0.10.0"
+rstest = "0.15.0"
 
 [dependencies.rusqlite]
-version = "0.25.1"
+version = "0.28.0"
 features = ["bundled"]
 
 [dependencies.proto]
