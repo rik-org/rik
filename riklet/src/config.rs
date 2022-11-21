@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::constants::DEFAULT_COMMAND_TIMEOUT;
-use clap::{crate_description, crate_version, Clap};
+use clap::Parser;
 use env_logger::Env;
 
 #[derive(Debug, Snafu)]
@@ -39,28 +39,23 @@ pub enum Error {
 }
 
 /// The configuration of the riklet.
-#[derive(Debug, Clone, Clap)]
-#[clap(name = "Riklet", version = crate_version!(), about = crate_description!(), author = "Polytech Montpellier - DO 2023")]
+#[derive(Debug, Clone, Parser)]
+#[command(name = "Riklet", version, about)]
 pub struct CliConfiguration {
-    #[clap(
+    #[arg(
         short,
         long,
         default_value = "/etc/riklet/configuration.toml",
-        about = "The path to the Riklet configuration file. If the file not exists, it will be created."
+        help = "The path to the Riklet configuration file. If the file not exists, it will be created."
     )]
     pub config_file: String,
-    #[clap(short, long, about = "The IP of the Rik master node.")]
+    #[arg(short, long, help = "The IP of the Rik master node.")]
     pub master_ip: Option<String>,
-    #[clap(
-        short,
-        long,
-        about = "The level of verbosity.",
-        parse(from_occurrences)
-    )]
+    #[arg(short, long, help = "The level of verbosity.", action = clap::ArgAction::Count)]
     pub verbose: i32,
-    #[clap(
+    #[arg(
         long,
-        about = "If set and there is a config file, values defined by the CLI will override values of the configuration file."
+        help = "If set and there is a config file, values defined by the CLI will override values of the configuration file."
     )]
     pub override_config: bool,
 }

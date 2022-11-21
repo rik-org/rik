@@ -32,7 +32,7 @@ features = ["rt-multi-thread", "macros", "sync", "time"]
 path = "../proto"
 
 [dependencies.node_metrics]
-path = "../riklet/src/crates/node_metrics"
+path = "../riklet/crates/node_metrics"
 
 [dependencies.definition]
 path = "../definition"
