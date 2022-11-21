@@ -12,12 +12,6 @@ use tiny_http::{Request, Server as TinyServer};
 
 use colored::Colorize;
 
-#[derive(Debug)]
-struct Cat {
-    name: String,
-    color: String,
-}
-
 pub struct Server {
     logger: Sender<LoggingChannel>,
     internal_sender: Sender<ApiChannel>,

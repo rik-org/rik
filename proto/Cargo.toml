@@ -5,9 +5,9 @@ authors = ["Alexandre Burgoni <alexandre.burgoni@etu.umontpellier.fr>"]
 edition = "2021"
 
 [dependencies]
-prost = "0.11"
-tonic = "0.8"
-protobuf = { version = "3", features = ["with-bytes"] }
+prost.workspace = true
+tonic.workspace = true
+protobuf.workspace = true
 
 [build-dependencies]
-tonic-build = "0.8"
+tonic-build.workspace = true

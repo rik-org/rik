@@ -6,7 +6,7 @@ pub fn elements_set_right_name(elements: Vec<Element>) -> Vec<Element> {
         let mut split: Vec<&str> = element.name.split("/").collect();
         match split.pop() {
             Some(val) => {
-                &element.set_name(val.to_string());
+                let _ = &element.set_name(val.to_string());
             }
             _ => {}
         }

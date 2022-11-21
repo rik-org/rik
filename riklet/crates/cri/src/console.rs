@@ -11,8 +11,7 @@ pub struct ConsoleSocket {
 
 impl ConsoleSocket {
     pub fn new(socket_path: &Path) -> Result<Self> {
-        let listener =
-            UnixListener::bind(&socket_path.to_path_buf()).context(UnixSocketOpenError {})?;
+        let listener = UnixListener::bind(socket_path).context(UnixSocketOpenError {})?;
         debug!("UnixListener binded on {}", &socket_path.to_str().unwrap());
         Ok(Self {
             socket_path: socket_path.to_path_buf(),
