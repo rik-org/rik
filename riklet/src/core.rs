@@ -2,7 +2,6 @@ use crate::config::Configuration;
 use crate::emitters::metrics_emitter::MetricsEmitter;
 use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
-use clap::crate_version;
 use cri::console::ConsoleSocket;
 use cri::container::{CreateArgs, DeleteArgs, Runc};
 use node_metrics::metrics_manager::MetricsManager;
@@ -19,7 +18,6 @@ use tonic::{transport::Channel, Request, Streaming};
 #[derive(Debug)]
 pub struct Riklet {
     hostname: String,
-    config: Configuration,
     client: WorkerClient<Channel>,
     stream: Streaming<InstanceScheduling>,
     image_manager: ImageManager,
@@ -74,7 +72,6 @@ impl Riklet {
             hostname,
             container_runtime,
             image_manager,
-            config,
             client,
             stream,
             workloads: HashMap::<String, Vec<Container>>::new(),
@@ -245,7 +242,7 @@ impl Riklet {
 
     /// Wait for workloads
     pub async fn accept(&mut self) -> Result<(), Box<dyn Error>> {
-        log::info!("Riklet (v{}) is running.", crate_version!());
+        log::info!("Riklet is running.");
         // Start the metrics updater
         self.start_metrics_updater();
 
