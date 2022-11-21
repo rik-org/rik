@@ -7,6 +7,7 @@ use proto::common::{InstanceMetric, ResourceStatus, WorkerMetric, WorkloadReques
 use proto::worker::InstanceScheduling;
 use rand::seq::IteratorRandom;
 use scheduler::{Event, SchedulerError, Worker, WorkerState, WorkloadRequest};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -34,23 +35,17 @@ pub struct StateManager {
 }
 
 impl StateManager {
-    pub async fn new(
-        manager_channel: Sender<Event>,
-        workers: Arc<Mutex<Vec<Worker>>>,
-        receiver: Receiver<StateManagerEvent>,
-    ) -> Result<(), SchedulerError> {
+    pub fn new(manager_channel: Sender<Event>, workers: Arc<Mutex<Vec<Worker>>>) -> StateManager {
         debug!("Creating StateManager...");
-        let mut state_manager = StateManager {
+        StateManager {
             // We define a mini capacity
             state: HashMap::with_capacity(20),
             manager_channel,
             workers,
-        };
-        debug!("StateManager receiver is ready");
-        state_manager.run(receiver).await
+        }
     }
 
-    async fn run(
+    pub async fn run(
         &mut self,
         mut receiver: Receiver<StateManagerEvent>,
     ) -> Result<(), SchedulerError> {
@@ -185,75 +180,81 @@ impl StateManager {
         // ownership
         for (id, workload) in self.state.iter_mut() {
             let length_diff: i32 = workload.replicas as i32 - (workload.instances.len() as i32);
+            match length_diff.cmp(&0) {
+                Ordering::Greater => {
+                    debug!(
+                        "Divergence detected on {}, divergence length: {}",
+                        workload.id, length_diff
+                    );
+                    for _ in 0..length_diff {
+                        // Generate an instance ID, and ensure it is unique
+                        let mut workload_id = get_random_hash(4).to_ascii_lowercase();
+                        while workload.instances.contains_key(id) {
+                            workload_id = get_random_hash(4).to_ascii_lowercase();
+                        }
+                        workload_id =
+                            format!("{}-{}", workload.definition.name.clone(), workload_id);
 
-            if length_diff > 0 {
-                debug!(
-                    "Divergence detected on {}, divergence length: {}",
-                    workload.id, length_diff
-                );
-                for _ in 0..length_diff {
-                    // Generate an instance ID, and ensure it is unique
-                    let mut workload_id = get_random_hash(4).to_ascii_lowercase();
-                    while workload.instances.contains_key(id) {
-                        workload_id = get_random_hash(4).to_ascii_lowercase();
+                        scheduled.push((
+                            id.clone(),
+                            WorkloadInstance::new(
+                                workload_id.clone(),
+                                ResourceStatus::Pending,
+                                None,
+                                workload.definition.clone(),
+                            ),
+                        ));
                     }
-                    workload_id = format!("{}-{}", workload.definition.name.clone(), workload_id);
-
-                    scheduled.push((
-                        id.clone(),
-                        WorkloadInstance::new(
-                            workload_id.clone(),
-                            ResourceStatus::Pending,
-                            None,
-                            workload.definition.clone(),
-                        ),
-                    ));
                 }
-            } else if length_diff < 0 {
-                debug!(
-                    "Divergence detected on {}, divergence length: {}",
-                    workload.id, length_diff
-                );
-                let mut removed: Vec<String> = Vec::new();
-                // As length_diff is negative, we need the opposite
-                for _ in 0..(-length_diff) {
-                    if let Some((id, instance)) = workload
-                        .instances
-                        .iter_mut()
-                        .find(|(id, _)| !removed.contains(id))
-                    {
-                        instance.status = ResourceStatus::Destroying;
-                        debug!(
-                            "WorkloadInstance {} went to {:#?}",
-                            &instance.id, &instance.status
-                        );
+                Ordering::Less => {
+                    debug!(
+                        "Divergence detected on {}, divergence length: {}",
+                        workload.id, length_diff
+                    );
+                    let mut removed: Vec<String> = Vec::new();
+                    // As length_diff is negative, we need the opposite
+                    for _ in 0..(-length_diff) {
+                        if let Some((id, instance)) = workload
+                            .instances
+                            .iter_mut()
+                            .find(|(id, _)| !removed.contains(id))
+                        {
+                            instance.status = ResourceStatus::Destroying;
+                            debug!(
+                                "WorkloadInstance {} went to {:#?}",
+                                &instance.id, &instance.status
+                            );
 
-                        let _ = self
-                            .manager_channel
-                            .send(Event::Schedule(
-                                instance.worker_id.clone().unwrap(),
-                                InstanceScheduling {
-                                    instance_id: instance.id.clone(),
-                                    action: WorkloadRequestKind::Destroy.into(),
-                                    definition: serde_json::to_string(&instance.definition.clone())
+                            let _ = self
+                                .manager_channel
+                                .send(Event::Schedule(
+                                    instance.worker_id.clone().unwrap(),
+                                    InstanceScheduling {
+                                        instance_id: instance.id.clone(),
+                                        action: WorkloadRequestKind::Destroy.into(),
+                                        definition: serde_json::to_string(
+                                            &instance.definition.clone(),
+                                        )
                                         .unwrap(),
-                                },
-                            ))
-                            .await;
-                        let _ = self
-                            .manager_channel
-                            .send(Event::InstanceMetric(
-                                "scheduler".to_string(),
-                                InstanceMetric {
-                                    status: ResourceStatus::Destroying.into(),
-                                    metrics: "".to_string(),
-                                    instance_id: instance.id.clone(),
-                                },
-                            ))
-                            .await;
-                        removed.push(id.clone());
+                                    },
+                                ))
+                                .await;
+                            let _ = self
+                                .manager_channel
+                                .send(Event::InstanceMetric(
+                                    "scheduler".to_string(),
+                                    InstanceMetric {
+                                        status: ResourceStatus::Destroying.into(),
+                                        metrics: "".to_string(),
+                                        instance_id: instance.id.clone(),
+                                    },
+                                ))
+                                .await;
+                            removed.push(id.clone());
+                        }
                     }
                 }
+                Ordering::Equal => {}
             }
         }
 

@@ -42,7 +42,7 @@ impl RikDataBase {
         std::fs::create_dir_all(&file_path).unwrap();
 
         let database_path = format!("{}{}.db", file_path, self.name);
-        Ok(Connection::open(&database_path)?)
+        Connection::open(&database_path)
     }
 }
 
@@ -124,9 +124,9 @@ impl RikRepository {
         id: &String,
         name: &String,
         value: &String,
-        element_type: &String,
+        element_type: &str,
     ) -> Result<String> {
-        if let Ok(_) = RikRepository::find_one(connection, id, element_type) {
+        if RikRepository::find_one(connection, id, element_type).is_ok() {
             RikRepository::update(connection, id, value)?;
             Ok(id.to_string())
         } else {

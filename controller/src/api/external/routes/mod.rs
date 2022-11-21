@@ -63,11 +63,11 @@ impl Router {
             .and_then(|&(_, ref routes)| {
                 if let Ok(res) = routes.recognize(request.url()) {
                     Some(
-                        res.handler()(request, &res.params(), connection, internal_sender, logger)
+                        res.handler()(request, res.params(), connection, internal_sender, logger)
                             .unwrap_or_else(|error| {
                                 logger
                                     .send(LoggingChannel {
-                                        message: String::from(error.to_string()),
+                                        message: error.to_string(),
                                         log_type: LogType::Error,
                                     })
                                     .unwrap();

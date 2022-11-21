@@ -46,7 +46,8 @@ impl Manager {
         instance.run_controllers_listener(controllers_listener, sender.clone());
         let workers = instance.workers.clone();
         tokio::spawn(async move {
-            if let Err(e) = StateManager::new(sender.clone(), workers, receiver_sender).await {
+            let mut sm = StateManager::new(sender.clone(), workers);
+            if let Err(e) = sm.run(receiver_sender).await {
                 error!("StateManager failed, reason: {}", e);
             }
         });

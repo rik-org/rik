@@ -48,7 +48,7 @@ pub fn create(
     req.as_reader().read_to_string(&mut content).unwrap();
     let tenant: Tenant = serde_json::from_str(&content)?;
 
-    if let Ok(_) = RikRepository::insert(connection, &tenant.name, &tenant.value) {
+    if RikRepository::insert(connection, &tenant.name, &tenant.value).is_ok() {
         logger
             .send(LoggingChannel {
                 message: String::from("Create tenant"),
@@ -94,7 +94,7 @@ pub fn delete(
     } else {
         logger
             .send(LoggingChannel {
-                message: String::from(format!("Tenant id {} not found", delete_id)),
+                message: format!("Tenant id {} not found", delete_id),
                 log_type: LogType::Error,
             })
             .unwrap();
