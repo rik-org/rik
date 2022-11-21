@@ -2,14 +2,12 @@
 name = "proto"
 version = "0.2.1"
 authors = ["Alexandre Burgoni <alexandre.burgoni@etu.umontpellier.fr>"]
-edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+edition = "2021"
 
 [dependencies]
-prost = "0.7.0"
-tonic = "0.4.3"
-protobuf = { version = "2", features = ["with-bytes"] }
+prost = "0.11"
+tonic = "0.8"
+protobuf = { version = "3", features = ["with-bytes"] }
 
 [build-dependencies]
-tonic-build = "0.4.2"
+tonic-build = "0.8"
