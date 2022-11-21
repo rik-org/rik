@@ -1,11 +1,12 @@
+use anyhow::Result;
+use log::error;
 use route_recognizer;
 use rusqlite::Connection;
 use std::io;
 use std::sync::mpsc::Sender;
 
-use crate::api;
+use tiny_http::{ Response, Method, StatusCode };
 use crate::api::ApiChannel;
-use crate::logger::{LogType, LoggingChannel};
 
 mod instance;
 mod tenant;
@@ -15,16 +16,15 @@ type Handler = fn(
     &mut tiny_http::Request,
     &route_recognizer::Params,
     &Connection,
-    &Sender<ApiChannel>,
-    &Sender<LoggingChannel>,
-) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError>;
+    &Sender<ApiChannel>
+) -> Result<Response<io::Cursor<Vec<u8>>>>;
 
 pub struct Router {
-    routes: Vec<(tiny_http::Method, route_recognizer::Router<Handler>)>,
+    routes: Vec<(Method, route_recognizer::Router<Handler>)>,
 }
 
 impl Router {
-    pub fn new() -> Router {
+    pub fn new() -> Result<Router> {
         let mut get = route_recognizer::Router::<Handler>::new();
         let mut post = route_recognizer::Router::<Handler>::new();
 
@@ -42,38 +42,31 @@ impl Router {
         post.add(&format!("{}/tenants.delete", base_path), tenant::delete);
         post.add(&format!("{}/workloads.delete", base_path), workload::delete);
 
-        Router {
-            routes: vec![
-                ("GET".parse().unwrap(), get),
-                ("POST".parse().unwrap(), post),
-            ],
-        }
+        Ok(Router {
+            routes: vec![(Method::Get, get), (Method::Post, post)],
+        })
     }
 
     pub fn handle(
         &self,
         request: &mut tiny_http::Request,
         connection: &Connection,
-        internal_sender: &Sender<ApiChannel>,
-        logger: &Sender<LoggingChannel>,
-    ) -> Option<tiny_http::Response<io::Cursor<Vec<u8>>>> {
+        internal_sender: &Sender<ApiChannel>
+    ) -> Option<Response<io::Cursor<Vec<u8>>>> {
         self.routes
             .iter()
             .find(|&&(ref method, _)| method == request.method())
             .and_then(|&(_, ref routes)| {
                 if let Ok(res) = routes.recognize(request.url()) {
                     Some(
-                        res.handler()(request, res.params(), connection, internal_sender, logger)
+                        res
+                            .handler()(request, &res.params(), connection, internal_sender)
                             .unwrap_or_else(|error| {
-                                logger
-                                    .send(LoggingChannel {
-                                        message: error.to_string(),
-                                        log_type: LogType::Error,
-                                    })
-                                    .unwrap();
-                                tiny_http::Response::from_string(error.to_string())
-                                    .with_status_code(tiny_http::StatusCode::from(400))
-                            }),
+                                error!("{}", error);
+                                Response::from_string(error.to_string()).with_status_code(
+                                    StatusCode::from(400)
+                                )
+                            })
                     )
                 } else {
                     None

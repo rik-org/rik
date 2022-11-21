@@ -1,40 +1,41 @@
+use anyhow::Result;
+use log::{ info, warn };
 use route_recognizer;
 use rusqlite::Connection;
 use std::io;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 
-use crate::api;
 use crate::api::external::services::element::elements_set_right_name;
 use crate::api::external::services::instance::send_create_instance;
 use crate::api::types::element::OnlyId;
 use crate::api::types::instance::InstanceDefinition;
-use crate::api::{ApiChannel, CRUD};
+use crate::api::{ ApiChannel, CRUD };
 use crate::database::RikRepository;
-use crate::logger::{LogType, LoggingChannel};
+use tiny_http::{ Request, Response };
 
 pub fn get(
-    _: &mut tiny_http::Request,
+    _: &mut Request,
     _: &route_recognizer::Params,
     connection: &Connection,
-    _: &Sender<ApiChannel>,
-    logger: &Sender<LoggingChannel>,
-) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError> {
+    _: &Sender<ApiChannel>
+) -> Result<Response<io::Cursor<Vec<u8>>>> {
     if let Ok(mut instances) = RikRepository::find_all(connection, "/instance") {
         instances = elements_set_right_name(instances.clone());
         let instances_json = serde_json::to_string(&instances).unwrap();
-        logger
-            .send(LoggingChannel {
-                message: String::from("Instances found"),
-                log_type: LogType::Log,
-            })
-            .unwrap();
-        Ok(tiny_http::Response::from_string(instances_json)
-            .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
-            .with_status_code(tiny_http::StatusCode::from(200)))
+        info!("Instances found");
+        Ok(
+            tiny_http::Response
+                ::from_string(instances_json)
+                .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
+                .with_status_code(tiny_http::StatusCode::from(200))
+        )
     } else {
-        Ok(tiny_http::Response::from_string("Cannot find instances")
-            .with_status_code(tiny_http::StatusCode::from(500)))
+        Ok(
+            tiny_http::Response
+                ::from_string("Cannot find instances")
+                .with_status_code(tiny_http::StatusCode::from(500))
+        )
     }
 }
 
@@ -42,52 +43,45 @@ pub fn create(
     req: &mut tiny_http::Request,
     _: &route_recognizer::Params,
     connection: &Connection,
-    internal_sender: &Sender<ApiChannel>,
-    logger: &Sender<LoggingChannel>,
-) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError> {
+    internal_sender: &Sender<ApiChannel>
+) -> Result<Response<io::Cursor<Vec<u8>>>> {
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
 
     let mut instance: InstanceDefinition = serde_json::from_str(&content)?;
 
     //Workload not found
-    if RikRepository::find_one(connection, &instance.workload_id, "/workload").is_err() {
-        logger
-            .send(LoggingChannel {
-                message: format!("Workload id {} not found", &instance.workload_id),
-                log_type: LogType::Warn,
-            })
-            .unwrap();
-        return Ok(tiny_http::Response::from_string(format!(
-            "Workload id {} not found",
-            &instance.workload_id
-        ))
-        .with_status_code(tiny_http::StatusCode::from(404)));
+    if let Err(_) = RikRepository::find_one(connection, &instance.workload_id, "/workload") {
+        warn!("Workload id {} not found", &instance.workload_id);
+        return Ok(
+            tiny_http::Response
+                ::from_string(format!("Workload id {} not found", &instance.workload_id))
+                .with_status_code(tiny_http::StatusCode::from(404))
+        );
     }
 
     if instance.name.is_some() {
         // Check name is not used
-        if RikRepository::check_duplicate_name(
-            connection,
-            &format!("/instance/%/default/{}", instance.get_name()),
-        )
-        .is_ok()
+        if
+            let Ok(_) = RikRepository::check_duplicate_name(
+                connection,
+                &format!("/instance/%/default/{}", instance.get_name())
+            )
         {
-            logger
-                .send(LoggingChannel {
-                    message: String::from("Name already used"),
-                    log_type: LogType::Warn,
-                })
-                .unwrap();
-            return Ok(tiny_http::Response::from_string("Name already used")
-                .with_status_code(tiny_http::StatusCode::from(404)));
+            warn!("Name already used");
+            return Ok(
+                tiny_http::Response
+                    ::from_string("Name already used")
+                    .with_status_code(tiny_http::StatusCode::from(404))
+            );
         }
 
         // Name cannot be used with multiple replicas
         if instance.get_replicas() > 1 {
             return Ok(
-                tiny_http::Response::from_string("Cannot use name with multiple replicas")
-                    .with_status_code(tiny_http::StatusCode::from(400)),
+                tiny_http::Response
+                    ::from_string("Cannot use name with multiple replicas")
+                    .with_status_code(tiny_http::StatusCode::from(400))
             );
         }
     }
@@ -97,7 +91,7 @@ pub fn create(
             connection,
             internal_sender,
             instance.workload_id.clone(),
-            &instance.name,
+            &instance.name
         );
     }
 
@@ -108,9 +102,8 @@ pub fn delete(
     req: &mut tiny_http::Request,
     _: &route_recognizer::Params,
     connection: &Connection,
-    internal_sender: &Sender<ApiChannel>,
-    logger: &Sender<LoggingChannel>,
-) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError> {
+    internal_sender: &Sender<ApiChannel>
+) -> Result<Response<io::Cursor<Vec<u8>>>> {
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
     let OnlyId { id: delete_id } = serde_json::from_str(&content)?;
@@ -125,24 +118,14 @@ pub fn delete(
             })
             .unwrap();
         RikRepository::delete(connection, &instance.id).unwrap();
-
-        logger
-            .send(LoggingChannel {
-                message: format!("Delete instance {}", instance.id),
-                log_type: LogType::Log,
-            })
-            .unwrap();
+        info!("Delete instance {}", instance.id);
         Ok(tiny_http::Response::from_string("").with_status_code(tiny_http::StatusCode::from(204)))
     } else {
-        logger
-            .send(LoggingChannel {
-                message: format!("Instance id {} not found", delete_id),
-                log_type: LogType::Error,
-            })
-            .unwrap();
+        info!("Instance id {} not found", delete_id);
         Ok(
-            tiny_http::Response::from_string(format!("Instance id {} not found", delete_id))
-                .with_status_code(tiny_http::StatusCode::from(404)),
+            tiny_http::Response
+                ::from_string(format!("Instance id {} not found", delete_id))
+                .with_status_code(tiny_http::StatusCode::from(404))
         )
     }
 }
