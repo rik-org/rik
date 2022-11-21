@@ -59,7 +59,7 @@ pub fn create(
     );
 
     // Check name is not used
-    if let Ok(_) = RikRepository::check_duplicate_name(connection, &name) {
+    if RikRepository::check_duplicate_name(connection, &name).is_ok() {
         logger
             .send(LoggingChannel {
                 message: String::from("Name already used"),
@@ -78,7 +78,7 @@ pub fn create(
         let workload_id: OnlyId = OnlyId { id: inserted_id };
         logger
             .send(LoggingChannel {
-                message: String::from(format!("Workload {} successfully created", &workload_id.id)),
+                message: format!("Workload {} successfully created", &workload_id.id),
                 log_type: LogType::Log,
             })
             .unwrap();
@@ -132,7 +132,7 @@ pub fn delete(
     } else {
         logger
             .send(LoggingChannel {
-                message: String::from(format!("Workload id {} not found", delete_id)),
+                message: format!("Workload id {} not found", delete_id),
                 log_type: LogType::Error,
             })
             .unwrap();

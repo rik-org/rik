@@ -70,13 +70,7 @@ impl RikControllerClient {
 
                     let name = format!("/instance/default/{}", instance_id);
                     let value = serde_json::to_string(&instance_status).unwrap();
-                    match RikRepository::upsert(
-                        &connection,
-                        &id,
-                        &name,
-                        &value,
-                        &"/instance".to_string(),
-                    ) {
+                    match RikRepository::upsert(&connection, &id, &name, &value, "/instance") {
                         Ok(value) => value,
                         Err(e) => panic!("{:?}", e),
                     };

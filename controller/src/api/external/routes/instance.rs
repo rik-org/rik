@@ -51,10 +51,10 @@ pub fn create(
     let mut instance: InstanceDefinition = serde_json::from_str(&content)?;
 
     //Workload not found
-    if let Err(_) = RikRepository::find_one(connection, &instance.workload_id, "/workload") {
+    if RikRepository::find_one(connection, &instance.workload_id, "/workload").is_err() {
         logger
             .send(LoggingChannel {
-                message: String::from(format!("Workload id {} not found", &instance.workload_id)),
+                message: format!("Workload id {} not found", &instance.workload_id),
                 log_type: LogType::Warn,
             })
             .unwrap();
@@ -65,12 +65,14 @@ pub fn create(
         .with_status_code(tiny_http::StatusCode::from(404)));
     }
 
-    if !instance.name.is_none() {
+    if instance.name.is_some() {
         // Check name is not used
-        if let Ok(_) = RikRepository::check_duplicate_name(
+        if RikRepository::check_duplicate_name(
             connection,
             &format!("/instance/%/default/{}", instance.get_name()),
-        ) {
+        )
+        .is_ok()
+        {
             logger
                 .send(LoggingChannel {
                     message: String::from("Name already used"),
@@ -126,7 +128,7 @@ pub fn delete(
 
         logger
             .send(LoggingChannel {
-                message: String::from(format!("Delete instance {}", instance.id)),
+                message: format!("Delete instance {}", instance.id),
                 log_type: LogType::Log,
             })
             .unwrap();
@@ -134,7 +136,7 @@ pub fn delete(
     } else {
         logger
             .send(LoggingChannel {
-                message: String::from(format!("Instance id {} not found", delete_id)),
+                message: format!("Instance id {} not found", delete_id),
                 log_type: LogType::Error,
             })
             .unwrap();

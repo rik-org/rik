@@ -143,7 +143,7 @@ impl Riklet {
             self.container_runtime
                 .run(
                     &id[..],
-                    &image.bundle.as_ref().unwrap(),
+                    image.bundle.as_ref().unwrap(),
                     Some(&CreateArgs {
                         pid_file: None,
                         console_socket: Some(socket_path),
@@ -191,7 +191,7 @@ impl Riklet {
         );
 
         // Inform the scheduler that the containers are running
-        self.send_status(4, &instance_id).await;
+        self.send_status(4, instance_id).await;
 
         Ok(())
     }
@@ -247,7 +247,7 @@ impl Riklet {
         self.start_metrics_updater();
 
         while let Some(workload) = &self.stream.message().await? {
-            let _ = self.handle_workload(&workload).await;
+            let _ = self.handle_workload(workload).await;
         }
         Ok(())
     }

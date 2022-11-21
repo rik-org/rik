@@ -46,4 +46,4 @@ features = ["bundled"]
 path = "../proto"
 
 [dependencies.definition]
-path = "../definition"
+path = "../crates/definition"
