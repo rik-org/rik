@@ -32,6 +32,9 @@ nix = "0.21.0"
 rstest = "0.10.0"
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
 anyhow = "1.0.66"
+env_logger = "0.8.4"
+log = "0.4.14"
+clap = { version = "4.0.26", features = ["derive"] }
 
 [build-dependencies]
 tonic-build.workspace = true

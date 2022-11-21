@@ -1,18 +1,15 @@
 mod lib;
 
-use crate::state_manager::lib::{get_random_hash, int_to_resource_status};
+use crate::state_manager::lib::int_to_resource_status;
 use definition::workload::WorkloadDefinition;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use proto::common::{InstanceMetric, ResourceStatus, WorkerMetric, WorkloadRequestKind};
 use proto::worker::InstanceScheduling;
 use rand::seq::IteratorRandom;
 use scheduler::{Event, SchedulerError, Worker, WorkerState, WorkloadRequest};
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
-use std::fs::read;
 use std::sync::Arc;
-use std::task::ready;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Mutex;
 
@@ -172,14 +169,14 @@ impl StateManager {
 
     async fn update_state(&mut self) {
         let ready_workers = self.get_workers_ready().await;
-        if ready_workers.len() == 0 {
+        if ready_workers.is_empty() {
             info!("State isn't updated as there is no worker available");
             return;
         }
 
         let mut workers = ready_workers.iter().cycle();
         // Scheduling of new instances
-        for (id, workload) in self.state.iter_mut() {
+        for (_id, workload) in self.state.iter_mut() {
             let pending_instances: Vec<&mut WorkloadInstance> = workload
                 .instances
                 .iter_mut()
@@ -254,7 +251,7 @@ impl StateManager {
             None,
             request.definition.clone(),
         );
-        if let Some(mut workload) = self.state.get_mut(&request.workload_id) {
+        if let Some(workload) = self.state.get_mut(&request.workload_id) {
             if workload.status == ResourceStatus::Destroying {
                 error!("Cannot double replicas while workload is being destroyed");
                 return Err(SchedulerError::CannotDoubleReplicas);
@@ -424,16 +421,14 @@ impl WorkloadInstance {
 
     /// Determine whether the instance is running somewhere and has been properly running
     pub fn is_deployed(&self) -> bool {
-        match self.status {
-            ResourceStatus::Running => true,
-            ResourceStatus::Creating => true,
-            ResourceStatus::Destroying => true,
-            _ => false,
-        }
+        matches!(
+            self.status,
+            ResourceStatus::Running | ResourceStatus::Creating | ResourceStatus::Destroying
+        )
     }
 
     pub fn is_pending(&self) -> bool {
-        return self.status == ResourceStatus::Pending;
+        self.status == ResourceStatus::Pending
     }
 
     pub fn set_status(&mut self, status: ResourceStatus) {

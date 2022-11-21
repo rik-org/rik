@@ -1,38 +1,29 @@
-use crate::api;
 use crate::api::external::services::element::elements_set_right_name;
 use crate::api::types::element::OnlyId;
 use crate::api::{ApiChannel, CRUD};
 use crate::database::RikRepository;
-use crate::logger::{LogType, LoggingChannel};
 
 use crate::instance::Instance;
 use definition::workload::WorkloadDefinition;
+use log::{error, info, warn};
 use route_recognizer;
 use rusqlite::Connection;
 use serde_json::json;
-use std::io;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
-use tiny_http::Response;
 
-type HttpResult<T = io::Cursor<Vec<u8>>> = Result<Response<T>, api::RikError>;
+use super::HttpResult;
 
 pub fn get(
     _: &mut tiny_http::Request,
     _: &route_recognizer::Params,
     connection: &Connection,
     _: &Sender<ApiChannel>,
-    logger: &Sender<LoggingChannel>,
 ) -> HttpResult {
     if let Ok(mut workloads) = RikRepository::find_all(connection, "/workload") {
         workloads = elements_set_right_name(workloads.clone());
         let workloads_json = serde_json::to_string(&workloads).unwrap();
-        logger
-            .send(LoggingChannel {
-                message: String::from("Workloads found"),
-                log_type: LogType::Log,
-            })
-            .unwrap();
+        info!("Workloads found");
 
         Ok(tiny_http::Response::from_string(workloads_json)
             .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
@@ -48,7 +39,6 @@ pub fn get_instances(
     params: &route_recognizer::Params,
     connection: &Connection,
     _: &Sender<ApiChannel>,
-    _: &Sender<LoggingChannel>,
 ) -> HttpResult {
     let workload_id = params.find("workloadid").unwrap_or_default();
 
@@ -59,7 +49,7 @@ pub fn get_instances(
 
     // That's dirty and we know it, however it's the easiest way to do for now.
     if let Ok(elements) = RikRepository::find_all(connection, "/instance") {
-        let mut instances: Vec<Instance> = elements
+        let instances: Vec<Instance> = elements
             .iter()
             .map(|e| serde_json::from_value(e.clone().value).unwrap())
             .filter(|instance: &Instance| instance.workload_id == workload_id)
@@ -88,7 +78,6 @@ pub fn create(
     _: &route_recognizer::Params,
     connection: &Connection,
     _: &Sender<ApiChannel>,
-    logger: &Sender<LoggingChannel>,
 ) -> HttpResult {
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
@@ -105,12 +94,7 @@ pub fn create(
 
     // Check name is not used
     if RikRepository::check_duplicate_name(connection, &name).is_ok() {
-        logger
-            .send(LoggingChannel {
-                message: String::from("Name already used"),
-                log_type: LogType::Warn,
-            })
-            .unwrap();
+        warn!("Name already used");
         return Ok(tiny_http::Response::from_string("Name already used")
             .with_status_code(tiny_http::StatusCode::from(404)));
     }
@@ -121,24 +105,14 @@ pub fn create(
         &serde_json::to_string(&workload).unwrap(),
     ) {
         let workload_id: OnlyId = OnlyId { id: inserted_id };
-        logger
-            .send(LoggingChannel {
-                message: format!("Workload {} successfully created", &workload_id.id),
-                log_type: LogType::Log,
-            })
-            .unwrap();
+        info!("Workload {} successfully created", &workload_id.id);
         Ok(
             tiny_http::Response::from_string(serde_json::to_string(&workload_id).unwrap())
                 .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
                 .with_status_code(tiny_http::StatusCode::from(200)),
         )
     } else {
-        logger
-            .send(LoggingChannel {
-                message: String::from("Cannot create workload"),
-                log_type: LogType::Error,
-            })
-            .unwrap();
+        error!("Cannot create workload");
         Ok(tiny_http::Response::from_string("Cannot create workload")
             .with_status_code(tiny_http::StatusCode::from(500)))
     }
@@ -149,7 +123,6 @@ pub fn delete(
     _: &route_recognizer::Params,
     connection: &Connection,
     internal_sender: &Sender<ApiChannel>,
-    logger: &Sender<LoggingChannel>,
 ) -> HttpResult {
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
@@ -167,20 +140,10 @@ pub fn delete(
             .unwrap();
         RikRepository::delete(connection, &workload.id).unwrap();
 
-        logger
-            .send(LoggingChannel {
-                message: String::from("Delete workload"),
-                log_type: LogType::Log,
-            })
-            .unwrap();
+        info!("Delete workload");
         Ok(tiny_http::Response::from_string("").with_status_code(tiny_http::StatusCode::from(204)))
     } else {
-        logger
-            .send(LoggingChannel {
-                message: format!("Workload id {} not found", delete_id),
-                log_type: LogType::Error,
-            })
-            .unwrap();
+        error!("Workload id {} not found", delete_id);
         Ok(
             tiny_http::Response::from_string(format!("Workload id {} not found", delete_id))
                 .with_status_code(tiny_http::StatusCode::from(404)),
