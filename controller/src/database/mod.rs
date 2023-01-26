@@ -37,7 +37,7 @@ impl RikDataBase {
         dotenv().ok();
         let file_path = match std::env::var("DATABASE_LOCATION") {
             Ok(val) => val,
-            Err(_e) => "/var/lib/rik/data/".to_string(),
+            Err(_e) => (std::env::var("HOME").unwrap() + "/.rik/data").to_string(),
         };
         std::fs::create_dir_all(&file_path).unwrap();
 

@@ -1,13 +1,13 @@
 # Proto library
 
-RIK components like `scheduler`, `controller` or `node-agent` are using [gRPC](https://grpc.io/) to communicate with 
+RIK components like `scheduler`, `controller` or `node-agent` are using [gRPC](https://grpc.io/) to communicate with
 each others. The API defined for these is unified in a single library so an update to this library means 
 updating every components.
 
 ## Protobuf files
 
-In order to define [gRPC services](https://grpc.io/docs/what-is-grpc/core-concepts/#service-definition), we use 
-[proto-buffers](https://developers.google.com/protocol-buffers) files. These files are available in [`src`](./src) 
+In order to define [gRPC services](https://grpc.io/docs/what-is-grpc/core-concepts/#service-definition), we use
+[proto-buffers](https://developers.google.com/protocol-buffers) files. These files are available in [`src`](./src)
 directory.
 
 ## Installation
@@ -19,9 +19,9 @@ proto = { git = "https://github.com/dev-sys-do/rik", version="0.1.2" }
 
 If you'd like to use a version of this library which is not from this repository, replace `git` parameter.
 
-## Definitions 
+## Definitions
 
-Currently, there are two definitions available: [`worker.proto`](./src/worker.proto) and 
+Currently, there are two definitions available: [`worker.proto`](./src/worker.proto) and
 [`controller.proto`](./src/controller.proto). File [`common.proto`](./src/common.proto) is used for unified types and
 to not repeat ourselves.
 
@@ -32,7 +32,7 @@ thanks to [tokio](https://github.com/hyperium/tonic)
 
 ### Registers a worker
 
-We suppose you are already using `tokio` and `tonic` in your component. 
+We suppose you are already using `tokio` and `tonic` in your component.
 
 ```rust
 use proto::common::worker_status::Status;
@@ -53,8 +53,8 @@ impl WorkerClient for GRPCService {
         _request: Request<WorkerRegistration>,
     ) -> Result<Response<Self::RegisterStream>, tonic::Status> {
         let (stream_tx, stream_rx) = channel::<WorkloadChannelType>(1024);
-        
-        println!("Received a register request, but cannot hold the stream!");
+
+println!("Received a register request, but cannot hold the stream!");
 
         Ok(Response::new(ReceiverStream::new(stream_rx)))
     }
