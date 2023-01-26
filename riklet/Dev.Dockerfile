@@ -1,16 +1,10 @@
-# This Dockerfile aims to run the project on a distribution which is not
-# supported by Runc, Skopeo and Umoci like macOS.
-# This is only for development purposes.
-FROM alpine:latest AS build
-RUN apk add --no-cache runc skopeo umoci rust cargo protoc
-
+FROM rust:1.66 as builder
 WORKDIR /build
+COPY . .
+RUN apt update -y && apt install -y protobuf-compiler
+RUN cargo build -p riklet
 
-COPY ./src ./src
-COPY ./Cargo.* ./
-
-RUN cargo build
-
-FROM alpine:latest
-COPY --from=build /build/target/debug/riklet .
-ENTRYPOINT ["riklet", "--master-ip", "172.20.0.2:4995"]
+FROM debian:stable-slim
+RUN apt update && apt install -y skopeo runc umoci ca-certificates
+COPY --from=builder /build/target/debug/riklet .
+CMD ["./riklet"]
