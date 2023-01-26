@@ -14,6 +14,8 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::time::Duration;
 use tonic::{transport::Channel, Request, Streaming};
+use std::process::Command;
+
 
 #[derive(Debug)]
 pub struct Riklet {
@@ -107,6 +109,23 @@ impl Riklet {
         let workload_definition: WorkloadDefinition =
             serde_json::from_str(&workload.definition[..]).unwrap();
         let instance_id: &String = &workload.instance_id;
+
+        if workload_definition.kind == "function" {
+            let clear_socket = Command::new("rm")
+                .arg("-f")
+                .arg("/tmp/firecracker.socket")
+                .output()
+                .expect("failed to execute process");
+            
+            let output = Command::new("firecracker")
+                .arg("--api-sock")
+                .arg("/tmp/firecracker.socket")
+                .arg("--config-file")
+                .arg("/app/config.json")
+                .output()
+                .expect("failed to execute process");
+            log::info!("Function workload detected");
+        }
         let containers = workload_definition.get_containers(instance_id);
 
         // Inform the scheduler that the workload is creating

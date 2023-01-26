@@ -34,3 +34,8 @@ services:
     depends_on:
       - scheduler
       - controller
+    volumes:
+      - ./firecracker:/usr/binfirecracker
+      - ./vmlinux.bin:/app/vmlinux.bin
+      - ./rootfs.ext4:/app/rootfs.ext4
+      - ./config.json:/app/config.json
