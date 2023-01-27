@@ -1,0 +1,14 @@
+{
+	"api_version": "v0",
+	"kind": "function",
+	"name": "alpine",
+	"replicas": 1,
+	"spec": {
+		"containers": [
+			{
+				"name": "alpine",
+				"image": "alpine:latest"
+			}
+		]
+	}
+}

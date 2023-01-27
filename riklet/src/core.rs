@@ -117,7 +117,7 @@ impl Riklet {
                 .output()
                 .expect("failed to execute process");
             
-            let output = Command::new("firecracker")
+            let output = Command::new("/app/firecracker")
                 .arg("--api-sock")
                 .arg("/tmp/firecracker.socket")
                 .arg("--config-file")
