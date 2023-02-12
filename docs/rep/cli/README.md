@@ -93,7 +93,7 @@ Use the following syntax to run `riktl` commands from your terminal window.
 ```json
 {
   "api_version": "v0",
-  "kind": "pods",
+  "kind": "Pod",
   "name": "workload-name",
   "spec": {
     "containers": [

@@ -1,6 +1,6 @@
 {
 	"api_version": "v0",
-	"kind": "pods",
+	"kind": "Pod",
 	"name": "replicated",
 	"replicas": 3,
 	"spec": {

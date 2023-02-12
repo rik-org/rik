@@ -1,6 +1,6 @@
 {
 	"api_version": "v0",
-	"kind": "pods",
+	"kind": "Pod",
 	"name": "alpine",
 	"replicas": 1,
 	"spec": {

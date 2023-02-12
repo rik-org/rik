@@ -1,6 +1,6 @@
 {
 	"api_version": "v0",
-	"kind": "pods",
+	"kind": "Pod",
 	"name": "2-distro",
 	"replicas": 1,
 	"spec": {

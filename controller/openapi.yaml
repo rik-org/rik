@@ -1,6 +1,6 @@
 openapi: 3.0.2
 info:
-  title: Rik
+  title: RIK - Controller API
   version: 0.1.0
 paths:
   /api/v0/workloads.list:
@@ -8,19 +8,11 @@ paths:
       tags:
         - Workloads
       description: List all workloads
-      parameters:
-        - required: false
-          schema:
-            title: limit
-            minimum: 1
-            type: integer
-          name: limit
-          in: query
       responses:
         '200':
           description: OK
           content:
-            text/plain:
+            application/json:
               schema:
                 type: object
                 properties:
@@ -28,6 +20,36 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Workload'
+  /api/v0/workloads.instances/{workloadId}:
+    get:
+      parameters:
+        - name: workloadId
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "28dcac69-33ef-4b13-a42f-0d07c7acc1a6"
+      tags:
+        - Workloads
+      description: Get instances related to a specific workload
+      responses:
+        '200':
+          description: Workload has been found and it has instances
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  instances:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Instance'
+        '204':
+          description: Workload has been found but it has no instances
+        '404':
+          description: Workload has not been found
+        '400':
+          description: Workload ID is not provided
   /api/v0/workloads.create:
     post:
       tags:
@@ -114,19 +136,11 @@ paths:
       responses:
         '200':
           description: Successful Response
-  /api/v1/instances.list:
+  /api/v0/instances.list:
     get:
       tags:
         - Instances
       description: List all instances
-      parameters:
-        - required: false
-          schema:
-            title: limit
-            minimum: 1
-            type: integer
-          name: limit
-          in: query
       responses:
         '200':
           description: OK
@@ -140,7 +154,7 @@ paths:
                     items:
                       $ref: '#/components/schemas/Instance'
           
-  /api/v1/instances.create:
+  /api/v0/instances.create:
     post:
       tags:
         - Instances
@@ -153,6 +167,15 @@ paths:
       responses:
         '200':
           description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  instances:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InstanceCreationInformation'
   /api/v0/instance.delete:
     post:
       tags:
@@ -330,18 +353,29 @@ components:
           type: string
           example: "<workload name>"
           
-    
-    
+    RikletDefinition:
+      type: object
+      properties:
+        hostname:
+          type: string
+          example: "riklet-node-1"
+        internal_ip:
+          type: string
+          example: "10.110.0.13"
+
     InstanceDefinition: 
       type: object
       properties:
         name:
+          required: false
           type: string
-          example: "instance name"
-        workload:
+          example: "cobra-citer-1923"
+        workload_id:
+          required: true
           type: string
-          example: "workload name"
+          example: "c63f1351-d371-4700-81a4-ac97359bf5a3"
         replicas:
+          required: false
           type: integer
           example: 3
     
@@ -357,6 +391,8 @@ components:
         workload:
           type: string
           example: "workload name"
+        location:
+          $ref: '#/components/schemas/RikletDefinition'
         status:
           type: integer
           example: "<status>"

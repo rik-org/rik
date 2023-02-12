@@ -1,6 +1,23 @@
-on: [push, pull_request]
-
 name: RIK CI
+
+on:
+  push:
+    branches:
+      - main
+      - patch/* # run CI on maintenance branches (ex patch/1.10)
+    paths-ignore:
+      - "**.md"
+      - "**.txt"
+      - "docs/**"
+
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths-ignore:
+      - "**.md"
+      - "**.txt"
+      - "_license/**"
+      - "docs/**"
+
 
 jobs:
   check:
