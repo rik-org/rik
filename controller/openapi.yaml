@@ -9,7 +9,7 @@ paths:
         - Workloads
       description: List all workloads
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -19,7 +19,7 @@ paths:
                   workloads:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Workload'
+                      $ref: "#/components/schemas/Workload"
   /api/v0/workloads.instances/{workloadId}:
     get:
       parameters:
@@ -33,7 +33,7 @@ paths:
         - Workloads
       description: Get instances related to a specific workload
       responses:
-        '200':
+        "200":
           description: Workload has been found and it has instances
           content:
             application/json:
@@ -43,12 +43,12 @@ paths:
                   instances:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Instance'
-        '204':
+                      $ref: "#/components/schemas/Instance"
+        "204":
           description: Workload has been found but it has no instances
-        '404':
+        "404":
           description: Workload has not been found
-        '400':
+        "400":
           description: Workload ID is not provided
   /api/v0/workloads.create:
     post:
@@ -59,14 +59,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkloadDefinition'
+              $ref: "#/components/schemas/WorkloadDefinition"
       responses:
-        '200':
+        "200":
           description: Successful Response
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/WorkloadName'
+                $ref: "#/components/schemas/WorkloadName"
   /api/v0/workloads.delete:
     post:
       tags:
@@ -76,10 +76,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WorkloadName'
-            
+              $ref: "#/components/schemas/WorkloadName"
+
       responses:
-        '200':
+        "200":
           description: Successful Response
   /api/v0/tenants.list:
     get:
@@ -95,7 +95,7 @@ paths:
           name: limit
           in: query
       responses:
-        '200':
+        "200":
           description: OK
           content:
             text/plain:
@@ -105,7 +105,7 @@ paths:
                   tenants:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Tenant'
+                      $ref: "#/components/schemas/Tenant"
   /api/v0/tenants.create:
     post:
       tags:
@@ -115,9 +115,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TenantDefinition'
+              $ref: "#/components/schemas/TenantDefinition"
       responses:
-        '200':
+        "200":
           description: Successful Response
   /api/v0/tenants.delete:
     post:
@@ -134,7 +134,7 @@ paths:
                   type: string
                   example: "28dcac69-33ef-4b13-a42f-0d07c7acc1a6"
       responses:
-        '200':
+        "200":
           description: Successful Response
   /api/v0/instances.list:
     get:
@@ -142,7 +142,7 @@ paths:
         - Instances
       description: List all instances
       responses:
-        '200':
+        "200":
           description: OK
           content:
             text/plain:
@@ -152,8 +152,8 @@ paths:
                   instances:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Instance'
-          
+                      $ref: "#/components/schemas/Instance"
+
   /api/v0/instances.create:
     post:
       tags:
@@ -163,9 +163,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InstanceDefinition'
+              $ref: "#/components/schemas/InstanceDefinition"
       responses:
-        '200':
+        "200":
           description: Successful Response
           content:
             application/json:
@@ -175,7 +175,7 @@ paths:
                   instances:
                     type: array
                     items:
-                      $ref: '#/components/schemas/InstanceCreationInformation'
+                      $ref: "#/components/schemas/InstanceCreationInformation"
   /api/v0/instances.delete:
     post:
       tags:
@@ -191,13 +191,12 @@ paths:
                   type: string
                   example: "28dcac69-33ef-4b13-a42f-0d07c7acc1a6"
       responses:
-        '200':
+        "200":
           description: Successful Response
-        
+
 components:
   schemas:
-  
-    Tenant:   
+    Tenant:
       type: object
       properties:
         id:
@@ -212,8 +211,8 @@ components:
         resource:
           type: string
           example: workload
-    
-    TenantDefinition:   
+
+    TenantDefinition:
       type: object
       properties:
         name:
@@ -226,7 +225,6 @@ components:
           type: string
           example: workload
 
-          
     WorkloadDefinition:
       type: object
       properties:
@@ -282,7 +280,7 @@ components:
                       type:
                         type: string
                         example: clusterIP|nodePort|loadBalancer
-                        
+
     Workload:
       type: object
       properties:
@@ -341,8 +339,7 @@ components:
                       type:
                         type: string
                         example: clusterIP|nodePort|loadBalancer
-                  
-                  
+
     WorkloadName:
       type: object
       properties:
@@ -352,7 +349,7 @@ components:
         name:
           type: string
           example: "<workload name>"
-          
+
     RikletDefinition:
       type: object
       properties:
@@ -363,7 +360,7 @@ components:
           type: string
           example: "10.110.0.13"
 
-    InstanceDefinition: 
+    InstanceDefinition:
       type: object
       properties:
         name:
@@ -378,7 +375,7 @@ components:
           required: false
           type: integer
           example: 3
-    
+
     Instance:
       type: object
       properties:
@@ -392,15 +389,7 @@ components:
           type: string
           example: "workload name"
         location:
-          $ref: '#/components/schemas/RikletDefinition'
+          $ref: "#/components/schemas/RikletDefinition"
         status:
           type: integer
           example: "<status>"
-    
-
-          
-          
-          
-          
-          
-          

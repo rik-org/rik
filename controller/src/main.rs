@@ -2,6 +2,7 @@ mod api;
 mod cli;
 mod database;
 mod instance;
+mod tests;
 
 use std::{error, thread};
 use std::{sync::mpsc::channel, thread::JoinHandle};
