@@ -1,5 +1,6 @@
 mod api;
 mod database;
+mod instance;
 mod logger;
 mod tests;
 
@@ -13,10 +14,6 @@ use logger::{Logger, LoggingChannel};
 use tokio::runtime::Builder;
 
 fn main() {
-    if !nix::unistd::Uid::effective().is_root() {
-        println!("Rik controller must run with root privileges.");
-        std::process::exit(1);
-    }
     let db = RikDataBase::new(String::from("rik"));
     db.init_tables().unwrap();
 

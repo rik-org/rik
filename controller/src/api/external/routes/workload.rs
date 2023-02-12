@@ -5,12 +5,17 @@ use crate::api::{ApiChannel, CRUD};
 use crate::database::RikRepository;
 use crate::logger::{LogType, LoggingChannel};
 
+use crate::instance::Instance;
 use definition::workload::WorkloadDefinition;
 use route_recognizer;
 use rusqlite::Connection;
+use serde_json::json;
 use std::io;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
+use tiny_http::Response;
+
+type HttpResult<T = io::Cursor<Vec<u8>>> = Result<Response<T>, api::RikError>;
 
 pub fn get(
     _: &mut tiny_http::Request,
@@ -18,7 +23,7 @@ pub fn get(
     connection: &Connection,
     _: &Sender<ApiChannel>,
     logger: &Sender<LoggingChannel>,
-) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError> {
+) -> HttpResult {
     if let Ok(mut workloads) = RikRepository::find_all(connection, "/workload") {
         workloads = elements_set_right_name(workloads.clone());
         let workloads_json = serde_json::to_string(&workloads).unwrap();
@@ -38,13 +43,53 @@ pub fn get(
     }
 }
 
+pub fn get_instances(
+    _: &mut tiny_http::Request,
+    params: &route_recognizer::Params,
+    connection: &Connection,
+    _: &Sender<ApiChannel>,
+    _: &Sender<LoggingChannel>,
+) -> HttpResult {
+    let workload_id = params.find("workloadid").unwrap_or_default();
+
+    if workload_id.is_empty() {
+        return Ok(tiny_http::Response::from_string("No workload id provided")
+            .with_status_code(tiny_http::StatusCode::from(400)));
+    }
+
+    // That's dirty and we know it, however it's the easiest way to do for now.
+    if let Ok(elements) = RikRepository::find_all(connection, "/instance") {
+        let mut instances: Vec<Instance> = elements
+            .iter()
+            .map(|e| serde_json::from_value(e.clone().value).unwrap())
+            .filter(|instance: &Instance| instance.workload_id == workload_id)
+            .collect();
+
+        if instances.is_empty() {
+            return Ok(tiny_http::Response::from_string("")
+                .with_status_code(tiny_http::StatusCode::from(204)));
+        }
+
+        let instances_json = json!({ "instances": instances }).to_string();
+
+        return Ok(tiny_http::Response::from_string(instances_json)
+            .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
+            .with_status_code(tiny_http::StatusCode::from(200)));
+    }
+
+    Ok(
+        tiny_http::Response::from_string("Could not find workload instances")
+            .with_status_code(tiny_http::StatusCode::from(404)),
+    )
+}
+
 pub fn create(
     req: &mut tiny_http::Request,
     _: &route_recognizer::Params,
     connection: &Connection,
     _: &Sender<ApiChannel>,
     logger: &Sender<LoggingChannel>,
-) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError> {
+) -> HttpResult {
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
 
@@ -105,7 +150,7 @@ pub fn delete(
     connection: &Connection,
     internal_sender: &Sender<ApiChannel>,
     logger: &Sender<LoggingChannel>,
-) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError> {
+) -> HttpResult {
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
     let OnlyId { id: delete_id } = serde_json::from_str(&content)?;
