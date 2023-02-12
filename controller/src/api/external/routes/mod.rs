@@ -2,6 +2,7 @@ use route_recognizer;
 use rusqlite::Connection;
 use std::io;
 use std::sync::mpsc::Sender;
+use tiny_http::Method;
 
 use crate::api;
 use crate::api::ApiChannel;
@@ -30,23 +31,27 @@ impl Router {
 
         let base_path = "/api/v0";
 
-        // GET
-        get.add(&format!("{}/instances.list", base_path), instance::get);
-        get.add(&format!("{}/tenants.list", base_path), tenant::get);
+        // Workload related routes
         get.add(&format!("{}/workloads.list", base_path), workload::get);
-        // POST
-        post.add(&format!("{}/instances.create", base_path), instance::create);
-        post.add(&format!("{}/tenants.create", base_path), tenant::create);
+        get.add(
+            &format!("{}/workloads.instances/:workloadid", base_path),
+            workload::get_instances,
+        );
         post.add(&format!("{}/workloads.create", base_path), workload::create);
-        post.add(&format!("{}/instances.delete", base_path), instance::delete);
-        post.add(&format!("{}/tenants.delete", base_path), tenant::delete);
         post.add(&format!("{}/workloads.delete", base_path), workload::delete);
 
+        // Tenant related routes
+        get.add(&format!("{}/tenants.list", base_path), tenant::get);
+        post.add(&format!("{}/tenants.create", base_path), tenant::create);
+        post.add(&format!("{}/tenants.delete", base_path), tenant::delete);
+
+        // Instance related routes
+        get.add(&format!("{}/instances.list", base_path), instance::get);
+        post.add(&format!("{}/instances.create", base_path), instance::create);
+        post.add(&format!("{}/instances.delete", base_path), instance::delete);
+
         Router {
-            routes: vec![
-                ("GET".parse().unwrap(), get),
-                ("POST".parse().unwrap(), post),
-            ],
+            routes: vec![(Method::Get, get), (Method::Post, post)],
         }
     }
 

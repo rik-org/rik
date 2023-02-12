@@ -50,3 +50,4 @@ override.tf.json
 .terraformrc
 terraform.rc
 rikconfig.yml
+.data

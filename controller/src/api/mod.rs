@@ -47,10 +47,10 @@ impl From<serde_json::Error> for RikError {
 }
 
 pub struct ApiChannel {
-    action: CRUD,
-    workload_id: Option<String>,
-    instance_id: Option<String>,
-    workload_definition: Option<WorkloadDefinition>,
+    pub action: CRUD,
+    pub workload_id: Option<String>,
+    pub instance_id: Option<String>,
+    pub workload_definition: Option<WorkloadDefinition>,
 }
 impl Display for ApiChannel {
     fn fmt(&self, f: &mut Formatter) -> Result {

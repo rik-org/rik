@@ -232,6 +232,7 @@ pub struct WorkloadRequest {
     pub workload_id: String,
     pub definition: WorkloadDefinition,
     pub action: WorkloadRequestKind,
+    pub instance_id: String,
 }
 
 impl WorkloadRequest {
@@ -243,6 +244,7 @@ impl WorkloadRequest {
                 1 => WorkloadRequestKind::Destroy,
                 _ => WorkloadRequestKind::Create,
             },
+            instance_id: workload.instance_id,
         })
     }
 }

@@ -47,7 +47,7 @@ impl ControllerClient for GRPCService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use definition::workload::{Container, Spec, WorkloadDefinition};
+    use definition::workload::{Container, Spec, WorkloadDefinition, WorkloadKind};
     use proto::common::{WorkerStatus, WorkloadRequestKind};
     use std::net::SocketAddr;
     use tokio::sync::mpsc::error::SendError;
@@ -63,7 +63,7 @@ mod tests {
             workload_id: "test".to_string(),
             definition: serde_json::to_string(&WorkloadDefinition {
                 api_version: "v0".to_string(),
-                kind: "pods".to_string(),
+                kind: WorkloadKind::Pod,
                 name: "workload-debian".to_string(),
                 replicas: Some(2),
                 spec: Spec {
@@ -77,6 +77,7 @@ mod tests {
             })
             .map_err(|e| Status::invalid_argument(e.to_string()))?,
             action: WorkloadRequestKind::Create.into(),
+            instance_id: "".to_string(),
         };
 
         let mock_request = Request::new(workload.clone());

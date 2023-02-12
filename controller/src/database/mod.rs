@@ -35,10 +35,8 @@ impl RikDataBase {
 
     pub fn open(&self) -> Result<Connection> {
         dotenv().ok();
-        let file_path = match std::env::var("DATABASE_LOCATION") {
-            Ok(val) => val,
-            Err(_e) => "/var/lib/rik/data/".to_string(),
-        };
+        let file_path =
+            std::env::var("DATABASE_LOCATION").unwrap_or("/var/lib/rik/data/".to_string());
         std::fs::create_dir_all(&file_path).unwrap();
 
         let database_path = format!("{}{}.db", file_path, self.name);

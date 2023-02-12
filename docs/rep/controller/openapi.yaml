@@ -221,10 +221,13 @@ components:
       properties:
         api_version:
           type: string
-          example: "v0"
+          example: "v1"
         kind:
           type: string
-          example: pods
+          enum:
+            - Pod
+            - Function
+          example: Pod
         name:
           type: string
           example: workload-name
