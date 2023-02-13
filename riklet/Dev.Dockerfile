@@ -1,8 +1,20 @@
 FROM rust:1.66 as builder
+# MUST ADD : --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)" --build-arg ssh_pub_key="$(cat ~/.ssh/id_rsa.pub)"
+# because of private repo in cargo.toml
+# Or simply use `make build`
+ARG ssh_prv_key
+ARG ssh_pub_key
+
 WORKDIR /build
 COPY . .
-RUN apt update -y && apt install -y protobuf-compiler 
-RUN cargo build -p riklet
+RUN apt update -y && apt install -y protobuf-compiler
+RUN <<EOT sh
+  mkdir -p /root/.ssh && chmod 700 /root/.ssh
+  echo "$ssh_prv_key" > /root/.ssh/id_rsa && echo "$ssh_pub_key" > /root/.ssh/id_rsa.pub
+  chmod 600 /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa.pub
+  ssh-keyscan github.com >> /root/.ssh/known_hosts
+EOT
+RUN CARGO_NET_GIT_FETCH_WITH_CLI=true cargo build -p riklet
 
 FROM debian:stable-slim
 RUN mkdir /app

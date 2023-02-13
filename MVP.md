@@ -14,7 +14,7 @@ curl https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/rootfs/b
 
 cd rik
 
-git checkout firecracker-poc
+git checkout develop
 
 docker rm -f rik-scheduler
 docker rm -f rik-controller

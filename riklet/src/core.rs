@@ -14,10 +14,10 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::time::Duration;
 use tonic::{transport::Channel, Request, Streaming};
-use std::process::Command;
+use firepilot::microvm::{MicroVM, Config, BootSource, Drive, NetworkInterface};
+use firepilot::{Firecracker};
 
-
-#[derive(Debug)]
+            #[derive(Debug)]
 pub struct Riklet {
     hostname: String,
     client: WorkerClient<Channel>,
@@ -111,19 +111,32 @@ impl Riklet {
         let instance_id: &String = &workload.instance_id;
 
         if workload_definition.kind == "function" {
-            let clear_socket = Command::new("rm")
-                .arg("-f")
-                .arg("/tmp/firecracker.socket")
-                .output()
-                .expect("failed to execute process");
-            
-            let output = Command::new("/app/firecracker")
-                .arg("--api-sock")
-                .arg("/tmp/firecracker.socket")
-                .arg("--config-file")
-                .arg("/app/config.json")
-                .output()
-                .expect("failed to execute process");
+            let firecracker = Firecracker::new(None).unwrap();
+            let vm = MicroVM::from(Config {
+                boot_source: BootSource {
+                    kernel_image_path: PathBuf::from(
+                        "/home/debian/developer/firepilot/fixtures/hello-vmlinux.bin",
+                    ),
+                    boot_args: None,
+                    initrd_path: None,
+                },
+                drives: vec![Drive {
+                    drive_id: "rootfs".to_string(),
+                    path_on_host: PathBuf::from(
+                        "/home/debian/developer/firepilot/fixtures/rootfs.ext4",
+                    ),
+                    is_read_only: false,
+                    is_root_device: true,
+                }],
+                network_interfaces: vec![NetworkInterface {
+                    iface_id: "eth0".to_string(),
+                    guest_mac: Some("AA:FC:00:00:00:01".to_string()),
+                    host_dev_name: "tap0".to_string(),
+                }],
+            });
+
+            firecracker.start(&vm).unwrap();
+
             log::info!("Function workload detected");
         }
         let containers = workload_definition.get_containers(instance_id);

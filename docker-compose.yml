@@ -24,6 +24,11 @@ services:
   worker:
     container_name: rik-worker
     hostname: rik-worker
+    # TO BUILD THE IMAGE, YOU MUST RUN :
+    # docker build -t test --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)" \
+    #   --build-arg ssh_pub_key="$(cat ~/.ssh/id_rsa.pub)" -f ./riklet/Dev.Dockerfile .
+    # because of private repo in cargo.toml
+    # Alternatively, you can use `make build` in the riklet folder
     build:
       dockerfile: ./riklet/Dev.Dockerfile
       context: .
