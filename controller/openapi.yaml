@@ -176,7 +176,7 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/InstanceCreationInformation'
-  /api/v0/instance.delete:
+  /api/v0/instances.delete:
     post:
       tags:
         - Instances
