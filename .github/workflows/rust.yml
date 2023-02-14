@@ -20,65 +20,52 @@ on:
 
 
 jobs:
-  check:
-    name: Check
-    runs-on: ubuntu-latest
+  lint:
+    name: Validating code
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
       - uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
       - uses: actions-rs/cargo@v1
         with:
-          command: check
-
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: arduino/setup-protoc@v1
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-
-  fmt:
-    name: Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: arduino/setup-protoc@v1
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: rustup component add rustfmt
+          command: clippy
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
 
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
+  build:
+    name: Building code
+    needs:
+      - lint
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
       - uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
-      - run: rustup component add clippy
+      - uses: Swatinem/rust-cache@v2
       - uses: actions-rs/cargo@v1
         with:
-          command: clippy
+          command: build
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+
