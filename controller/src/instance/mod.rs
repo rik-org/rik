@@ -78,7 +78,7 @@ impl Instance {
             namespace: String::from("default"),
             kind,
             id: id.unwrap_or_else(|| Self::generate_name()),
-            status: InstanceStatus::Creating,
+            status: InstanceStatus::Pending,
         }
     }
 
