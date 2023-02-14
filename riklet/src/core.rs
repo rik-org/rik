@@ -4,6 +4,8 @@ use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use cri::console::ConsoleSocket;
 use cri::container::{CreateArgs, DeleteArgs, Runc};
+use firepilot::microvm::{BootSource, Config, Drive, MicroVM};
+use firepilot::Firecracker;
 use node_metrics::metrics_manager::MetricsManager;
 use oci::image_manager::ImageManager;
 use proto::common::{InstanceMetric, WorkerMetric, WorkerRegistration, WorkerStatus};
@@ -14,10 +16,8 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::time::Duration;
 use tonic::{transport::Channel, Request, Streaming};
-use firepilot::microvm::{MicroVM, Config, BootSource, Drive, NetworkInterface};
-use firepilot::{Firecracker};
 
-            #[derive(Debug)]
+#[derive(Debug)]
 pub struct Riklet {
     hostname: String,
     client: WorkerClient<Channel>,
@@ -111,82 +111,82 @@ impl Riklet {
         let instance_id: &String = &workload.instance_id;
 
         if workload_definition.kind == "function" {
-            let firecracker = Firecracker::new(None).unwrap();
+            log::info!("Function workload detected");
+
+            let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
+                command: Some(PathBuf::from("/app/firecracker")),
+                ..Default::default()
+            }))
+            .unwrap();
+
             let vm = MicroVM::from(Config {
                 boot_source: BootSource {
-                    kernel_image_path: PathBuf::from(
-                        "/home/debian/developer/firepilot/fixtures/hello-vmlinux.bin",
-                    ),
+                    kernel_image_path: PathBuf::from("/app/vmlinux.bin"),
                     boot_args: None,
                     initrd_path: None,
                 },
                 drives: vec![Drive {
                     drive_id: "rootfs".to_string(),
-                    path_on_host: PathBuf::from(
-                        "/home/debian/developer/firepilot/fixtures/rootfs.ext4",
-                    ),
+                    path_on_host: PathBuf::from("/app/rootfs.ext4"),
                     is_read_only: false,
                     is_root_device: true,
                 }],
-                network_interfaces: vec![NetworkInterface {
-                    iface_id: "eth0".to_string(),
-                    guest_mac: Some("AA:FC:00:00:00:01".to_string()),
-                    host_dev_name: "tap0".to_string(),
-                }],
+                network_interfaces: vec![],
             });
 
             firecracker.start(&vm).unwrap();
+        } else {
+            log::info!("Container workload detected");
 
-            log::info!("Function workload detected");
-        }
-        let containers = workload_definition.get_containers(instance_id);
+            let containers = workload_definition.get_containers(instance_id);
 
-        // Inform the scheduler that the workload is creating
-        self.send_status(5, instance_id).await;
+            // Inform the scheduler that the workload is creating
+            self.send_status(5, instance_id).await;
 
-        self.workloads
-            .insert(instance_id.clone(), containers.clone());
+            self.workloads
+                .insert(instance_id.clone(), containers.clone());
 
-        for container in containers {
-            let id = container.id.unwrap();
+            for container in containers {
+                let id = container.id.unwrap();
 
-            let image = &self.image_manager.pull(&container.image[..]).await?;
+                let image = &self.image_manager.pull(&container.image[..]).await?;
 
-            // New console socket for the container
-            let socket_path = PathBuf::from(format!("/tmp/{}", &id));
-            let console_socket = ConsoleSocket::new(&socket_path)?;
+                // New console socket for the container
+                let socket_path = PathBuf::from(format!("/tmp/{}", &id));
+                let console_socket = ConsoleSocket::new(&socket_path)?;
 
-            tokio::spawn(async move {
-                match console_socket
-                    .get_listener()
-                    .as_ref()
-                    .unwrap()
-                    .accept()
-                    .await
-                {
-                    Ok((stream, _socket_addr)) => {
-                        Box::leak(Box::new(stream));
+                tokio::spawn(async move {
+                    match console_socket
+                        .get_listener()
+                        .as_ref()
+                        .unwrap()
+                        .accept()
+                        .await
+                    {
+                        Ok((stream, _socket_addr)) => {
+                            Box::leak(Box::new(stream));
+                        }
+                        Err(err) => {
+                            log::error!("Receive PTY master error : {:?}", err)
+                        }
                     }
-                    Err(err) => {
-                        log::error!("Receive PTY master error : {:?}", err)
-                    }
-                }
-            });
-            self.container_runtime
-                .run(
-                    &id[..],
-                    image.bundle.as_ref().unwrap(),
-                    Some(&CreateArgs {
-                        pid_file: None,
-                        console_socket: Some(socket_path),
-                        no_pivot: false,
-                        no_new_keyring: false,
-                        detach: true,
-                    }),
-                )
-                .await?;
+                });
+                self.container_runtime
+                    .run(
+                        &id[..],
+                        image.bundle.as_ref().unwrap(),
+                        Some(&CreateArgs {
+                            pid_file: None,
+                            console_socket: Some(socket_path),
+                            no_pivot: false,
+                            no_new_keyring: false,
+                            detach: true,
+                        }),
+                    )
+                    .await?;
 
-            log::info!("Started container {}", id);
+                log::info!("Started container {}", id);
+            }
         }
 
         log::info!(

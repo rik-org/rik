@@ -629,7 +629,7 @@ dependencies = [
 [[package]]
 name = "firepilot"
 version = "0.1.0"
-source = "git+https://github.com/polyxia-org/firepilot.git?rev=f3044e3#f3044e33e9c30b84172f33fa6c0d27c9f9ab315b"
+source = "git+https://github.com/polyxia-org/firepilot.git?branch=main#a8dce9eae03163af0103d698ae2a3e6b488dca9a"
 dependencies = [
  "log",
  "serde",

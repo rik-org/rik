@@ -8,12 +8,10 @@ ARG ssh_pub_key
 WORKDIR /build
 COPY . .
 RUN apt update -y && apt install -y protobuf-compiler
-RUN <<EOT sh
-  mkdir -p /root/.ssh && chmod 700 /root/.ssh
-  echo "$ssh_prv_key" > /root/.ssh/id_rsa && echo "$ssh_pub_key" > /root/.ssh/id_rsa.pub
-  chmod 600 /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa.pub
+RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh && \ 
+  echo "$ssh_prv_key" > /root/.ssh/id_rsa && echo "$ssh_pub_key" > /root/.ssh/id_rsa.pub && \
+  chmod 600 /root/.ssh/id_rsa && chmod 600 /root/.ssh/id_rsa.pub && \
   ssh-keyscan github.com >> /root/.ssh/known_hosts
-EOT
 RUN CARGO_NET_GIT_FETCH_WITH_CLI=true cargo build -p riklet
 
 FROM debian:stable-slim
