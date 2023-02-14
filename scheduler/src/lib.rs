@@ -1,7 +1,9 @@
 use definition::workload::WorkloadDefinition;
 use log::{error, info};
 use node_metrics::metrics::Metrics;
-use proto::common::{InstanceMetric, WorkerMetric, WorkerStatus, WorkloadRequestKind};
+use proto::common::{
+    InstanceMetric, ResourceStatus, WorkerMetric, WorkerStatus, WorkloadRequestKind,
+};
 use proto::controller::WorkloadScheduling;
 use proto::worker::InstanceScheduling;
 use std::error::Error;
@@ -76,7 +78,7 @@ pub enum SchedulerError {
     CannotDoubleReplicas,
     /// In case we are ordering something but the workload doesn't exist in the
     /// memory
-    WorkloadDontExists(String),
+    WorkloadNotExisting(String),
 }
 
 impl fmt::Display for SchedulerError {

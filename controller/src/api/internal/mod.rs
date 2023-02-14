@@ -65,7 +65,7 @@ impl RikControllerClient {
 
             let mut instance_state: Instance = match RikRepository::check_duplicate_name(
                 &connection,
-                &format!("/instance/default/{}", instance_id),
+                &format!("/instance/%/default/{}", instance_id),
             ) {
                 Ok(previous_instance) => serde_json::from_value(previous_instance.value).unwrap(),
                 Err(_e) => {
