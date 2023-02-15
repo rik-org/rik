@@ -51,7 +51,7 @@ pub fn get_instances(
 
     // That's dirty and we know it, however it's the easiest way to do for now.
     if let Ok(elements) = RikRepository::find_all(connection, "/instance") {
-        let mut instances: Vec<Instance> = elements
+        let instances: Vec<Instance> = elements
             .iter()
             .map(|e| serde_json::from_value(e.clone().value).unwrap())
             .filter(|instance: &Instance| instance.workload_id == workload_id)
