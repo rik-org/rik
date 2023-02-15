@@ -3,7 +3,6 @@ mod services;
 
 use crate::api::ApiChannel;
 use crate::database::RikDataBase;
-use crate::logger::{LogType, LoggingChannel};
 use dotenv::dotenv;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
@@ -11,21 +10,19 @@ use std::thread;
 use tiny_http::{Request, Server as TinyServer};
 
 use colored::Colorize;
+use tracing::{event, Level};
 
 pub struct Server {
-    logger: Sender<LoggingChannel>,
     internal_sender: Sender<ApiChannel>,
     external_receiver: Receiver<ApiChannel>,
 }
 
 impl Server {
     pub fn new(
-        logger_sender: Sender<LoggingChannel>,
         internal_sender: Sender<ApiChannel>,
         external_receiver: Receiver<ApiChannel>,
     ) -> Server {
         Server {
-            logger: logger_sender,
             internal_sender,
             external_receiver,
         }
@@ -58,7 +55,6 @@ impl Server {
             let server = server.clone();
             let db = db.clone();
             let internal_sender = self.internal_sender.clone();
-            let logger = self.logger.clone();
 
             let guard = thread::spawn(move || loop {
                 let router = routes::Router::new();
@@ -66,30 +62,22 @@ impl Server {
 
                 let mut req: Request = server.recv().unwrap();
 
-                if let Some(res) = router.handle(&mut req, &connection, &internal_sender, &logger) {
+                if let Some(res) = router.handle(&mut req, &connection, &internal_sender) {
                     req.respond(res).unwrap();
                     continue;
                 }
-                logger
-                    .send(LoggingChannel {
-                        message: String::from("Route not found"),
-                        log_type: LogType::Log,
-                    })
-                    .unwrap();
+                event!(
+                    Level::INFO,
+                    "Route {} ({}) could not be found",
+                    req.url(),
+                    req.method()
+                );
                 req.respond(tiny_http::Response::empty(tiny_http::StatusCode::from(404)))
                     .unwrap();
             });
 
             guards.push(guard);
         }
-        self.logger
-            .send(LoggingChannel {
-                message: format!(
-                    "{}",
-                    format!("Server running on http://{}:{}", host, port).green()
-                ),
-                log_type: LogType::Log,
-            })
-            .unwrap();
+        event!(Level::INFO, "Server running on http://{}:{}", host, port);
     }
 }

@@ -1,6 +1,5 @@
 use crate::api::ApiChannel;
 use crate::database::RikDataBase;
-use crate::logger::LoggingChannel;
 use rstest::fixture;
 use std::sync::mpsc::channel;
 use std::sync::mpsc::{Receiver, Sender};
@@ -11,12 +10,6 @@ pub fn db_connection() -> std::sync::Arc<RikDataBase> {
     let db = RikDataBase::new(String::from("test"));
     db.init_tables().unwrap();
     db
-}
-
-#[fixture]
-pub fn mock_logger() -> Sender<LoggingChannel> {
-    let (logging_sender, _) = channel::<LoggingChannel>();
-    logging_sender
 }
 
 #[fixture]

@@ -3,6 +3,7 @@ use definition::workload::WorkloadKind;
 use names::{Generator, Name};
 use proto::common::ResourceStatus;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 #[derive(Serialize, Deserialize)]
 pub enum InstanceStatus {
@@ -13,6 +14,20 @@ pub enum InstanceStatus {
     Terminated,
     Creating,
     Destroying,
+}
+
+impl Display for InstanceStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InstanceStatus::Unknown(_) => write!(f, "Unknown"),
+            InstanceStatus::Pending => write!(f, "Pending"),
+            InstanceStatus::Running => write!(f, "Running"),
+            InstanceStatus::Failed => write!(f, "Failed"),
+            InstanceStatus::Terminated => write!(f, "Terminated"),
+            InstanceStatus::Creating => write!(f, "Creating"),
+            InstanceStatus::Destroying => write!(f, "Destroying"),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
