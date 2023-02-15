@@ -3,7 +3,6 @@ use crate::api::{ApiChannel, CRUD};
 use crate::database::RikDataBase;
 use crate::database::RikRepository;
 use crate::instance::Instance;
-use backoff::ExponentialBackoff;
 use definition::workload::WorkloadDefinition;
 use dotenv::dotenv;
 use proto::common::worker_status::Status;
@@ -13,7 +12,6 @@ use rusqlite::Connection;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use tracing::{event, Level};
-use uuid::Uuid;
 
 #[derive(Clone)]
 struct RikControllerClient {
