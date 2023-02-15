@@ -3,7 +3,7 @@ use crate::api::{ApiChannel, CRUD};
 use crate::database::RikDataBase;
 use crate::database::RikRepository;
 use crate::instance::Instance;
-use crate::logger::{LogType, LoggingChannel};
+use backoff::ExponentialBackoff;
 use definition::workload::WorkloadDefinition;
 use dotenv::dotenv;
 use proto::common::worker_status::Status;
@@ -12,6 +12,7 @@ use proto::controller::WorkloadScheduling;
 use rusqlite::Connection;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
+use tracing::{event, Level};
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -48,11 +49,14 @@ impl RikControllerClient {
         let request = tonic::Request::new(());
         let mut stream = self.client.get_status_updates(request).await?.into_inner();
         while let Some(worker_status) = stream.message().await? {
-            println!("Received status update request {:?}", worker_status);
             let status = match worker_status.status {
                 Some(status) => status,
                 None => {
-                    println!("Received status update request without status");
+                    event!(
+                        Level::ERROR,
+                        "Received status update request without status from {}",
+                        worker_status.identifier
+                    );
                     continue;
                 }
             };
@@ -60,21 +64,37 @@ impl RikControllerClient {
                 Status::Instance(instance_metric) => instance_metric,
                 Status::Worker(_worker_metric) => continue,
             };
-            let instance_status = instance_metric.status;
+            let new_instance_status = InstanceStatus::new(instance_metric.status as usize);
             let instance_id = instance_metric.instance_id;
 
             let mut instance_state: Instance = match RikRepository::check_duplicate_name(
                 &connection,
                 &format!("/instance/%/default/{}", instance_id),
             ) {
-                Ok(previous_instance) => serde_json::from_value(previous_instance.value).unwrap(),
+                Ok(previous_instance) => {
+                    let instance: Instance =
+                        serde_json::from_value(previous_instance.value).unwrap();
+                    event!(
+                        Level::INFO,
+                        "Instance {}, status update, {} -> {}",
+                        instance_id,
+                        instance.status,
+                        new_instance_status
+                    );
+                    instance
+                }
                 Err(_e) => {
-                    println!("Instance {} not found", instance_id);
+                    event!(
+                        Level::ERROR,
+                        "Instance {} could not be found from {}",
+                        instance_id,
+                        worker_status.identifier
+                    );
                     continue;
                 }
             };
 
-            instance_state.status = instance_status.into();
+            instance_state.status = instance_metric.status.into();
             let value = serde_json::to_string(&instance_state).unwrap();
             match RikRepository::upsert(
                 &connection,
@@ -93,19 +113,16 @@ impl RikControllerClient {
 
 #[allow(dead_code)]
 pub struct Server {
-    logger: Sender<LoggingChannel>,
     external_sender: Sender<ApiChannel>,
     internal_receiver: Receiver<ApiChannel>,
 }
 
 impl Server {
     pub fn new(
-        logger_sender: Sender<LoggingChannel>,
         external_sender: Sender<ApiChannel>,
         internal_receiver: Receiver<ApiChannel>,
     ) -> Server {
         Server {
-            logger: logger_sender,
             external_sender,
             internal_receiver,
         }
@@ -118,7 +135,13 @@ impl Server {
         let database = database.clone();
 
         tokio::spawn(async move {
-            client_clone.get_status_updates(database).await.unwrap();
+            if let Err(e) = client_clone.get_status_updates(database).await {
+                event!(
+                    Level::ERROR,
+                    "Internal communication with scheduler failed: {:?}",
+                    e
+                );
+            }
         });
 
         self.listen_notification(client).await;
@@ -130,15 +153,7 @@ impl Server {
         workload_def: WorkloadDefinition,
         client: &mut RikControllerClient,
     ) {
-        self.logger
-            .send(LoggingChannel {
-                message: format!(
-                    "Ctrl to scheduler schedule instance workload_id : {:?}",
-                    &instance.workload_id
-                ),
-                log_type: LogType::Log,
-            })
-            .unwrap();
+        event!(Level::INFO, "Schedule instance {}", instance.id);
         client
             .schedule_instance(WorkloadScheduling {
                 workload_id: instance.workload_id,
@@ -156,15 +171,7 @@ impl Server {
         workload_def: WorkloadDefinition,
         client: &mut RikControllerClient,
     ) {
-        self.logger
-            .send(LoggingChannel {
-                message: format!(
-                    "Ctrl to scheduler delete workload: {:?}",
-                    instance.workload_id
-                ),
-                log_type: LogType::Log,
-            })
-            .unwrap();
+        event!(Level::INFO, "Unschedule instance {}", instance.id);
         client
             .schedule_instance(WorkloadScheduling {
                 workload_id: instance.workload_id,

@@ -1,5 +1,6 @@
 use names::Generator;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InstanceDefinition {
@@ -55,5 +56,11 @@ impl InstanceStatus {
             // workload_id: workload_id,
             status: str_status,
         }
+    }
+}
+
+impl Display for InstanceStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.status)
     }
 }

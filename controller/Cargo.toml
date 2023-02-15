@@ -25,13 +25,18 @@ serde_json = "1.0.64"
 names = "0.14.0"
 tonic = { workspace = true }
 prost = { workspace = true}
-tracing = { workspace = true }
 tokio = { version = "1.6.1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 tokio-stream = "0.1.6"
 dotenv = "0.15.0"
 nix = "0.26.2"
 rstest = "0.16.0"
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
+backoff = { version = "0.4.0", features = ["tokio"]}
+
+# Instrumentation
+tracing = { workspace = true }
+tracing-futures = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 [build-dependencies]
 tonic-build = { workspace = true }

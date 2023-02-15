@@ -3,10 +3,10 @@ use rusqlite::Connection;
 use std::io;
 use std::sync::mpsc::Sender;
 use tiny_http::Method;
+use tracing::{event, Level};
 
 use crate::api;
 use crate::api::ApiChannel;
-use crate::logger::{LogType, LoggingChannel};
 
 mod instance;
 mod tenant;
@@ -17,7 +17,6 @@ type Handler = fn(
     &route_recognizer::Params,
     &Connection,
     &Sender<ApiChannel>,
-    &Sender<LoggingChannel>,
 ) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError>;
 
 pub struct Router {
@@ -60,22 +59,22 @@ impl Router {
         request: &mut tiny_http::Request,
         connection: &Connection,
         internal_sender: &Sender<ApiChannel>,
-        logger: &Sender<LoggingChannel>,
     ) -> Option<tiny_http::Response<io::Cursor<Vec<u8>>>> {
         self.routes
             .iter()
             .find(|&&(ref method, _)| method == request.method())
             .and_then(|&(_, ref routes)| {
                 if let Ok(res) = routes.recognize(request.url()) {
+                    event!(
+                        Level::INFO,
+                        "Route found, method: {}, path: {}",
+                        request.method(),
+                        request.url()
+                    );
                     Some(
-                        res.handler()(request, res.params(), connection, internal_sender, logger)
+                        res.handler()(request, res.params(), connection, internal_sender)
                             .unwrap_or_else(|error| {
-                                logger
-                                    .send(LoggingChannel {
-                                        message: error.to_string(),
-                                        log_type: LogType::Error,
-                                    })
-                                    .unwrap();
+                                event!(Level::WARN, "Could not handle route: {}", error);
                                 tiny_http::Response::from_string(error.to_string())
                                     .with_status_code(tiny_http::StatusCode::from(400))
                             }),
