@@ -4,8 +4,8 @@ use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use cri::console::ConsoleSocket;
 use cri::container::{CreateArgs, DeleteArgs, Runc};
+use firepilot::microvm::{BootSource, Config, Drive, MicroVM, NetworkInterface};
 use curl::easy::Easy;
-use firepilot::microvm::{BootSource, Config, Drive, MicroVM};
 use firepilot::Firecracker;
 use lz4::Decoder;
 use node_metrics::metrics_manager::MetricsManager;
@@ -14,7 +14,9 @@ use proto::common::{InstanceMetric, WorkerMetric, WorkerRegistration, WorkerStat
 use proto::worker::worker_client::WorkerClient;
 use proto::worker::InstanceScheduling;
 use std::collections::HashMap;
+use std::env;
 use std::error::Error;
+use std::process::Command;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -22,6 +24,16 @@ use std::time::Duration;
 use std::{fs, io, thread};
 use tonic::{transport::Channel, Request, Streaming};
 use tracing::{event, Level};
+
+// const TAP_SCRIPT_DEFAULT_LOCATION: &str = "/app/setup-host-tap.sh";
+const TAP_SCRIPT_DEFAULT_LOCATION: &str =
+    "/home/kalil/Project/polyxia/rik/scripts/setup-host-tap.sh";
+const TAP_ID: &str = "fc";
+const TAP_IP: &str = "";
+
+const KERNEL_DEFAULT_LOCATION: &str = "/app/vmlinux.bin";
+const ROOTFS_DEFAULT_LOCATION: &str = "/app/rootfs.ext4";
+const FIRECRACKER_DEFAULT_LOCATION: &str = "/app/firecracker";
 
 #[derive(Debug)]
 pub struct Riklet {
@@ -196,8 +208,22 @@ impl Riklet {
                 })?;
             }
 
+            let output = Command::new("/bin/sh")
+                .arg(env::var("TAP_SCRIPT").unwrap_or(TAP_SCRIPT_DEFAULT_LOCATION.to_string()))
+                .arg(TAP_ID)
+                .arg(TAP_IP)
+                .output()?;
+
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                log::error!("stderr: {}", stderr);
+            }
+
             let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
-                command: Some(PathBuf::from("/app/firecracker")),
+                command: Some(PathBuf::from(
+                    env::var("FIRECRACKER_LOCATION")
+                        .unwrap_or(FIRECRACKER_DEFAULT_LOCATION.to_string()),
+                )),
                 ..Default::default()
             }))
             .unwrap();
@@ -205,7 +231,9 @@ impl Riklet {
             event!(Level::DEBUG, "Creating a new MicroVM");
             let vm = MicroVM::from(Config {
                 boot_source: BootSource {
-                    kernel_image_path: PathBuf::from("/app/vmlinux.bin"),
+                    kernel_image_path: PathBuf::from(
+                        env::var("KERNEL_LOCATION").unwrap_or(KERNEL_DEFAULT_LOCATION.to_string()),
+                    ),
                     boot_args: None,
                     initrd_path: None,
                 },
@@ -215,8 +243,13 @@ impl Riklet {
                     is_read_only: false,
                     is_root_device: true,
                 }],
-                network_interfaces: vec![],
+                network_interfaces: vec![NetworkInterface {
+                    iface_id: "eth0".to_string(),
+                    guest_mac: Some("AA:FC:00:00:00:01".to_string()),
+                    host_dev_name: "tap0".to_string(),
+                }],
             });
+
 
             event!(Level::DEBUG, "Starting the MicroVM");
             thread::spawn(move || {
