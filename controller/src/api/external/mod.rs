@@ -9,7 +9,6 @@ use std::sync::Arc;
 use std::thread;
 use tiny_http::{Request, Server as TinyServer};
 
-use colored::Colorize;
 use tracing::{event, Level};
 
 pub struct Server {

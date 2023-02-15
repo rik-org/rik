@@ -2,7 +2,6 @@ use crate::api::{ApiChannel, CRUD};
 use crate::database::RikRepository;
 use crate::instance::Instance;
 use definition::workload::WorkloadDefinition;
-use names::{Generator, Name};
 use rusqlite::Connection;
 use std::sync::mpsc::Sender;
 
