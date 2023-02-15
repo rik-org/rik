@@ -3,6 +3,7 @@ use rusqlite::Connection;
 use std::io;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
+use tracing::{event, Level};
 
 use crate::api;
 use crate::api::external::services::element::elements_set_right_name;
@@ -11,24 +12,17 @@ use crate::api::types::element::OnlyId;
 use crate::api::types::instance::InstanceDefinition;
 use crate::api::{ApiChannel, CRUD};
 use crate::database::RikRepository;
-use crate::logger::{LogType, LoggingChannel};
 
 pub fn get(
     _: &mut tiny_http::Request,
     _: &route_recognizer::Params,
     connection: &Connection,
     _: &Sender<ApiChannel>,
-    logger: &Sender<LoggingChannel>,
 ) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError> {
     if let Ok(mut instances) = RikRepository::find_all(connection, "/instance") {
         instances = elements_set_right_name(instances.clone());
         let instances_json = serde_json::to_string(&instances).unwrap();
-        logger
-            .send(LoggingChannel {
-                message: String::from("Instances found"),
-                log_type: LogType::Log,
-            })
-            .unwrap();
+        event!(Level::INFO, "instances.get, instances found");
         Ok(tiny_http::Response::from_string(instances_json)
             .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
             .with_status_code(tiny_http::StatusCode::from(200)))
@@ -43,7 +37,6 @@ pub fn create(
     _: &route_recognizer::Params,
     connection: &Connection,
     internal_sender: &Sender<ApiChannel>,
-    logger: &Sender<LoggingChannel>,
 ) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError> {
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
@@ -52,12 +45,11 @@ pub fn create(
 
     //Workload not found
     if RikRepository::find_one(connection, &instance.workload_id, "/workload").is_err() {
-        logger
-            .send(LoggingChannel {
-                message: format!("Workload id {} not found", &instance.workload_id),
-                log_type: LogType::Warn,
-            })
-            .unwrap();
+        event!(
+            Level::WARN,
+            "Workload id {} not found",
+            &instance.workload_id
+        );
         return Ok(tiny_http::Response::from_string(format!(
             "Workload id {} not found",
             &instance.workload_id
@@ -73,12 +65,11 @@ pub fn create(
         )
         .is_ok()
         {
-            logger
-                .send(LoggingChannel {
-                    message: String::from("Name already used"),
-                    log_type: LogType::Warn,
-                })
-                .unwrap();
+            event!(
+                Level::WARN,
+                "Instance name {} is already used",
+                instance.get_name()
+            );
             return Ok(tiny_http::Response::from_string("Name already used")
                 .with_status_code(tiny_http::StatusCode::from(404)));
         }
@@ -109,7 +100,6 @@ pub fn delete(
     _: &route_recognizer::Params,
     connection: &Connection,
     internal_sender: &Sender<ApiChannel>,
-    logger: &Sender<LoggingChannel>,
 ) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError> {
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
@@ -126,20 +116,14 @@ pub fn delete(
             .unwrap();
         RikRepository::delete(connection, &instance.id).unwrap();
 
-        logger
-            .send(LoggingChannel {
-                message: format!("Delete instance {}", instance.id),
-                log_type: LogType::Log,
-            })
-            .unwrap();
+        event!(
+            Level::INFO,
+            "Instance {} has been requested to be deleted",
+            instance.id
+        );
         Ok(tiny_http::Response::from_string("").with_status_code(tiny_http::StatusCode::from(204)))
     } else {
-        logger
-            .send(LoggingChannel {
-                message: format!("Instance id {} not found", delete_id),
-                log_type: LogType::Error,
-            })
-            .unwrap();
+        event!(Level::WARN, "Instance id {} not found", delete_id);
         Ok(
             tiny_http::Response::from_string(format!("Instance id {} not found", delete_id))
                 .with_status_code(tiny_http::StatusCode::from(404)),
