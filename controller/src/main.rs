@@ -4,12 +4,12 @@ mod database;
 mod instance;
 mod tests;
 
-use std::{error, thread};
+use std::thread;
 use std::{sync::mpsc::channel, thread::JoinHandle};
 
 use crate::cli::Cli;
 use crate::database::RikDataBase;
-use anyhow::{Error, Result};
+use anyhow::Error;
 use api::{external, internal, ApiChannel};
 use clap::Parser;
 use env_logger::Builder;

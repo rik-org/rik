@@ -1,21 +1,18 @@
-use crate::api::types::instance::InstanceStatus;
 use crate::api::{ApiChannel, CRUD};
 use crate::database::RikDataBase;
 use crate::database::RikRepository;
 use crate::instance::Instance;
-use crate::logger::{LogType, LoggingChannel};
 use anyhow::{Context, Result};
 use colored::Colorize;
 use definition::workload::WorkloadDefinition;
 use dotenv::dotenv;
-use log::{error, info};
+use log::info;
 use proto::common::worker_status::Status;
 use proto::controller::controller_client::ControllerClient;
 use proto::controller::WorkloadScheduling;
 use rusqlite::Connection;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
-use uuid::Uuid;
 
 #[derive(Clone)]
 struct RikControllerClient {

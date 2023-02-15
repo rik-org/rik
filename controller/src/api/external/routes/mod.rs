@@ -4,21 +4,22 @@ use route_recognizer;
 use rusqlite::Connection;
 use std::io;
 use std::sync::mpsc::Sender;
-use tiny_http::Method;
 
-use crate::api::ApiChannel;
+use crate::api::{ApiChannel, RikError};
 use tiny_http::{Method, Response, StatusCode};
 
 mod instance;
 mod tenant;
 mod workload;
 
+type HttpResult<T = io::Cursor<Vec<u8>>> = Result<Response<T>, RikError>;
+
 type Handler = fn(
     &mut tiny_http::Request,
     &route_recognizer::Params,
     &Connection,
     &Sender<ApiChannel>,
-) -> Result<Response<io::Cursor<Vec<u8>>>>;
+) -> HttpResult;
 
 pub struct Router {
     routes: Vec<(Method, route_recognizer::Router<Handler>)>,

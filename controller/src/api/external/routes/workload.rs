@@ -1,6 +1,6 @@
 use crate::api::external::services::element::elements_set_right_name;
 use crate::api::types::element::OnlyId;
-use crate::api::{ApiChannel, CRUD};
+use crate::api::{ApiChannel, RikError, CRUD};
 use crate::database::RikRepository;
 
 use crate::instance::Instance;
@@ -14,16 +14,15 @@ use std::io;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 use tiny_http::Response;
-use tiny_http::Response;
 
-type HttpResult<T = io::Cursor<Vec<u8>>> = Result<Response<T>, api::RikError>;
+use super::HttpResult;
 
 pub fn get(
     _: &mut tiny_http::Request,
     _: &route_recognizer::Params,
     connection: &Connection,
     _: &Sender<ApiChannel>,
-) -> Result<Response<io::Cursor<Vec<u8>>>> {
+) -> HttpResult {
     if let Ok(mut workloads) = RikRepository::find_all(connection, "/workload") {
         workloads = elements_set_right_name(workloads.clone());
         let workloads_json = serde_json::to_string(&workloads).unwrap();
@@ -53,7 +52,7 @@ pub fn get_instances(
 
     // That's dirty and we know it, however it's the easiest way to do for now.
     if let Ok(elements) = RikRepository::find_all(connection, "/instance") {
-        let mut instances: Vec<Instance> = elements
+        let instances: Vec<Instance> = elements
             .iter()
             .map(|e| serde_json::from_value(e.clone().value).unwrap())
             .filter(|instance: &Instance| instance.workload_id == workload_id)
@@ -82,7 +81,7 @@ pub fn create(
     _: &route_recognizer::Params,
     connection: &Connection,
     _: &Sender<ApiChannel>,
-) -> Result<Response<io::Cursor<Vec<u8>>>> {
+) -> HttpResult {
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
 
@@ -127,7 +126,7 @@ pub fn delete(
     _: &route_recognizer::Params,
     connection: &Connection,
     internal_sender: &Sender<ApiChannel>,
-) -> Result<Response<io::Cursor<Vec<u8>>>> {
+) -> HttpResult {
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
     let OnlyId { id: delete_id } = serde_json::from_str(&content)?;
