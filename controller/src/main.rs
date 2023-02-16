@@ -1,15 +1,16 @@
 mod api;
+mod core;
 mod database;
-mod instance;
 mod tests;
 
 use std::sync::mpsc::channel;
 use std::thread;
 
 use crate::database::RikDataBase;
-use api::{external, internal, ApiChannel};
+use api::{external, ApiChannel};
 use tracing::{event, Level};
 
+use crate::core::core::Core;
 use tokio::runtime::Builder;
 
 fn logger_setup() {
@@ -22,23 +23,24 @@ fn logger_setup() {
         .expect("Failed to initiate the logger subscriber");
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     logger_setup();
-    event!(Level::INFO, "Starting Rik");
     event!(Level::INFO, "Starting Rik");
     let db = RikDataBase::new(String::from("rik"));
     db.init_tables().unwrap();
 
-    let (internal_sender, internal_receiver) = channel::<ApiChannel>();
-    let (external_sender, external_receiver) = channel::<ApiChannel>();
+    let (legacy_sender, legacy_receiver) = channel::<ApiChannel>();
 
-    let internal_api = internal::Server::new(external_sender, internal_receiver);
-    let external_api = external::Server::new(internal_sender, external_receiver);
+    let internal_api = Core::new(db.clone())
+        .await
+        .expect("Failed to create internal API");
+    let external_api = external::Server::new(legacy_sender);
     let mut threads = Vec::new();
+    let legacy_to_new_sender = internal_api.get_sender();
 
-    let db_clone_internal = db.clone();
     threads.push(thread::spawn(move || {
-        let future = async move { internal_api.run(db_clone_internal).await };
+        let future = async move { internal_api.listen_notification().await };
         Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -46,9 +48,9 @@ fn main() {
             .block_on(future)
     }));
 
-    threads.push(thread::spawn(move || {
-        external_api.run(db);
-    }));
+    Core::run_legacy_listener(legacy_receiver, legacy_to_new_sender);
+
+    threads.push(thread::spawn(move || external_api.run(db)));
 
     for thread in threads {
         thread.join().unwrap();

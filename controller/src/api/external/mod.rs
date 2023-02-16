@@ -4,7 +4,7 @@ mod services;
 use crate::api::ApiChannel;
 use crate::database::RikDataBase;
 use dotenv::dotenv;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread;
 use tiny_http::{Request, Server as TinyServer};
@@ -13,29 +13,15 @@ use tracing::{event, Level};
 
 pub struct Server {
     internal_sender: Sender<ApiChannel>,
-    external_receiver: Receiver<ApiChannel>,
 }
 
 impl Server {
-    pub fn new(
-        internal_sender: Sender<ApiChannel>,
-        external_receiver: Receiver<ApiChannel>,
-    ) -> Server {
-        Server {
-            internal_sender,
-            external_receiver,
-        }
+    pub fn new(internal_sender: Sender<ApiChannel>) -> Server {
+        Server { internal_sender }
     }
 
     pub fn run(&self, db: Arc<RikDataBase>) {
         self.run_server(db);
-        self.listen_notification();
-    }
-
-    fn listen_notification(&self) {
-        for notification in &self.external_receiver {
-            println!("{}", notification);
-        }
     }
 
     fn run_server(&self, db: Arc<RikDataBase>) {

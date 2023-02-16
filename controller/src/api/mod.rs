@@ -1,26 +1,39 @@
 pub mod external;
-pub mod internal;
 pub mod types;
 
 use definition::workload::WorkloadDefinition;
-use std::fmt::{Display, Formatter, Result};
-#[allow(dead_code)]
+use std::fmt::{Debug, Display, Formatter, Result};
+
 #[derive(Debug)]
 pub enum CRUD {
     Create = 0,
     Delete = 1,
 }
 
+impl From<i32> for CRUD {
+    fn from(value: i32) -> Self {
+        match value {
+            0 => CRUD::Create,
+            1 => CRUD::Delete,
+            _ => panic!("Invalid CRUD value"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum RikError {
     IoError(std::io::Error),
     HttpRequestError(serde_json::Error),
+    InternalCommunicationError(String),
+    InvalidInstance(String),
 }
 impl Display for RikError {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match *self {
-            RikError::IoError(ref e) => e.fmt(f),
-            RikError::HttpRequestError(ref e) => e.fmt(f),
+            RikError::IoError(ref e) => write!(f, "{}", e),
+            RikError::HttpRequestError(ref e) => write!(f, "{}", e),
+            RikError::InternalCommunicationError(ref e) => write!(f, "{}", e),
+            RikError::InvalidInstance(ref e) => write!(f, "{}", e),
         }
     }
 }
@@ -30,6 +43,8 @@ impl std::error::Error for RikError {
         match *self {
             RikError::IoError(ref e) => Some(e),
             RikError::HttpRequestError(ref e) => Some(e),
+            // TODO: Implement other errors
+            _ => None,
         }
     }
 }

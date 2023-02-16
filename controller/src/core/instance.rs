@@ -110,8 +110,4 @@ impl Instance {
             self.id
         )
     }
-
-    pub fn repository_search_req(name: String) -> String {
-        format!("/instance/%/default/{}", name)
-    }
 }
