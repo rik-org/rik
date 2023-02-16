@@ -27,6 +27,7 @@ tonic = { workspace = true }
 prost = { workspace = true}
 tokio = { version = "1.6.1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 tokio-stream = "0.1.6"
+async-trait = "0.1.64"
 dotenv = "0.15.0"
 nix = "0.26.2"
 rstest = "0.16.0"

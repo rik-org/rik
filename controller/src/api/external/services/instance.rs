@@ -1,6 +1,6 @@
 use crate::api::{ApiChannel, CRUD};
+use crate::core::instance::Instance;
 use crate::database::RikRepository;
-use crate::instance::Instance;
 use definition::workload::WorkloadDefinition;
 use rusqlite::Connection;
 use std::sync::mpsc::Sender;
@@ -23,10 +23,12 @@ pub fn send_create_instance(
         workload.kind.clone().into(),
         name.clone(),
     );
-    match RikRepository::insert(
+    match RikRepository::upsert(
         connection,
-        instance.get_full_name().as_str(),
-        serde_json::to_string(&instance).unwrap().as_str(),
+        &instance.id,
+        &instance.get_full_name(),
+        &serde_json::to_string(&instance).unwrap(),
+        "/instance",
     ) {
         Ok(_) => (),
         Err(err) => panic!("{}", err),
