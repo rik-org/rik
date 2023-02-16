@@ -1,2 +1,0 @@
-mod grpc;
-mod server;
