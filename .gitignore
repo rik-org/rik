@@ -51,3 +51,5 @@ override.tf.json
 terraform.rc
 rikconfig.yml
 .data
+
+*.iml
