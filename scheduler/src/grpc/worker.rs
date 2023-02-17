@@ -6,7 +6,7 @@ use scheduler::Event;
 use scheduler::{Send, WorkerRegisterChannelType};
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
-use tokio_stream::StreamExt;
+
 use tonic::{Request, Response};
 
 #[tonic::async_trait]
