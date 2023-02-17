@@ -6,9 +6,12 @@ use crate::core::{with_backoff, InstanceRepository, InstanceService, Listener};
 use async_trait::async_trait;
 use definition::workload::WorkloadDefinition;
 use dotenv::dotenv;
+use proto::common::worker_status::Status;
 use proto::common::InstanceMetric;
 use proto::controller::controller_client::ControllerClient;
 use proto::controller::WorkloadScheduling;
+use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::mpsc::Sender;
 use tracing::{event, Level};
 
@@ -24,10 +27,32 @@ impl Listener for InstanceServiceImpl {
         let sender = self.sender.clone();
         tokio::spawn(async move {
             let mut stream = client.get_status_updates(()).await.unwrap().into_inner();
-            while let Some(status) = stream.message().await.unwrap() {
-                sender
-                    .send(CoreInternalEvent::SchedulerNotification(status))
-                    .unwrap();
+            while let Some(notification) = stream.message().await.unwrap() {
+                let status = notification.status.unwrap();
+                match status {
+                    Status::Instance(metric) => {
+                        event!(
+                            Level::INFO,
+                            "Instance status update: {}",
+                            &notification.identifier
+                        );
+                        sender
+                            .send(CoreInternalEvent::InstanceStatusUpdate(metric))
+                            .unwrap();
+                    }
+                    Status::Worker(metric) => {
+                        sender
+                            .send(CoreInternalEvent::WorkerStatusUpdate {
+                                identifier: notification.identifier,
+                                address: SocketAddr::from_str(
+                                    notification.host_address.unwrap().as_str(),
+                                )
+                                .unwrap(),
+                                metric,
+                            })
+                            .unwrap();
+                    }
+                }
             }
             ()
         });
