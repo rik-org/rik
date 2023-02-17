@@ -1,6 +1,7 @@
 use shared::utils::generate_hash;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
+use tracing::{event, Level};
 
 #[derive(Debug, Hash)]
 pub enum ImagePullPolicy {
@@ -20,6 +21,7 @@ pub struct Image {
 impl Image {
     /// Create a new image
     pub fn from(img: &str) -> Self {
+        event!(Level::DEBUG, "Creating image from {}", img);
         let splitted_image: Vec<&str> = img.split(':').collect();
         let image_name = *splitted_image.first().unwrap();
         let image_tag = *splitted_image.get(1).unwrap();

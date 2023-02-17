@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use tracing::{event, Level};
 
 pub mod console;
 pub mod container;

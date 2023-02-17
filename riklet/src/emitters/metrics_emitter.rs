@@ -5,6 +5,7 @@ use proto::worker::worker_client::WorkerClient;
 use std::error::Error;
 use tonic::transport::Channel;
 use tonic::Request;
+use tracing::{event, Level};
 
 pub struct MetricsEmitter;
 
@@ -20,10 +21,14 @@ impl EventEmitter<Vec<WorkerStatus>, WorkerClient<Channel>> for MetricsEmitter {
         // sending request and waiting for response
         match client.send_status_updates(request).await {
             Ok(response) => {
-                log::trace!("Metrics was sent successfully.");
+                event!(Level::DEBUG, "Metrics was sent successfully.");
                 response.into_inner()
             }
-            Err(e) => log::error!("An error occured when trying to send metrics: {:?}", e),
+            Err(e) => event!(
+                Level::ERROR,
+                "An error occured when trying to send metrics: {:?}",
+                e
+            ),
         };
 
         Ok(())

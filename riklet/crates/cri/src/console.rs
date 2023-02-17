@@ -1,5 +1,4 @@
 use crate::*;
-use log::warn;
 use std::path::{Path, PathBuf};
 use tokio::net::UnixListener;
 
@@ -12,7 +11,11 @@ pub struct ConsoleSocket {
 impl ConsoleSocket {
     pub fn new(socket_path: &Path) -> Result<Self> {
         let listener = UnixListener::bind(socket_path).context(UnixSocketOpenError {})?;
-        debug!("UnixListener binded on {}", &socket_path.to_str().unwrap());
+        event!(
+            Level::DEBUG,
+            "UnixListener binded on {}",
+            &socket_path.to_str().unwrap()
+        );
         Ok(Self {
             socket_path: socket_path.to_path_buf(),
             listener: Some(listener),
@@ -29,7 +32,7 @@ impl ConsoleSocket {
 impl Drop for ConsoleSocket {
     fn drop(&mut self) {
         if let Err(e) = std::fs::remove_file(&self.socket_path) {
-            warn!("Failed to clean up console socket : {}", e)
+            event!(Level::ERROR, "Failed to clean up console socket : {}", e)
         }
     }
 }

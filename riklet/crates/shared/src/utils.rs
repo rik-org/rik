@@ -6,6 +6,7 @@ use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use tar::Archive;
+use tracing::{event, Level};
 
 /// Find a binary in the host PATH
 pub fn find_binary(binary: &str) -> Option<PathBuf> {
@@ -32,6 +33,12 @@ pub fn generate_hash<T: Hash>(t: &T) -> u64 {
 
 /// Unpack a .tar.gz archive into the provided location
 pub fn unpack(archive: &str, dest: &Path) -> std::io::Result<()> {
+    event!(
+        Level::DEBUG,
+        "Unzipping archive {} into {}",
+        archive,
+        dest.display()
+    );
     let tar_gz =
         File::open(archive).expect(&format!("Unable to unzip the archive {}", archive)[..]);
     let tar = GzDecoder::new(tar_gz);
@@ -41,24 +48,26 @@ pub fn unpack(archive: &str, dest: &Path) -> std::io::Result<()> {
 }
 
 pub fn create_file_with_parent_folders(path: &Path) -> std::io::Result<File> {
+    event!(Level::DEBUG, "Creating file {}.", path.display());
     let parent = path.parent().unwrap();
     if !parent.exists() {
         std::fs::create_dir_all(parent)?;
     }
     let file = File::create(path)?;
 
-    log::debug!("File {} created.", path.display());
+    event!(Level::DEBUG, "File {} created.", path.display());
 
     Ok(file)
 }
 
 pub fn create_directory_if_not_exists(dir: &Option<PathBuf>) -> std::io::Result<()> {
+    event!(Level::DEBUG, "Creating directory.");
     if let Some(dir) = dir {
         if !dir.exists() {
             std::fs::create_dir_all(dir)?;
         }
 
-        log::debug!("Directory {} created.", dir.display());
+        event!(Level::DEBUG, "Directory {} created.", dir.display());
     }
 
     Ok(())
