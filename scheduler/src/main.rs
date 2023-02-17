@@ -16,7 +16,7 @@ use scheduler::{Controller, SchedulerError, Worker, WorkerRegisterChannelType};
 use std::default::Default;
 use std::net::{SocketAddr, SocketAddrV4};
 use std::sync::Arc;
-use tokio::sync::mpsc::error::SendError;
+
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::Mutex;
 use tonic::transport::Server;

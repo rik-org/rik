@@ -31,7 +31,7 @@ impl InstanceRepository for InstanceRepositoryImpl {
             &conn,
             &format!("/instance/%/default/{}", &instance_id),
         )
-        .map_err(|_| RikError::InvalidInstance(instance_id))?;
+        .map_err(|_| RikError::InvalidName(instance_id))?;
 
         serde_json::from_value::<Instance>(element.value).map_err(|e| {
             RikError::InternalCommunicationError(format!("Could not parse instance: {}", e))

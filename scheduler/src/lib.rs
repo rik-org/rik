@@ -1,9 +1,7 @@
 use definition::workload::WorkloadDefinition;
 use log::{error, info};
 use node_metrics::metrics::Metrics;
-use proto::common::{
-    InstanceMetric, ResourceStatus, WorkerMetric, WorkerStatus, WorkloadRequestKind,
-};
+use proto::common::{InstanceMetric, WorkerMetric, WorkerStatus, WorkloadRequestKind};
 use proto::controller::WorkloadScheduling;
 use proto::worker::InstanceScheduling;
 use std::error::Error;
