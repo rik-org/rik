@@ -1,5 +1,4 @@
 use crate::*;
-use log::debug;
 use serde::{Deserialize, Serialize};
 use shared::utils::find_binary;
 use snafu::{ensure, OptionExt, ResultExt};
@@ -7,6 +6,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
 use tokio::process::Command;
+use tracing::{event, Level};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UmociConfiguration {
@@ -14,6 +14,7 @@ pub struct UmociConfiguration {
     pub command: Option<PathBuf>,
     pub bundles_directory: Option<PathBuf>,
     pub timeout: Option<Duration>,
+    // TODO: replace log_level by tracing
     pub log_level: Option<String>,
 }
 
@@ -30,6 +31,7 @@ pub struct Umoci {
 impl Umoci {
     /// Create an Umoci instance to interact with the binary
     pub fn new(config: UmociConfiguration) -> Result<Self> {
+        event!(Level::DEBUG, "Initializing Umoci...");
         let command = config
             .command
             .or_else(|| find_binary("umoci"))
@@ -46,7 +48,7 @@ impl Umoci {
             .canonicalize()
             .context(InvalidPathError {})?;
 
-        debug!("Umoci initialized.");
+        event!(Level::DEBUG, "Umoci initialized.");
 
         Ok(Self {
             command,
@@ -62,6 +64,7 @@ impl Umoci {
     }
 
     pub async fn unpack(&self, bundle_id: &str, opts: Option<&UnpackArgs>) -> Result<String> {
+        event!(Level::DEBUG, "Unpacking bundle: {}", bundle_id);
         let mut args = vec![String::from("unpack")];
         Self::append_opts(&mut args, opts.map(|opts| opts as &dyn Args))?;
         let bundle_path = self.get_bundle_path(bundle_id);
@@ -94,6 +97,7 @@ impl Args for Umoci {
 #[async_trait]
 impl Executable for Umoci {
     async fn exec(&self, args: &[String]) -> Result<String> {
+        event!(Level::DEBUG, "Executing umoci command: {}", &args.join(" "));
         let args = self.concat_args(args)?;
         let process = Command::new(&self.command)
             .args(&args.clone())
@@ -103,7 +107,8 @@ impl Executable for Umoci {
             .spawn()
             .context(ProcessSpawnError {})?;
 
-        debug!(
+        event!(
+            Level::DEBUG,
             "{} {}",
             self.command.to_str().unwrap(),
             &args.clone().join(" ")
@@ -119,9 +124,9 @@ impl Executable for Umoci {
 
         if !stderr.is_empty() {
             if stderr.contains("config.json already exists") {
-                log::warn!("A config.json already exists for this image.");
+                event!(Level::WARN, "A config.json already exists for this image.");
             } else {
-                error!("Umoci error : {}", stderr);
+                event!(Level::ERROR, "Umoci error : {}", stderr);
                 ensure!(
                     result.status.success(),
                     UmociCommandFailedError { stdout, stderr }

@@ -28,8 +28,6 @@ shared = { path = "crates/shared" }
 node_metrics = { path = "crates/node_metrics" }
 serde_json = "1.0.91"
 daemonize = "0.4.1"
-log = "0.4.14"
-env_logger = "0.8.4"
 tonic.workspace = true
 prost.workspace = true
 tokio = { version = "1", features = ["full"] }
@@ -48,5 +46,12 @@ firepilot = { git = "https://github.com/polyxia-org/firepilot.git", branch = "ma
 url = { version = "2.3.1", features = ["serde"] }
 curl = "0.4.44"
 lz4 = "1.23.1"
+
+# Instrumentation
+tracing = { workspace = true }
+tracing-futures = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-timing = { workspace = true }
+
 [dependencies.proto]
 path = "../proto"

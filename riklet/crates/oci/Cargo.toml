@@ -8,8 +8,13 @@ edition = "2018"
 
 [dependencies]
 shared = { path = "../shared" }
-log = "0.4.14"
 snafu = "0.6.10"
 tokio = { version = "1.7.0", features = ["full"] }
 async-trait = "0.1.50"
 serde = { version = "1.0", features = ["derive"] }
+
+# Instrumentation
+tracing = { workspace = true }
+tracing-futures = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-timing = { workspace = true }

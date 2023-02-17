@@ -9,5 +9,9 @@ edition = "2018"
 [dependencies]
 flate2 = "1.0.20"
 tar = "0.4.35"
-log = "0.4.14"
 rand = "0.8.4"
+# Instrumentation
+tracing = { workspace = true }
+tracing-futures = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-timing = { workspace = true }

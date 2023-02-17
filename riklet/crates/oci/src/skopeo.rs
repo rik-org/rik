@@ -1,5 +1,4 @@
 use crate::*;
-use log::debug;
 use serde::{Deserialize, Serialize};
 use shared::utils::find_binary;
 use snafu::ensure;
@@ -8,6 +7,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
 use tokio::process::Command;
+use tracing::{event, Level};
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SkopeoConfiguration {
@@ -41,6 +41,7 @@ pub struct Skopeo {
 
 impl Skopeo {
     pub fn new(config: SkopeoConfiguration) -> Result<Self> {
+        event!(Level::DEBUG, "Initializing Skopeo...");
         let command = config
             .command
             .or_else(|| find_binary("skopeo"))
@@ -57,7 +58,7 @@ impl Skopeo {
             .canonicalize()
             .context(InvalidPathError {})?;
 
-        debug!("Skopeo initialized.");
+        event!(Level::DEBUG, "Skopeo initialized.");
 
         Ok(Self {
             command,
@@ -83,6 +84,7 @@ impl Skopeo {
     }
 
     pub async fn copy(&self, src: &str, uuid: &str, opts: Option<&CopyArgs>) -> Result<String> {
+        event!(Level::DEBUG, "Copying image from {} to {}", src, uuid);
         let mut args = vec![String::from("copy"), src.to_string()];
         Self::append_opts(&mut args, opts.map(|opts| opts as &dyn Args))?;
 
@@ -157,7 +159,8 @@ impl Executable for Skopeo {
             .spawn()
             .context(ProcessSpawnError {})?;
 
-        debug!(
+        event!(
+            Level::DEBUG,
             "{} {}",
             self.command.to_str().unwrap(),
             &args.clone().join(" ")
@@ -172,7 +175,7 @@ impl Executable for Skopeo {
         let stderr = String::from_utf8(result.stderr.clone()).unwrap();
 
         if !stderr.is_empty() {
-            error!("Skopeo error : {}", stderr);
+            event!(Level::ERROR, "Skopeo error : {}", stderr);
         }
 
         ensure!(

@@ -74,7 +74,7 @@ impl Router {
                     Some(
                         res.handler()(request, res.params(), connection, internal_sender)
                             .unwrap_or_else(|error| {
-                                event!(Level::WARN, "Could not handle route: {}", error);
+                                event!(Level::ERROR, "Could not handle route: {}", error);
                                 tiny_http::Response::from_string(error.to_string())
                                     .with_status_code(tiny_http::StatusCode::from(400))
                             }),

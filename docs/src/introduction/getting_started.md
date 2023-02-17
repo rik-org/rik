@@ -10,6 +10,11 @@
   [protoc](https://grpc.io/docs/protoc-installation/)(>=3.15.0),
 * Docker install: [Docker](https://docs.docker.com/get-docker/)
 
+Install packages required to build the project:
+
+- Ubuntu: `sudo apt update && sudo apt install libssl-dev protobuf-compiler`
+- Fedora: `sudo dnf update && sudo dnf install openssl-devel protobuf-compiler protobuf-devel`
+
 ## Clone the project
 
 Start by cloning the project using Git:

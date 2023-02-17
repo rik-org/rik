@@ -34,6 +34,7 @@ pub struct Runc {
 impl Runc {
     /// Create a Runc instance with the provided configuration.
     pub fn new(config: RuncConfiguration) -> Result<Self> {
+        event!(Level::DEBUG, "Initializing Runc...");
         let command = config
             .command
             .or_else(|| find_binary("runc"))
@@ -44,7 +45,7 @@ impl Runc {
             .or_else(|| Some(Duration::from_millis(5000)))
             .unwrap();
 
-        debug!("Runc initialized.");
+        event!(Level::DEBUG, "Runc initialized.");
 
         Ok(Self {
             command,
@@ -70,6 +71,7 @@ impl Runc {
 
     /// Send the specified signal to all processes inside the container.
     pub async fn kill(&self, id: &str, sig: i32, opts: Option<&KillArgs>) -> Result<()> {
+        event!(Level::DEBUG, "Killing container {}", id);
         let mut args = vec![String::from("kill")];
         Self::append_opts(&mut args, opts.map(|opts| opts as &dyn Args))?;
         args.push(String::from(id));
@@ -79,6 +81,7 @@ impl Runc {
 
     /// Run a container.
     pub async fn run(&self, id: &str, bundle: &Path, opts: Option<&CreateArgs>) -> Result<()> {
+        event!(Level::DEBUG, "Running container {}", id);
         let mut args = vec![String::from("run")];
         Self::append_opts(&mut args, opts.map(|opts| opts as &dyn Args))?;
 
@@ -104,6 +107,7 @@ impl Runc {
 
     /// Delete a container
     pub async fn delete(&self, id: &str, opts: Option<&DeleteArgs>) -> Result<()> {
+        event!(Level::DEBUG, "Deleting container {}", id);
         let mut args = vec![String::from("delete")];
         Self::append_opts(&mut args, opts.map(|opts| opts as &dyn Args))?;
         args.push(String::from(id));
@@ -151,7 +155,8 @@ impl Executable for Runc {
             .spawn()
             .context(ProcessSpawnError {})?;
 
-        debug!(
+        event!(
+            Level::DEBUG,
             "{} {}",
             self.command.to_str().unwrap(),
             &args.clone().join(" ")
@@ -166,7 +171,7 @@ impl Executable for Runc {
         let stderr = String::from_utf8(result.stderr.clone()).unwrap();
 
         if !stderr.is_empty() {
-            error!("Runc error : {}", stderr);
+            event!(Level::ERROR, "Runc error : {}", stderr);
         }
 
         ensure!(
@@ -265,17 +270,17 @@ impl Drop for Runc {
     fn drop(&mut self) {
         if let Some(root) = self.root.clone() {
             if let Err(e) = std::fs::remove_dir_all(&root) {
-                log::warn!("failed to cleanup root directory: {}", e);
+                event!(Level::ERROR, "failed to cleanup root directory: {}", e);
             }
         }
         if let Some(system_runc) = find_binary("runc") {
             if system_runc != self.command {
                 if let Err(e) = std::fs::remove_file(&self.command) {
-                    log::warn!("failed to remove runc binary: {}", e);
+                    event!(Level::ERROR, "failed to remove runc binary: {}", e);
                 }
             }
         } else if let Err(e) = std::fs::remove_file(&self.command) {
-            log::warn!("failed to remove runc binary: {}", e);
+            event!(Level::ERROR, "failed to remove runc binary: {}", e);
         }
     }
 }
@@ -292,10 +297,10 @@ mod tests {
 
     use crate::console::ConsoleSocket;
     use crate::container::{CreateArgs, DeleteArgs, Runc, RuncConfiguration};
-    use log::error;
     use shared::utils::unpack;
     use std::time::Duration;
     use tokio::time::sleep;
+    use tracing::{event, Level};
 
     const BUSYBOX_ARCHIVE: &str = "../../../fixtures/busybox.tar.gz";
     const RUNC_FIXTURE: &str = "../../../fixtures/runc.amd64";
@@ -338,7 +343,7 @@ mod tests {
                         Box::leak(Box::new(stream));
                     }
                     Err(err) => {
-                        error!("Receive PTY master error : {:?}", err)
+                        event!(Level::ERROR, "Receive PTY master error : {:?}", err)
                     }
                 }
             });
@@ -408,7 +413,7 @@ mod tests {
                     Box::leak(Box::new(stream));
                 }
                 Err(err) => {
-                    error!("Receive PTY master error : {:?}", err)
+                    event!(Level::ERROR, "Receive PTY master error : {:?}", err)
                 }
             }
         });

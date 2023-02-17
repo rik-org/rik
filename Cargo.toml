@@ -16,4 +16,5 @@ tonic-build = "0.8"
 # Instrumentation
 tracing = "0.1.37"
 tracing-futures = "0.2.5"
-tracing-subscriber = { version = "0.3.16", features = ["std", "fmt", "json"] }
+tracing-subscriber = { version = "0.3.16", features = ["std", "fmt", "json", "env-filter"] }
+tracing-timing = "0.6.0"

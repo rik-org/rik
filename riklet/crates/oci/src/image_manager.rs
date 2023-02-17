@@ -2,9 +2,9 @@ use crate::image::Image;
 use crate::skopeo::{Skopeo, SkopeoConfiguration};
 use crate::umoci::{Umoci, UmociConfiguration, UnpackArgs};
 use crate::*;
-use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use tracing::{event, Level};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ImageManagerConfiguration {
@@ -27,7 +27,7 @@ impl ImageManager {
         let umoci = Umoci::new(config.oci_manager.clone())?;
         let skopeo = Skopeo::new(config.image_puller.clone())?;
 
-        debug!("ImageManager initialized.");
+        event!(Level::DEBUG, "ImageManager initialized.");
 
         Ok(ImageManager {
             config,
@@ -44,11 +44,13 @@ impl ImageManager {
 
     /// Pull image locally
     pub async fn pull(&mut self, image_str: &str) -> Result<Image> {
+        event!(Level::DEBUG, "Pulling image {}", image_str);
         let bundle_directory = &self.config.oci_manager.bundles_directory.clone().unwrap();
         let mut image = Image::from(image_str);
 
         if !image.should_be_pulled(&bundle_directory.clone()) {
-            log::info!(
+            event!(
+                Level::INFO,
                 "Using local image for {} due to IfNotPresent image policy",
                 image.oci
             );
@@ -62,7 +64,7 @@ impl ImageManager {
             return Ok(image);
         }
 
-        info!("Pulling image {}", image_str);
+        event!(Level::INFO, "Pulling image {}", image_str);
         let src = self.format_image_src(&image.oci);
         let image_path = self
             .skopeo
@@ -73,7 +75,7 @@ impl ImageManager {
             )
             .await?;
 
-        debug!("{} copied into {}", image_str, image_path);
+        event!(Level::DEBUG, "{} copied into {}", image_str, image_path);
 
         let bundle = self
             .umoci
@@ -91,7 +93,7 @@ impl ImageManager {
 
         image.set_bundle(&bundle[..]);
 
-        info!("Successfully pulled image {}", image_str);
+        event!(Level::INFO, "Successfully pulled image {}", image_str);
 
         Ok(image)
     }
