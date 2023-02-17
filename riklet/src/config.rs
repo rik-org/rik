@@ -1,5 +1,4 @@
 use cri::container::RuncConfiguration;
-use log::{debug, info};
 use oci::image_manager::ImageManagerConfiguration;
 use oci::skopeo::SkopeoConfiguration;
 use oci::umoci::UmociConfiguration;
@@ -12,7 +11,9 @@ use std::time::Duration;
 
 use crate::constants::DEFAULT_COMMAND_TIMEOUT;
 use clap::Parser;
-use env_logger::Env;
+
+use tracing::{event, Level};
+use tracing_subscriber;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -89,7 +90,7 @@ impl Configuration {
         path: &Path,
         configuration: &Configuration,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        info!("No configuration file found at {}. Creating a new configuration file with the default configuration.", path.display());
+        event!(Level::INFO, "No configuration file found at {}. Creating a new configuration file with the default configuration.", path.display());
         let toml = toml::to_string(configuration).map_err(|source| Error::TomlEncode { source })?;
 
         let mut file = create_file_with_parent_folders(path)
@@ -103,6 +104,11 @@ impl Configuration {
 
     /// Read the configuration file from the path provided.
     fn read(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        event!(
+            Level::DEBUG,
+            "Reading configuration from file {}",
+            path.display()
+        );
         let contents = std::fs::read(path).map_err(|source| Error::Load { source })?;
 
         Ok(toml::from_slice(&contents).map_err(|source| Error::Parse { source })?)
@@ -111,6 +117,7 @@ impl Configuration {
     /// Load the configuration file
     /// If not exists, create it and return the default configuration
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
+        event!(Level::DEBUG, "Loading configuration");
         let opts = Configuration::get_cli_args()?;
 
         let path = PathBuf::from(&opts.config_file);
@@ -128,10 +135,17 @@ impl Configuration {
         };
 
         // Init the logger with the log level defined by the -v option.
-        env_logger::Builder::from_env(Env::default().default_filter_or(opts.get_log_level()))
-            .init();
+        let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+            .or_else(|_| tracing_subscriber::EnvFilter::try_new(opts.get_log_level()))
+            .unwrap();
+        tracing_subscriber::fmt().with_env_filter(filter).init();
+        // env_logger::Builder::from_env(Env::default().default_filter_or(opts.get_log_level())).init();
 
-        debug!("Loaded configuration from file {}", path.display());
+        event!(
+            Level::DEBUG,
+            "Loaded configuration from file {}",
+            path.display()
+        );
 
         configuration.bootstrap()?;
 
@@ -147,6 +161,10 @@ impl Configuration {
 
     /// Create all directories and files used by Riklet to work properly
     pub fn bootstrap(&self) -> Result<(), Error> {
+        event!(
+            Level::DEBUG,
+            "Create all directories and files used by Riklet to work properly"
+        );
         let bundles_dir = self.manager.oci_manager.bundles_directory.clone();
         let images_dir = self.manager.image_puller.images_directory.clone();
 

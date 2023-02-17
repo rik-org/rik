@@ -12,9 +12,13 @@ snafu = "0.6.10"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.64"
 chrono = { version = "0.4.10", features = ["serde"] }
-log = "0.4.14"
 async-trait = "0.1.50"
 futures = "0.3.1"
 tokio = { version = "1.7.0", features = ["full"] }
 uuid = { version = "0.8", features = ["v4"] }
 libc="0.2.97"
+# Instrumentation
+tracing = { workspace = true }
+tracing-futures = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-timing = { workspace = true }

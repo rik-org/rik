@@ -21,6 +21,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{fs, io, thread};
 use tonic::{transport::Channel, Request, Streaming};
+use tracing::{event, Level};
 
 #[derive(Debug)]
 pub struct Riklet {
@@ -49,6 +50,7 @@ impl Riklet {
 
     /// Bootstrap a Riklet in order to run properly.
     pub async fn bootstrap() -> Result<Self, Box<dyn Error>> {
+        event!(Level::DEBUG, "Riklet bootstraping process started.");
         // Get the hostname of the host to register
         let hostname = gethostname::gethostname().into_string().unwrap();
 
@@ -60,19 +62,17 @@ impl Riklet {
 
         // Connect to the master node scheduler
         let mut client = WorkerClient::connect(config.master_ip.clone()).await?;
-        log::debug!("gRPC WorkerClient connected.");
+        event!(Level::DEBUG, "gRPC WorkerClient connected.");
 
-        // Register this node to the master
+        event!(Level::DEBUG, "Node's registration to the master");
         let request = Request::new(WorkerRegistration {
             hostname: hostname.clone(),
         });
         let stream = client.register(request).await?.into_inner();
 
-        log::trace!("Registration success");
-
-        // Initialize the container runtime
+        event!(Level::DEBUG, "Container runtime initialization");
         let container_runtime = Runc::new(config.runner.clone())?;
-        // Initialize the image manager
+        event!(Level::DEBUG, "Image manager initialization");
         let image_manager = ImageManager::new(config.manager.clone())?;
 
         Ok(Self {
@@ -90,6 +90,7 @@ impl Riklet {
         &mut self,
         workload: &InstanceScheduling,
     ) -> Result<(), Box<dyn Error>> {
+        event!(Level::DEBUG, "Handling workload");
         match &workload.action {
             // Create
             0 => {
@@ -100,7 +101,7 @@ impl Riklet {
                 self.delete_workload(workload).await?;
             }
             _ => {
-                log::error!("Method not allowed")
+                event!(Level::ERROR, "Method not allowed")
             }
         }
 
@@ -144,12 +145,13 @@ impl Riklet {
         &mut self,
         workload: &InstanceScheduling,
     ) -> Result<(), Box<dyn Error>> {
+        event!(Level::DEBUG, "Creating workload");
         let workload_definition: WorkloadDefinition =
             serde_json::from_str(&workload.definition[..]).unwrap();
         let instance_id: &String = &workload.instance_id;
 
         if workload_definition.kind == "Function" {
-            log::info!("Function workload detected");
+            event!(Level::INFO, "Function workload detected");
 
             let rootfs_url = workload_definition
                 .spec
@@ -177,6 +179,7 @@ impl Riklet {
             }))
             .unwrap();
 
+            event!(Level::DEBUG, "Creating a new MicroVM");
             let vm = MicroVM::from(Config {
                 boot_source: BootSource {
                     kernel_image_path: PathBuf::from("/app/vmlinux.bin"),
@@ -191,11 +194,13 @@ impl Riklet {
                 }],
                 network_interfaces: vec![],
             });
+
+            event!(Level::DEBUG, "Starting the MicroVM");
             thread::spawn(move || {
                 firecracker.start(&vm).unwrap();
             });
         } else {
-            log::info!("Container workload detected");
+            event!(Level::INFO, "Container workload detected");
 
             let containers = workload_definition.get_containers(instance_id);
 
@@ -226,7 +231,7 @@ impl Riklet {
                             Box::leak(Box::new(stream));
                         }
                         Err(err) => {
-                            log::error!("Receive PTY master error : {:?}", err)
+                            event!(Level::ERROR, "Receive PTY master error : {:?}", err)
                         }
                     }
                 });
@@ -244,16 +249,20 @@ impl Riklet {
                     )
                     .await?;
 
-                log::info!("Started container {}", id);
+                event!(Level::INFO, "Started container {}", id);
             }
         }
 
-        log::info!(
+        event!(
+            Level::INFO,
             "Workload '{}' successfully processed.",
             &workload.instance_id
         );
 
-        // Inform the scheduler that the containers are running
+        event!(
+            Level::DEBUG,
+            "Informing the scheduler that the containers are running"
+        );
         self.send_status(2, instance_id).await;
 
         Ok(())
@@ -267,16 +276,24 @@ impl Riklet {
         let containers = self.workloads.get(&instance_id[..]).unwrap();
 
         for container in containers {
+            event!(
+                Level::INFO,
+                "Destroying container {}",
+                &container.id.as_ref().unwrap()
+            );
             self.container_runtime
                 .delete(
                     &container.id.as_ref().unwrap()[..],
                     Some(&DeleteArgs { force: true }),
                 )
-                .await?;
-            log::info!("Destroyed container {}", &container.id.as_ref().unwrap());
+                .await
+                .unwrap_or_else(|err| {
+                    event!(Level::ERROR, "Error while destroying container : {:?}", err)
+                });
         }
 
-        log::info!(
+        event!(
+            Level::INFO,
             "Workload '{}' successfully destroyed.",
             &workload.instance_id
         );
@@ -288,6 +305,7 @@ impl Riklet {
     }
 
     async fn send_status(&self, status: i32, instance_id: &str) {
+        event!(Level::DEBUG, "Sending status : {}", status);
         MetricsEmitter::emit_event(
             self.client.clone(),
             vec![WorkerStatus {
@@ -303,11 +321,12 @@ impl Riklet {
             }],
         )
         .await
-        .unwrap();
+        .unwrap_or_else(|err| event!(Level::ERROR, "Error while sending status : {:?}", err));
     }
 
     /// Run the metrics updater
     fn start_metrics_updater(&self) {
+        event!(Level::INFO, "Starting metrics updater");
         let client = self.client.clone();
         let hostname = self.hostname.clone();
 
@@ -327,7 +346,9 @@ impl Riklet {
                     }],
                 )
                 .await
-                .unwrap();
+                .unwrap_or_else(|err| {
+                    event!(Level::ERROR, "Error while sending metrics : {:?}", err)
+                });
                 tokio::time::sleep(Duration::from_millis(15000)).await;
             }
         });
@@ -335,7 +356,7 @@ impl Riklet {
 
     /// Wait for workloads
     pub async fn accept(&mut self) -> Result<(), Box<dyn Error>> {
-        log::info!("Riklet is running.");
+        event!(Level::INFO, "Riklet is running.");
         // Start the metrics updater
         self.start_metrics_updater();
 

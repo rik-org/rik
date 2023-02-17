@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use tracing::{event, Level};
+
 #[cfg(feature = "manager")]
 use sysinfo::{DiskExt, ProcessorExt, System, SystemExt};
 
@@ -86,6 +88,6 @@ impl Metrics {
     }
 
     pub fn log(&self) {
-        println!("{:?}", self)
+        event!(Level::INFO, "Metrics: {:?}", self);
     }
 }

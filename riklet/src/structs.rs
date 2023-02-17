@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use shared::utils::get_random_hash;
+use tracing::{event, Level};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EnvConfig {
@@ -78,6 +79,7 @@ impl WorkloadDefinition {
     pub fn get_containers(&self, instance_id: &str) -> Vec<Container> {
         let mut containers = Vec::<Container>::new();
         for mut container in self.spec.containers.clone() {
+            event!(Level::DEBUG, "Container: {:?}", &container);
             container.id = Some(format!(
                 "{}-{}-{}",
                 instance_id,

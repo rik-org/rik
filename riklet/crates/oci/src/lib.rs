@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use log::error;
 use snafu::Snafu;
 
 pub mod image;

@@ -123,7 +123,7 @@ pub fn delete(
         );
         Ok(tiny_http::Response::from_string("").with_status_code(tiny_http::StatusCode::from(204)))
     } else {
-        event!(Level::WARN, "Instance id {} not found", delete_id);
+        event!(Level::ERROR, "Instance id {} not found", delete_id);
         Ok(
             tiny_http::Response::from_string(format!("Instance id {} not found", delete_id))
                 .with_status_code(tiny_http::StatusCode::from(404)),
