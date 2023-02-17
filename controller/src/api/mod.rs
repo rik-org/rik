@@ -25,7 +25,7 @@ pub enum RikError {
     IoError(std::io::Error),
     HttpRequestError(serde_json::Error),
     InternalCommunicationError(String),
-    InvalidInstance(String),
+    InvalidName(String),
 }
 impl Display for RikError {
     fn fmt(&self, f: &mut Formatter) -> Result {
@@ -33,7 +33,7 @@ impl Display for RikError {
             RikError::IoError(ref e) => write!(f, "{}", e),
             RikError::HttpRequestError(ref e) => write!(f, "{}", e),
             RikError::InternalCommunicationError(ref e) => write!(f, "{}", e),
-            RikError::InvalidInstance(ref e) => write!(f, "{}", e),
+            RikError::InvalidName(ref e) => write!(f, "{}", e),
         }
     }
 }
