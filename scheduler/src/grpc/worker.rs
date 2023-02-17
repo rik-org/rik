@@ -46,7 +46,7 @@ impl WorkerClient for GRPCService {
     ) -> Result<Response<()>, tonic::Status> {
         let mut stream = _request.into_inner();
 
-        while let Some(data) = stream.try_next().await? {
+        while let Some(data) = stream.message().await.unwrap() {
             let identifier = data.identifier;
             let data = data.status.unwrap();
             match data {

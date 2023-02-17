@@ -201,6 +201,7 @@ impl Riklet {
             self.client.clone(),
             vec![WorkerStatus {
                 identifier: self.hostname.clone(),
+                host_address: None,
                 status: Some(proto::common::worker_status::Status::Instance(
                     InstanceMetric {
                         instance_id: instance_id.to_string().clone(),
@@ -226,6 +227,7 @@ impl Riklet {
                 MetricsEmitter::emit_event(
                     client.clone(),
                     vec![WorkerStatus {
+                        host_address: None,
                         identifier: hostname.clone(),
                         status: Some(proto::common::worker_status::Status::Worker(WorkerMetric {
                             status: 2,

@@ -8,7 +8,7 @@ use crate::state_manager::{StateManager, StateManagerEvent};
 use env_logger::Env;
 use log::{debug, error, info, warn};
 use proto::common::worker_status::Status;
-use proto::common::WorkerStatus;
+use proto::common::{ResourceStatus, WorkerMetric as WorkerMetricProto, WorkerStatus};
 use proto::controller::controller_server::ControllerServer;
 use proto::worker::worker_server::WorkerServer;
 use scheduler::Event;
@@ -16,6 +16,7 @@ use scheduler::{Controller, SchedulerError, Worker, WorkerRegisterChannelType};
 use std::default::Default;
 use std::net::{SocketAddr, SocketAddrV4};
 use std::sync::Arc;
+use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::Mutex;
 use tonic::transport::Server;
@@ -156,6 +157,7 @@ impl Manager {
                             .send(Ok(WorkerStatus {
                                 identifier,
                                 status: Some(Status::Instance(metrics)),
+                                host_address: None,
                             }))
                             .await
                         {
@@ -228,6 +230,31 @@ impl Manager {
             } else {
                 info!("Worker {} is back ready", hostname);
                 worker.set_channel(channel);
+                if let Some(controller) = &self.controller {
+                    let metrics = match serde_json::to_string(&worker.get_metrics()) {
+                        Ok(metric) => Some(metric),
+                        Err(e) => {
+                            warn!("Could not deserialize metrics, error: {}", e);
+                            None
+                        }
+                    };
+                    let worker_metrics = WorkerMetricProto {
+                        status: ResourceStatus::Running as i32,
+                        metrics: metrics.unwrap_or_default(),
+                    };
+                    let message = WorkerStatus {
+                        identifier: worker.id.clone(),
+                        status: Some(Status::Worker(worker_metrics)),
+                        host_address: Some(worker.addr.to_string()),
+                    };
+                    match controller.send(Ok(message)).await {
+                        Ok(_) => (),
+                        Err(e) => error!(
+                            "Failed to send WorkerMetricsUpdate to controller, reason: {}",
+                            e
+                        ),
+                    };
+                }
             }
         } else {
             let worker = Worker::new(hostname, channel, addr);
@@ -235,6 +262,31 @@ impl Manager {
                 "Worker {} is now registered, ip: {}",
                 worker.id, worker.addr
             );
+            if let Some(controller) = &self.controller {
+                let metrics = match serde_json::to_string(&worker.get_metrics()) {
+                    Ok(metric) => Some(metric),
+                    Err(e) => {
+                        warn!("Could not deserialize metrics, error: {}", e);
+                        None
+                    }
+                };
+                let worker_metrics = WorkerMetricProto {
+                    status: ResourceStatus::Running as i32,
+                    metrics: metrics.unwrap_or_default(),
+                };
+                let message = WorkerStatus {
+                    identifier: worker.id.clone(),
+                    status: Some(Status::Worker(worker_metrics)),
+                    host_address: Some(worker.addr.to_string()),
+                };
+                match controller.send(Ok(message)).await {
+                    Ok(_) => (),
+                    Err(e) => error!(
+                        "Failed to send WorkerMetricsUpdate to controller, reason: {}",
+                        e
+                    ),
+                };
+            }
             workers.push(worker);
         }
         Ok(())

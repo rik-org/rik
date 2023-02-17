@@ -42,4 +42,5 @@ message WorkerStatus {
         WorkerMetric worker = 2;
     }
     string identifier = 3;
+    optional string host_address = 4;
 }

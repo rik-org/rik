@@ -6,15 +6,20 @@ use crate::core::{InstanceService, Listener};
 use crate::database::RikDataBase;
 use definition::workload::WorkloadDefinition;
 use proto::common::worker_status::Status;
-use proto::common::WorkerStatus;
+use proto::common::{InstanceMetric, WorkerMetric, WorkerStatus};
+use std::net::SocketAddr;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
 use tracing::{event, Level};
 
 pub enum CoreInternalEvent {
-    /// Contains an update for an instance or metrics related to a worker
-    SchedulerNotification(WorkerStatus),
+    InstanceStatusUpdate(InstanceMetric),
+    WorkerStatusUpdate {
+        identifier: String,
+        address: SocketAddr,
+        metric: WorkerMetric,
+    },
     Legacy(ApiChannel),
     CreateInstance(Instance, WorkloadDefinition),
     DeleteInstance(Instance, WorkloadDefinition),
@@ -27,7 +32,7 @@ pub enum CoreInternalEvent {
 /// It is also responsible to handle properly transactions, and being able to rollback in
 /// case of problem
 pub struct Core {
-    instance_controller: InstanceServiceImpl,
+    instance_service: InstanceServiceImpl,
 
     internal_receiver: Receiver<CoreInternalEvent>,
     internal_sender: Sender<CoreInternalEvent>,
@@ -37,11 +42,10 @@ impl Core {
     pub async fn new(database: Arc<RikDataBase>) -> Result<Core, RikError> {
         let (internal_sender, internal_receiver) = std::sync::mpsc::channel();
 
-        let instance_service = InstanceRepositoryImpl::new(database);
-        let instance_controller =
-            InstanceServiceImpl::new(instance_service, internal_sender.clone()).await?;
+        let instance_repo = InstanceRepositoryImpl::new(database);
+        let instance_svc = InstanceServiceImpl::new(instance_repo, internal_sender.clone()).await?;
         Ok(Core {
-            instance_controller,
+            instance_service: instance_svc,
             internal_receiver,
             internal_sender,
         })
@@ -80,43 +84,38 @@ impl Core {
         };
     }
 
-    async fn handle_scheduler_notification(&mut self, update: WorkerStatus) {
-        if let Some(status) = update.status {
-            match status {
-                Status::Instance(instance_metric) => {
-                    self.instance_controller
-                        .handle_instance_status_update(instance_metric);
-                }
-                Status::Worker(_worker_metric) => (),
-            }
-        } else {
-            event!(
-                Level::ERROR,
-                "Received status update request without status from {}",
-                update.identifier
-            );
-        }
-    }
-
     pub async fn listen_notification(mut self) {
-        self.instance_controller.run_listen_thread();
+        self.instance_service.run_listen_thread();
         loop {
             let message = self.internal_receiver.recv().unwrap();
             match message {
-                CoreInternalEvent::SchedulerNotification(status) => {
-                    self.handle_scheduler_notification(status).await
+                CoreInternalEvent::InstanceStatusUpdate(instance_metric) => self
+                    .instance_service
+                    .handle_instance_status_update(instance_metric),
+                CoreInternalEvent::WorkerStatusUpdate {
+                    identifier,
+                    address,
+                    metric,
+                } => {
+                    event!(
+                        Level::INFO,
+                        "Received worker status update from {} ({}) with {:#?}",
+                        identifier,
+                        address,
+                        metric
+                    )
                 }
                 CoreInternalEvent::Legacy(notification) => {
                     self.handle_legacy_notification(notification).await
                 }
                 CoreInternalEvent::CreateInstance(instance, definition) => {
-                    self.instance_controller
+                    self.instance_service
                         .create_instance(instance, definition)
                         .await
                         .unwrap();
                 }
                 CoreInternalEvent::DeleteInstance(instance, definition) => {
-                    self.instance_controller
+                    self.instance_service
                         .delete_instance(instance, definition)
                         .await
                         .unwrap();
