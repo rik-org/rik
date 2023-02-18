@@ -8,14 +8,18 @@ use firepilot::microvm::{BootSource, Config, Drive, MicroVM, NetworkInterface};
 use curl::easy::Easy;
 use firepilot::Firecracker;
 use lz4::Decoder;
+use ipnetwork::Ipv4Network;
 use node_metrics::metrics_manager::MetricsManager;
 use oci::image_manager::ImageManager;
 use proto::common::{InstanceMetric, WorkerMetric, WorkerRegistration, WorkerStatus};
 use proto::worker::worker_client::WorkerClient;
 use proto::worker::InstanceScheduling;
+use shared::utils::ip_allocator::IpAllocator;
 use std::collections::HashMap;
 use std::env;
 use std::error::Error;
+use std::net::Ipv4Addr;
+use std::path::PathBuf;
 use std::process::Command;
 use std::fs::File;
 use std::io::Write;
@@ -29,7 +33,6 @@ use tracing::{event, Level};
 const TAP_SCRIPT_DEFAULT_LOCATION: &str =
     "/home/kalil/Project/polyxia/rik/scripts/setup-host-tap.sh";
 const TAP_ID: &str = "fc";
-const TAP_IP: &str = "";
 
 const KERNEL_DEFAULT_LOCATION: &str = "/app/vmlinux.bin";
 const ROOTFS_DEFAULT_LOCATION: &str = "/app/rootfs.ext4";
@@ -43,6 +46,7 @@ pub struct Riklet {
     image_manager: ImageManager,
     container_runtime: Runc,
     workloads: HashMap<String, Vec<Container>>,
+    ip_allocator: IpAllocator,
 }
 
 impl Riklet {
@@ -87,6 +91,10 @@ impl Riklet {
         event!(Level::DEBUG, "Image manager initialization");
         let image_manager = ImageManager::new(config.manager.clone())?;
 
+        // Initialize the ip allocator
+        let network = Ipv4Network::new(Ipv4Addr::new(192, 168, 1, 0), 24).unwrap();
+        let ip_allocator = IpAllocator::new(network);
+
         Ok(Self {
             hostname,
             container_runtime,
@@ -94,6 +102,7 @@ impl Riklet {
             client,
             stream,
             workloads: HashMap::<String, Vec<Container>>::new(),
+            ip_allocator,
         })
     }
 
@@ -208,15 +217,27 @@ impl Riklet {
                 })?;
             }
 
+            // Alocate ip range for tap interface and firecracker micro VM
+            let subnet = self
+                .ip_allocator
+                .allocate_subnet()
+                .ok_or("No more internal ip available")?;
+
+            let tap_ip = subnet.nth(1).ok_or("Fail get tap ip")?;
+            let firecracker_ip = subnet.nth(2).ok_or("Fail to get firecracker ip")?;
+
             let output = Command::new("/bin/sh")
                 .arg(env::var("TAP_SCRIPT").unwrap_or(TAP_SCRIPT_DEFAULT_LOCATION.to_string()))
                 .arg(TAP_ID)
-                .arg(TAP_IP)
+                .arg(tap_ip.to_string())
                 .output()?;
 
             if !output.status.success() {
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                log::error!("stderr: {}", stderr);
+                if !stderr.is_empty() {
+                    log::error!("stderr: {}", stderr);
+                }
+                return Err(stderr.into());
             }
 
             let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {

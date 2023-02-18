@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 use tar::Archive;
 use tracing::{event, Level};
 
+pub mod ip_allocator;
+
 /// Find a binary in the host PATH
 pub fn find_binary(binary: &str) -> Option<PathBuf> {
     std::env::var_os("PATH").and_then(|paths| {

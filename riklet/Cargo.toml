@@ -43,6 +43,7 @@ clap = {version = "4.0.26", features = ["derive"]}
 nix="0.21.0"
 gethostname = "0.2.1"
 firepilot = { git = "https://github.com/polyxia-org/firepilot.git", branch = "main" }
+ipnetwork="0.20.0"
 url = { version = "2.3.1", features = ["serde"] }
 curl = "0.4.44"
 lz4 = "1.23.1"
