@@ -7,8 +7,8 @@ use crate::core::worker_service::WorkerServiceImpl;
 use crate::core::{InstanceService, Listener, WorkerService};
 use crate::database::RikDataBase;
 use definition::workload::WorkloadDefinition;
-use proto::common::worker_status::Status;
-use proto::common::{InstanceMetric, WorkerMetric, WorkerStatus};
+
+use proto::common::{InstanceMetric, WorkerMetric};
 use std::net::SocketAddr;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;

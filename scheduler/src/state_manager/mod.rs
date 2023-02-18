@@ -1,18 +1,18 @@
 mod lib;
 
-use crate::state_manager::lib::{get_random_hash, int_to_resource_status};
+use crate::state_manager::lib::int_to_resource_status;
 use definition::workload::WorkloadDefinition;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use proto::common::{InstanceMetric, ResourceStatus, WorkerMetric, WorkloadRequestKind};
 use proto::worker::InstanceScheduling;
 use rand::seq::IteratorRandom;
 use scheduler::{Event, SchedulerError, Worker, WorkerState, WorkloadRequest};
-use std::cmp::Ordering;
+
 use std::collections::HashMap;
 use std::fmt;
-use std::fs::read;
+
 use std::sync::Arc;
-use std::task::ready;
+
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Mutex;
 
@@ -179,7 +179,7 @@ impl StateManager {
 
         let mut workers = ready_workers.iter().cycle();
         // Scheduling of new instances
-        for (id, workload) in self.state.iter_mut() {
+        for (_id, workload) in self.state.iter_mut() {
             let pending_instances: Vec<&mut WorkloadInstance> = workload
                 .instances
                 .iter_mut()
@@ -254,7 +254,7 @@ impl StateManager {
             None,
             request.definition.clone(),
         );
-        if let Some(mut workload) = self.state.get_mut(&request.workload_id) {
+        if let Some(workload) = self.state.get_mut(&request.workload_id) {
             if workload.status == ResourceStatus::Destroying {
                 error!("Cannot double replicas while workload is being destroyed");
                 return Err(SchedulerError::CannotDoubleReplicas);

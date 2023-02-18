@@ -1,5 +1,5 @@
 use crate::api::RikError;
-use crate::core::core::CoreInternalEvent;
+
 use crate::core::instance::Instance;
 use async_trait::async_trait;
 use backoff::ExponentialBackoff;

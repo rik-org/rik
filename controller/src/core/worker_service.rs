@@ -19,7 +19,7 @@ impl WorkerService for WorkerServiceImpl {
         &mut self,
         identifier: String,
         address: SocketAddr,
-        metric: WorkerMetric,
+        _metric: WorkerMetric,
     ) -> Result<(), RikError> {
         self.repository
             .register_worker(identifier, address.to_string())
