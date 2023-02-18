@@ -10,6 +10,7 @@ edition = "2018"
 flate2 = "1.0.20"
 tar = "0.4.35"
 rand = "0.8.4"
+ipnetwork = "0.20.0"
 # Instrumentation
 tracing = { workspace = true }
 tracing-futures = { workspace = true }
