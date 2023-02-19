@@ -1,4 +1,4 @@
-use crate::api::{ApiChannel, RikError, CRUD};
+use crate::api::{ApiChannel, Crud, RikError};
 use crate::core::instance::Instance;
 use crate::core::instance_repository::InstanceRepositoryImpl;
 use crate::core::instance_service::InstanceServiceImpl;
@@ -76,13 +76,13 @@ impl Core {
     pub async fn handle_legacy_notification(&mut self, notification: ApiChannel) {
         let definition = notification.workload_definition.as_ref().unwrap().clone();
         match notification.action {
-            CRUD::Create => {
+            Crud::Create => {
                 let instance: Instance = notification.into();
                 self.internal_sender
                     .send(CoreInternalEvent::CreateInstance(instance, definition))
                     .unwrap();
             }
-            CRUD::Delete => {
+            Crud::Delete => {
                 let instance: Instance = notification.into();
                 self.internal_sender
                     .send(CoreInternalEvent::DeleteInstance(instance, definition))
@@ -91,8 +91,9 @@ impl Core {
         };
     }
 
-    pub async fn listen_notification(mut self) {
+    pub async fn listen_notification(mut self, receiver: Receiver<ApiChannel>) {
         self.instance_service.run_listen_thread();
+        Core::run_legacy_listener(receiver, self.get_sender());
         loop {
             let message = self.internal_receiver.recv().unwrap();
             match message {

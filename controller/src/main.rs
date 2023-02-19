@@ -37,18 +37,15 @@ async fn main() {
         .expect("Failed to create internal API");
     let external_api = external::Server::new(legacy_sender);
     let mut threads = Vec::new();
-    let legacy_to_new_sender = internal_api.get_sender();
 
     threads.push(thread::spawn(move || {
-        let future = async move { internal_api.listen_notification().await };
+        let future = async move { internal_api.listen_notification(legacy_receiver).await };
         Builder::new_multi_thread()
             .enable_all()
             .build()
             .unwrap()
             .block_on(future)
     }));
-
-    Core::run_legacy_listener(legacy_receiver, legacy_to_new_sender);
 
     threads.push(thread::spawn(move || external_api.run(db)));
 

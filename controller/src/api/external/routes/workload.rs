@@ -1,7 +1,7 @@
 use crate::api;
 use crate::api::external::services::element::elements_set_right_name;
 use crate::api::types::element::OnlyId;
-use crate::api::{ApiChannel, CRUD};
+use crate::api::{ApiChannel, Crud};
 use crate::core::instance::Instance;
 use crate::database::RikRepository;
 use definition::workload::WorkloadDefinition;
@@ -137,7 +137,7 @@ pub fn delete(
         let definition: WorkloadDefinition = serde_json::from_value(workload.value).unwrap();
         internal_sender
             .send(ApiChannel {
-                action: CRUD::Delete,
+                action: Crud::Delete,
                 workload_id: Some(delete_id),
                 workload_definition: Some(definition),
                 instance_id: None,

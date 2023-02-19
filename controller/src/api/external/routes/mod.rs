@@ -62,8 +62,8 @@ impl Router {
     ) -> Option<tiny_http::Response<io::Cursor<Vec<u8>>>> {
         self.routes
             .iter()
-            .find(|&&(ref method, _)| method == request.method())
-            .and_then(|&(_, ref routes)| {
+            .find(|&(method, _)| method == request.method())
+            .and_then(|(_, routes)| {
                 if let Ok(res) = routes.recognize(request.url()) {
                     event!(
                         Level::INFO,
