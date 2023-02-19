@@ -25,13 +25,47 @@ pub mod workload {
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+    pub struct FunctionExecution {
+        /// Remote URL to a RootFS, must be accessible from the runtime
+        pub rootfs: url::Url,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+    pub enum NetworkPortExposureType {
+        /// Port will be exposed on the node fun
+        NodePort,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+    pub struct FunctionPort {
+        /// Port used to call the function
+        pub port: u16,
+        /// Port exposed by the function internally
+        #[serde(rename = "targetPort")]
+        pub target_port: u16,
+        #[serde(rename = "type")]
+        pub port_type: NetworkPortExposureType,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+    pub struct Function {
+        pub execution: FunctionExecution,
+        pub exposure: Option<FunctionPort>,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
     pub struct Spec {
+        #[serde(default)]
         pub containers: Vec<Container>,
+        #[serde(default)]
+        pub function: Option<Function>,
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
     pub enum WorkloadKind {
+        /// A container
         Pod,
+        /// A function executing a piece of code in a VM
         Function,
     }
 
@@ -56,6 +90,7 @@ pub mod workload {
 
     #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
     pub struct WorkloadDefinition {
+        #[serde(rename = "apiVersion")]
         pub api_version: String,
         pub kind: WorkloadKind,
         pub name: String,

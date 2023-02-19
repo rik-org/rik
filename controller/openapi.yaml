@@ -226,63 +226,84 @@ components:
           type: string
           example: workload
 
-          
+
+    ContainerWorkloadDefinition:
+      type: object
+      properties:
+        containers:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: <name>
+              image:
+                type: string
+                example: <image>
+              env:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: key1
+                    value:
+                      type: string
+                      example: value1
+              network:
+                type: object
+                properties:
+                  port:
+                    type: number
+                    example: 80
+                  targetPort:
+                    type: number
+                    example: 80
+                  protocol:
+                    type: string
+                    example: TCP
+                  type:
+                    type: string
+                    example: clusterIP|nodePort|loadBalancer
+
+    FunctionWorkloadDefinition:
+      type: object
+      description: A definition for a Function, no network is required as it's handled by the underlying platform
+      properties:
+        function:
+          type: object
+          properties:
+            execution:
+              type: object
+              properties:
+                rootfs:
+                  type: string
+                  example: https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/aarch64/rootfs/bionic.rootfs.ext4
+
     WorkloadDefinition:
       type: object
       properties:
         apiVersion:
           type: string
-          example: "v1"
+          enum:
+            - v1
         kind:
           type: string
-          example: pod
-        metadate:
-          type: object
-          properties:
-            name:
-              type: string
-              example: workload name
+          description: Determine the kind of object you want to create
+          enum:
+            - Pod
+            - Function
+        name:
+          type: string
+          example: Name of the object
         spec:
           type: object
-          properties:
-            containers:
-              type: array
-              items:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    example: <name>
-                  image:
-                    type: string
-                    example: <image>
-                  env:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        name:
-                          type: string
-                          example: key1
-                        value:
-                          type: string
-                          example: value1
-                  ports:
-                    type: object
-                    properties:
-                      port:
-                        type: number
-                        example: 80
-                      targetPort:
-                        type: number
-                        example: 80
-                      protocol:
-                        type: string
-                        example: TCP
-                      type:
-                        type: string
-                        example: clusterIP|nodePort|loadBalancer
-                        
+          oneOf:
+            - $ref: '#/components/schemas/ContainerWorkloadDefinition'
+            - $ref: '#/components/schemas/FunctionWorkloadDefinition'
+
     Workload:
       type: object
       properties:
@@ -293,14 +314,10 @@ components:
           type: string
           example: "v1"
         kind:
+          $ref: '#/components/schemas/WorkloadDefinition/properties/kind'
+        name:
           type: string
-          example: pod
-        metadate:
-          type: object
-          properties:
-            name:
-              type: string
-              example: workload name
+          example: workload name
         spec:
           type: object
           properties:
@@ -352,7 +369,7 @@ components:
         name:
           type: string
           example: "<workload name>"
-          
+
     RikletDefinition:
       type: object
       properties:
@@ -365,17 +382,17 @@ components:
 
     InstanceDefinition: 
       type: object
+      required:
+        - name
+        - workload_id
       properties:
         name:
-          required: false
           type: string
           example: "cobra-citer-1923"
         workload_id:
-          required: true
           type: string
           example: "c63f1351-d371-4700-81a4-ac97359bf5a3"
         replicas:
-          required: false
           type: integer
           example: 3
     

@@ -37,6 +37,7 @@ pub struct Spec {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WorkloadDefinition {
+    #[serde(rename = "apiVersion")]
     pub api_version: String,
     pub kind: String,
     pub name: String,
