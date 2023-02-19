@@ -42,7 +42,7 @@ impl WorkerRepository for WorkerRepositoryImpl {
         match RikRepository::upsert(
             &connection,
             &worker_id,
-            &format!("worker/any/{}", &worker_id),
+            &format!("/worker/any/{}", &worker_id),
             &serde_json::to_string(&address).unwrap(),
             "/worker",
         ) {
