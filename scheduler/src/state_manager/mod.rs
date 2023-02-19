@@ -172,7 +172,7 @@ impl StateManager {
 
     async fn update_state(&mut self) {
         let ready_workers = self.get_workers_ready().await;
-        if ready_workers.len() == 0 {
+        if ready_workers.is_empty() {
             info!("State isn't updated as there is no worker available");
             return;
         }
@@ -424,16 +424,14 @@ impl WorkloadInstance {
 
     /// Determine whether the instance is running somewhere and has been properly running
     pub fn is_deployed(&self) -> bool {
-        match self.status {
-            ResourceStatus::Running => true,
-            ResourceStatus::Creating => true,
-            ResourceStatus::Destroying => true,
-            _ => false,
-        }
+        matches!(
+            self.status,
+            ResourceStatus::Running | ResourceStatus::Creating | ResourceStatus::Destroying
+        )
     }
 
     pub fn is_pending(&self) -> bool {
-        return self.status == ResourceStatus::Pending;
+        self.status == ResourceStatus::Pending
     }
 
     pub fn set_status(&mut self, status: ResourceStatus) {

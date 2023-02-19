@@ -66,7 +66,7 @@ impl Metrics {
 
         Metrics {
             cpu: CpuMetrics {
-                total: cpu_amount as u8,
+                total: cpu_amount,
                 free: 100.0 - avg_cpu_usage,
             },
             memory: MemoryMetrics {

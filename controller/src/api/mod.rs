@@ -5,16 +5,16 @@ use definition::workload::WorkloadDefinition;
 use std::fmt::{Debug, Display, Formatter, Result};
 
 #[derive(Debug)]
-pub enum CRUD {
+pub enum Crud {
     Create = 0,
     Delete = 1,
 }
 
-impl From<i32> for CRUD {
+impl From<i32> for Crud {
     fn from(value: i32) -> Self {
         match value {
-            0 => CRUD::Create,
-            1 => CRUD::Delete,
+            0 => Crud::Create,
+            1 => Crud::Delete,
             _ => panic!("Invalid CRUD value"),
         }
     }
@@ -62,7 +62,7 @@ impl From<serde_json::Error> for RikError {
 }
 
 pub struct ApiChannel {
-    pub action: CRUD,
+    pub action: Crud,
     pub workload_id: Option<String>,
     pub instance_id: Option<String>,
     pub workload_definition: Option<WorkloadDefinition>,

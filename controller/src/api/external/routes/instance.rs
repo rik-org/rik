@@ -10,7 +10,7 @@ use crate::api::external::services::element::elements_set_right_name;
 use crate::api::external::services::instance::send_create_instance;
 use crate::api::types::element::OnlyId;
 use crate::api::types::instance::InstanceDefinition;
-use crate::api::{ApiChannel, CRUD};
+use crate::api::{ApiChannel, Crud};
 use crate::database::RikRepository;
 
 pub fn get(
@@ -108,7 +108,7 @@ pub fn delete(
     if let Ok(instance) = RikRepository::find_one(connection, &delete_id, "/instance") {
         internal_sender
             .send(ApiChannel {
-                action: CRUD::Delete,
+                action: Crud::Delete,
                 workload_id: None,
                 workload_definition: None,
                 instance_id: Some(delete_id),

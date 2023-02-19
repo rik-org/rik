@@ -79,7 +79,7 @@ impl From<ApiChannel> for Instance {
         Self {
             workload_id: value.workload_id.unwrap(),
             namespace: String::from("default"),
-            kind: value.workload_definition.unwrap().kind.clone().into(),
+            kind: value.workload_definition.unwrap().kind,
             id: value.instance_id.unwrap(),
             status: InstanceStatus::Unknown(String::from("Generated with APIChannel event")),
         }
@@ -92,7 +92,7 @@ impl Instance {
             workload_id,
             namespace: String::from("default"),
             kind,
-            id: id.unwrap_or_else(|| Self::generate_name()),
+            id: id.unwrap_or_else(Self::generate_name),
             status: InstanceStatus::Pending,
         }
     }
@@ -103,11 +103,6 @@ impl Instance {
     }
 
     pub fn get_full_name(&self) -> String {
-        format!(
-            "/instance/{}/{}/{}",
-            self.kind.to_string(),
-            self.namespace,
-            self.id
-        )
+        format!("/instance/{}/{}/{}", self.kind, self.namespace, self.id)
     }
 }

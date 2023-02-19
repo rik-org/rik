@@ -1,4 +1,4 @@
-use crate::api::{ApiChannel, CRUD};
+use crate::api::{ApiChannel, Crud};
 use crate::core::instance::Instance;
 use crate::database::RikRepository;
 use definition::workload::WorkloadDefinition;
@@ -18,11 +18,7 @@ pub fn send_create_instance(
     let workload: WorkloadDefinition =
         serde_json::from_str(&workload_db.value.to_string()).unwrap();
 
-    let instance = Instance::new(
-        workload_id.clone(),
-        workload.kind.clone().into(),
-        name.clone(),
-    );
+    let instance = Instance::new(workload_id.clone(), workload.kind.clone(), name.clone());
     match RikRepository::upsert(
         connection,
         &instance.id,
@@ -36,7 +32,7 @@ pub fn send_create_instance(
 
     internal_sender
         .send(ApiChannel {
-            action: CRUD::Create,
+            action: Crud::Create,
             workload_id: Some(workload_id),
             workload_definition: Some(workload),
             instance_id: Some(instance.id),
