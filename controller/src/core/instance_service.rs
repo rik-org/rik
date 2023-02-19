@@ -1,4 +1,4 @@
-use crate::api::{RikError, CRUD};
+use crate::api::{Crud, RikError};
 use crate::core::core::CoreInternalEvent;
 use crate::core::instance::{Instance, InstanceStatus};
 use crate::core::instance_repository::InstanceRepositoryImpl;
@@ -14,6 +14,8 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 use tracing::{event, Level};
+
+const DEFAULT_SCHEDULER_URL: &str = "http://localhost:4996";
 
 pub struct InstanceServiceImpl {
     client: ControllerClient<tonic::transport::Channel>,
@@ -54,7 +56,6 @@ impl Listener for InstanceServiceImpl {
                     }
                 }
             }
-            ()
         });
     }
 }
@@ -65,10 +66,8 @@ impl InstanceServiceImpl {
         sender: Sender<CoreInternalEvent>,
     ) -> Result<InstanceServiceImpl, RikError> {
         dotenv().ok();
-        let scheduler_url = match std::env::var("SCHEDULER_URL") {
-            Ok(val) => val,
-            Err(_e) => "http://127.0.0.1:4996".to_string(),
-        };
+        let scheduler_url =
+            std::env::var("SCHEDULER_URL").unwrap_or_else(|_| DEFAULT_SCHEDULER_URL.to_string());
 
         let controller_client =
             with_backoff(|| async { Ok(ControllerClient::connect(scheduler_url.clone()).await?) })
@@ -86,7 +85,7 @@ impl InstanceServiceImpl {
         &mut self,
         instance: Instance,
         workload_def: WorkloadDefinition,
-        action: CRUD,
+        action: Crud,
     ) -> Result<(), tonic::Status> {
         let scheduling = WorkloadScheduling {
             workload_id: instance.workload_id,
@@ -108,7 +107,7 @@ impl InstanceService for InstanceServiceImpl {
         workload_def: WorkloadDefinition,
     ) -> Result<(), RikError> {
         event!(Level::INFO, "Schedule instance {}", instance.id);
-        self.schedule_instance(instance, workload_def, CRUD::Create)
+        self.schedule_instance(instance, workload_def, Crud::Create)
             .await
             .map_err(|e| {
                 RikError::InternalCommunicationError(format!("Could not schedule instance: {}", e))
@@ -120,7 +119,7 @@ impl InstanceService for InstanceServiceImpl {
         workload_def: WorkloadDefinition,
     ) -> Result<(), RikError> {
         event!(Level::INFO, "Unschedule instance {}", instance.id);
-        self.schedule_instance(instance, workload_def, CRUD::Delete)
+        self.schedule_instance(instance, workload_def, Crud::Delete)
             .await
             .map_err(|e| {
                 RikError::InternalCommunicationError(format!("Could not schedule instance: {}", e))

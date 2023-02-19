@@ -35,7 +35,7 @@ impl Image {
 
     pub fn should_be_pulled(&self, directory: &Path) -> bool {
         match &self.pull_policy {
-            ImagePullPolicy::IfNotPresent => !directory.join(&self.get_uuid()).exists(),
+            ImagePullPolicy::IfNotPresent => !directory.join(self.get_uuid()).exists(),
             ImagePullPolicy::Always => true,
         }
     }

@@ -40,7 +40,7 @@ impl RikDataBase {
         std::fs::create_dir_all(&file_path).unwrap();
 
         let database_path = format!("{}{}.db", file_path, self.name);
-        Connection::open(&database_path)
+        Connection::open(database_path)
     }
 }
 
