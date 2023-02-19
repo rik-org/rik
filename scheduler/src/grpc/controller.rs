@@ -67,6 +67,7 @@ mod tests {
                 name: "workload-debian".to_string(),
                 replicas: Some(2),
                 spec: Spec {
+                    function: None,
                     containers: vec![Container {
                         name: " debian".to_string(),
                         image: "debian:latest".to_string(),
