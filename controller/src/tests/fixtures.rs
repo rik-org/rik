@@ -1,13 +1,15 @@
 use crate::api::ApiChannel;
 use crate::database::RikDataBase;
+use names::Generator;
 use rstest::fixture;
 use std::sync::mpsc::channel;
 use std::sync::mpsc::{Receiver, Sender};
 
 #[fixture]
 pub fn db_connection() -> std::sync::Arc<RikDataBase> {
+    let mut generator = Generator::default();
     std::env::set_var("DATABASE_LOCATION", "/tmp/riktest");
-    let db = RikDataBase::new(String::from("test"));
+    let db = RikDataBase::new(generator.next().unwrap());
     db.init_tables().unwrap();
     db
 }

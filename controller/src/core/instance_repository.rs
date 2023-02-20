@@ -55,3 +55,118 @@ impl InstanceRepository for InstanceRepositoryImpl {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::fixtures::db_connection;
+    use definition::workload::WorkloadKind;
+    use rstest::rstest;
+
+    #[rstest]
+    fn test_fetch_instance_function_ok(db_connection: std::sync::Arc<RikDataBase>) {
+        let connection = db_connection.open().unwrap();
+        connection.execute("DELETE FROM cluster", []).unwrap();
+
+        let workload_id = "workload_id";
+        let instance_id = "instance_id";
+
+        let instance = Instance::new(
+            workload_id.to_string(),
+            WorkloadKind::Function,
+            Some(instance_id.to_string()),
+        );
+
+        let instance_repository = InstanceRepositoryImpl::new(db_connection);
+
+        instance_repository.register_instance(instance).unwrap();
+
+        let fetch_instance = instance_repository
+            .fetch_instance(instance_id.to_string())
+            .unwrap();
+
+        assert_eq!(fetch_instance.id, instance_id);
+    }
+
+    #[rstest]
+    fn test_fetch_instance_pod_ok(db_connection: std::sync::Arc<RikDataBase>) {
+        let connection = db_connection.open().unwrap();
+        connection.execute("DELETE FROM cluster", []).unwrap();
+
+        let workload_id = "workload_id";
+        let instance_id = "instance_id";
+
+        let instance = Instance::new(
+            workload_id.to_string(),
+            WorkloadKind::Pod,
+            Some(instance_id.to_string()),
+        );
+
+        let instance_repository = InstanceRepositoryImpl::new(db_connection);
+
+        instance_repository.register_instance(instance).unwrap();
+
+        let fetch_instance = instance_repository
+            .fetch_instance(instance_id.to_string())
+            .unwrap();
+
+        assert_eq!(fetch_instance.id, instance_id);
+    }
+
+    #[rstest]
+    fn test_fetch_instance_not_found(db_connection: std::sync::Arc<RikDataBase>) {
+        let instance_repository = InstanceRepositoryImpl::new(db_connection);
+        let fetch_instance = instance_repository.fetch_instance("instance_id".to_string());
+        assert!(fetch_instance.is_err());
+    }
+
+    #[rstest]
+    fn test_register_instance_function_ok(db_connection: std::sync::Arc<RikDataBase>) {
+        let connection = db_connection.open().unwrap();
+        connection.execute("DELETE FROM cluster", []).unwrap();
+
+        let workload_id = "workload_id";
+        let instance_id = "instance_id";
+
+        let instance = Instance::new(
+            workload_id.to_string(),
+            WorkloadKind::Function,
+            Some(instance_id.to_string()),
+        );
+
+        let instance_repository = InstanceRepositoryImpl::new(db_connection);
+
+        instance_repository.register_instance(instance).unwrap();
+
+        let fetch_instance = instance_repository
+            .fetch_instance(instance_id.to_string())
+            .unwrap();
+
+        assert_eq!(fetch_instance.id, instance_id);
+    }
+
+    #[rstest]
+    fn test_register_instance_pod_ok(db_connection: std::sync::Arc<RikDataBase>) {
+        let connection = db_connection.open().unwrap();
+        connection.execute("DELETE FROM cluster", []).unwrap();
+
+        let workload_id = "workload_id";
+        let instance_id = "instance_id";
+
+        let instance = Instance::new(
+            workload_id.to_string(),
+            WorkloadKind::Pod,
+            Some(instance_id.to_string()),
+        );
+
+        let instance_repository = InstanceRepositoryImpl::new(db_connection);
+
+        instance_repository.register_instance(instance).unwrap();
+
+        let fetch_instance = instance_repository
+            .fetch_instance(instance_id.to_string())
+            .unwrap();
+
+        assert_eq!(fetch_instance.id, instance_id);
+    }
+}
