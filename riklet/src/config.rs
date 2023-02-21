@@ -52,7 +52,7 @@ pub struct CliConfiguration {
     #[arg(short, long, help = "The IP of the Rik master node.")]
     pub master_ip: Option<String>,
     #[arg(short, long, help = "The level of verbosity.", action = clap::ArgAction::Count)]
-    pub verbose: i32,
+    pub verbose: u8,
     #[arg(
         long,
         help = "If set and there is a config file, values defined by the CLI will override values of the configuration file."
