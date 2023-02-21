@@ -1,16 +1,22 @@
-# This Dockerfile aims to run the project on a distribution which is not
-# supported by Runc, Skopeo and Umoci like macOS.
-# This is only for development purposes.
-FROM alpine:latest AS build
-RUN apk add --no-cache runc skopeo umoci rust cargo protoc
+FROM rust:1.66 as builder
 
 WORKDIR /build
+COPY . .
+RUN apt update -y && apt install -y protobuf-compiler
+RUN cargo build -p riklet
 
-COPY ./src ./src
-COPY ./Cargo.* ./
+FROM debian:stable-slim
+RUN mkdir /app
+WORKDIR /app
 
-RUN cargo build
-
-FROM alpine:latest
-COPY --from=build /build/target/debug/riklet .
-ENTRYPOINT ["riklet", "--master-ip", "172.20.0.2:4995"]
+# # RUN chmod +x /app/firecracker
+COPY ./vmlinux.bin ./vmlinux.bin
+COPY ./rootfs.ext4 ./rootfs.ext4
+COPY ./firecracker ./firecracker
+# RUN curl -L https://github.com/firecracker-microvm/firecracker/releases/download/v1.1.4/firecracker-v1.1.4-x86_64.tgz | tar -xz \
+#     && mv firecracker-v1.1.4-x86_64 /app/firecracker
+# COPY ./data.zip ./data.zip
+RUN apt update && apt install -y skopeo runc umoci ca-certificates
+# RUN unzip data.zip
+COPY --from=builder /build/target/debug/riklet .
+CMD ["./riklet"]

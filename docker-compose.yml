@@ -1,0 +1,40 @@
+version: '3.7'
+
+services:
+  controller:
+    container_name: rik-controller
+    hostname: rik-controller
+    environment:
+      SCHEDULER_URL: http://rik-scheduler:4996
+    build:
+      dockerfile: ./controller/Dev.Dockerfile
+      context: .
+    depends_on:
+      - scheduler
+    ports:
+      - "10000:5000"
+
+  scheduler:
+    container_name: rik-scheduler
+    hostname: rik-scheduler
+    build:
+      dockerfile: ./scheduler/Dev.Dockerfile
+      context: .
+
+  worker:
+    container_name: rik-worker
+    hostname: rik-worker
+    build:
+      dockerfile: ./riklet/Dev.Dockerfile
+      context: .
+    command:
+      - ./riklet
+      - --master-ip
+      - rik-scheduler:4995
+    depends_on:
+      - scheduler
+      - controller
+    volumes:
+      - /dev/kvm:/dev/kvm
+    devices:
+      - /dev/kvm:/dev/kvm:rwm
