@@ -3,16 +3,10 @@
 target
 .run
 .idea
-target
 *.log
 .vagrant
 workload.json
-.idea/
-target
-.run
-.idea
 **/.DS_Store
-target
 .DS_Store
 # Local .terraform directories
 **/.terraform/*
@@ -53,3 +47,7 @@ rikconfig.yml
 .data
 
 *.iml
+
+# vm
+*.ext4
+*.bin
