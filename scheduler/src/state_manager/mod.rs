@@ -1,7 +1,7 @@
 mod lib;
 
 use crate::state_manager::lib::int_to_resource_status;
-use definition::workload::WorkloadDefinition;
+use definition::workload::{FunctionPort, WorkloadDefinition, WorkloadKind};
 use log::{debug, error, info};
 use proto::common::{InstanceMetric, ResourceStatus, WorkerMetric, WorkloadRequestKind};
 use proto::worker::InstanceScheduling;
@@ -10,7 +10,9 @@ use scheduler::{Event, SchedulerError, Worker, WorkerState, WorkloadRequest};
 
 use std::collections::HashMap;
 use std::fmt;
+use std::ops::Range;
 
+use rand::Rng;
 use std::sync::Arc;
 
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -170,6 +172,7 @@ impl StateManager {
         Ok(())
     }
 
+    /// Reconciliation loop that is scheduling / unscheduling instances
     async fn update_state(&mut self) {
         let ready_workers = self.get_workers_ready().await;
         if ready_workers.is_empty() {
@@ -194,6 +197,12 @@ impl StateManager {
 
                 instance.set_worker(Some(worker.clone()));
                 instance.set_status(ResourceStatus::Creating);
+
+                if instance.definition.kind == WorkloadKind::Function {
+                    let mut random_port = rand::thread_rng().gen_range(WORKLOAD_PORTS);
+                    instance.set_function_port(random_port);
+                }
+
                 let _ = self
                     .manager_channel
                     .send(Event::Schedule(
@@ -386,6 +395,8 @@ pub struct Workload {
     id: String,
 }
 
+const WORKLOAD_PORTS: Range<u16> = 45000..50000;
+
 #[derive(Debug, Clone)]
 pub struct WorkloadInstance {
     /// Part of the instance id that define the instance
@@ -436,5 +447,17 @@ impl WorkloadInstance {
 
     pub fn set_status(&mut self, status: ResourceStatus) {
         self.status = status;
+    }
+
+    pub fn set_function_port(&mut self, port: u16) {
+        if self.definition.kind != WorkloadKind::Function {
+            error!(
+                "Cannot assign function port for instance {}: not a function",
+                self.id
+            );
+        }
+
+        let fn_port = FunctionPort::new(port);
+        self.definition.spec.function.as_mut().unwrap().exposure = Some(fn_port);
     }
 }

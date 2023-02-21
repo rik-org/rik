@@ -47,6 +47,18 @@ pub mod workload {
         pub port_type: NetworkPortExposureType,
     }
 
+    impl FunctionPort {
+        /// Create a FunctionPort and bind it to the default port 3000
+        /// All our runtimes only use this port
+        pub fn new(port: u16) -> Self {
+            Self {
+                port,
+                target_port: 3000,
+                port_type: NetworkPortExposureType::NodePort,
+            }
+        }
+    }
+
     #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
     pub struct Function {
         pub execution: FunctionExecution,
