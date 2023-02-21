@@ -4,6 +4,8 @@ use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use cri::console::ConsoleSocket;
 use cri::container::{CreateArgs, DeleteArgs, Runc};
+use firepilot::microvm::{BootSource, Config, Drive, MicroVM};
+use firepilot::Firecracker;
 use node_metrics::metrics_manager::MetricsManager;
 use oci::image_manager::ImageManager;
 use proto::common::{InstanceMetric, WorkerMetric, WorkerRegistration, WorkerStatus};
@@ -12,6 +14,7 @@ use proto::worker::InstanceScheduling;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
+use std::thread;
 use std::time::Duration;
 use tonic::{transport::Channel, Request, Streaming};
 
@@ -107,54 +110,85 @@ impl Riklet {
         let workload_definition: WorkloadDefinition =
             serde_json::from_str(&workload.definition[..]).unwrap();
         let instance_id: &String = &workload.instance_id;
-        let containers = workload_definition.get_containers(instance_id);
 
-        // Inform the scheduler that the workload is creating
-        self.send_status(5, instance_id).await;
+        if workload_definition.kind == "function" {
+            log::info!("Function workload detected");
 
-        self.workloads
-            .insert(instance_id.clone(), containers.clone());
+            let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
+                command: Some(PathBuf::from("/app/firecracker")),
+                ..Default::default()
+            }))
+            .unwrap();
 
-        for container in containers {
-            let id = container.id.unwrap();
-
-            let image = &self.image_manager.pull(&container.image[..]).await?;
-
-            // New console socket for the container
-            let socket_path = PathBuf::from(format!("/tmp/{}", &id));
-            let console_socket = ConsoleSocket::new(&socket_path)?;
-
-            tokio::spawn(async move {
-                match console_socket
-                    .get_listener()
-                    .as_ref()
-                    .unwrap()
-                    .accept()
-                    .await
-                {
-                    Ok((stream, _socket_addr)) => {
-                        Box::leak(Box::new(stream));
-                    }
-                    Err(err) => {
-                        log::error!("Receive PTY master error : {:?}", err)
-                    }
-                }
+            let vm = MicroVM::from(Config {
+                boot_source: BootSource {
+                    kernel_image_path: PathBuf::from("/app/vmlinux.bin"),
+                    boot_args: None,
+                    initrd_path: None,
+                },
+                drives: vec![Drive {
+                    drive_id: "rootfs".to_string(),
+                    path_on_host: PathBuf::from("/app/rootfs.ext4"),
+                    is_read_only: false,
+                    is_root_device: true,
+                }],
+                network_interfaces: vec![],
             });
-            self.container_runtime
-                .run(
-                    &id[..],
-                    image.bundle.as_ref().unwrap(),
-                    Some(&CreateArgs {
-                        pid_file: None,
-                        console_socket: Some(socket_path),
-                        no_pivot: false,
-                        no_new_keyring: false,
-                        detach: true,
-                    }),
-                )
-                .await?;
+            thread::spawn(move || {
+                firecracker.start(&vm).unwrap();
+            });
+        } else {
+            log::info!("Container workload detected");
 
-            log::info!("Started container {}", id);
+            let containers = workload_definition.get_containers(instance_id);
+
+            // Inform the scheduler that the workload is creating
+            self.send_status(5, instance_id).await;
+
+            self.workloads
+                .insert(instance_id.clone(), containers.clone());
+
+            for container in containers {
+                let id = container.id.unwrap();
+
+                let image = &self.image_manager.pull(&container.image[..]).await?;
+
+                // New console socket for the container
+                let socket_path = PathBuf::from(format!("/tmp/{}", &id));
+                let console_socket = ConsoleSocket::new(&socket_path)?;
+
+                tokio::spawn(async move {
+                    match console_socket
+                        .get_listener()
+                        .as_ref()
+                        .unwrap()
+                        .accept()
+                        .await
+                    {
+                        Ok((stream, _socket_addr)) => {
+                            Box::leak(Box::new(stream));
+                        }
+                        Err(err) => {
+                            log::error!("Receive PTY master error : {:?}", err)
+                        }
+                    }
+                });
+                self.container_runtime
+                    .run(
+                        &id[..],
+                        image.bundle.as_ref().unwrap(),
+                        Some(&CreateArgs {
+                            pid_file: None,
+                            console_socket: Some(socket_path),
+                            no_pivot: false,
+                            no_new_keyring: false,
+                            detach: true,
+                        }),
+                    )
+                    .await?;
+
+                log::info!("Started container {}", id);
+            }
         }
 
         log::info!(
