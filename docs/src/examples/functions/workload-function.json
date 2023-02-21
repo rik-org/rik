@@ -1,0 +1,13 @@
+{
+  "api_version": "v1",
+  "kind": "Function",
+  "name": "my-function",
+  "replicas": 1,
+  "spec": {
+    "function": {
+      "execution": {
+        "rootfs": "https://.../alpine.tar.gz",
+      },
+    }
+  }
+}
