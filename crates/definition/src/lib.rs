@@ -2,6 +2,8 @@ pub mod workload {
     use serde::{Deserialize, Serialize};
     use std::fmt::Display;
 
+    const DEFAULT_FUNCTION_RUNTIME_PORT: u16 = 3000;
+
     #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
     pub struct EnvConfig {
         pub name: String,
@@ -45,6 +47,18 @@ pub mod workload {
         pub target_port: u16,
         #[serde(rename = "type")]
         pub port_type: NetworkPortExposureType,
+    }
+
+    impl FunctionPort {
+        /// Create a FunctionPort and bind it to the default port 3000
+        /// All our runtimes only use this port
+        pub fn new(port: u16) -> Self {
+            Self {
+                port,
+                target_port: DEFAULT_FUNCTION_RUNTIME_PORT,
+                port_type: NetworkPortExposureType::NodePort,
+            }
+        }
     }
 
     #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
