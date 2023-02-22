@@ -10,6 +10,10 @@
 <img alt="Discord" src="https://img.shields.io/discord/863020591984148502?style=for-the-badge">
 </div>
 
+### Getting started
+
+Please refer to our [documentation](https://polyxia-org.github.io/rik/).
+
 ### Contributing
 
 **RIK** is open-source and contributions are welcome. Please read the [CONTRIBUTING.md](CONTRIBUTING.md) for more information on how to contribute to this project.
