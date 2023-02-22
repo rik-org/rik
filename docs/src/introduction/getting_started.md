@@ -6,7 +6,7 @@
 > systems with a x86_64 architecture.
 
 * [Git](https://git-scm.com/downloads)
-* From source install: [Rust](https://www.rust-lang.org/tools/install), 
+* From source install: [Rust](https://www.rust-lang.org/tools/install),
   [protoc](https://grpc.io/docs/protoc-installation/)(>=3.15.0),
 * Docker install: [Docker](https://docs.docker.com/get-docker/)
 
@@ -28,8 +28,8 @@ docker compose up
 
 ### Build from source
 
-> Be aware that each component of the project is a **separate** binary, and 
-> that you 
+> Be aware that each component of the project is a **separate** binary, and
+> that you
 > need to execute them in a specific order.
 
 Build all components of the project
@@ -45,12 +45,12 @@ cargo run --release --bin scheduler
 
 Start the controller in a terminal
 ```bash
-cargo run --release --bin controller
+DATABASE_LOCATION=~/.rik/data cargo run --release --bin controller
 ```
 
 Start the worker in a terminal
 ```bash
-cargo run --release --bin worker
+sudo ./target/release/riklet
 ```
 
 If you experience any issue, please refer to the [troubleshooting](../troubleshooting.md),
@@ -64,12 +64,12 @@ Create a workload using example in `examples/workload-1.json`:
 
 ```bash
 # Create an alpine container workload
-RIKCONFIG=examples/config.json cargo run \
-  --bin rikctl -- create workload \ 
-  --file examples/workloads/workload-1.json
+RIKCONFIG=docs/src/examples/config.json cargo run \
+  --bin rikctl -- create workload \
+  --file docs/src/examples/workloads/workload-1.json
 
-# Returns a unique workload id
-0e4c1da4-0277-4088-9f37-8f445cbe8e46
+# The ID of the workload is returned, it will be useful next
+# Workload alpine has been successfully created with ID : "0e4c1da4-0277-4088-9f37-8f445cbe8e46"
 ```
 
 ### Deploy an instance
@@ -77,11 +77,12 @@ RIKCONFIG=examples/config.json cargo run \
 Based on your workload ID you can now deploy an instance:
 
 ```bash
+# Please replace the following value with the ID of your workload
 export WORKLOAD_ID=0e4c1da4-0277-4088-9f37-8f445cbe8e46
 
-RIKCONFIG=examples/config.json cargo run \
+RIKCONFIG=docs/src/examples/config.json cargo run \
   --bin rikctl -- create instance \
-   --workload-id ${WORKLOAD_ID}
+  --workload-id ${WORKLOAD_ID}
 ```
 
 ### Check your instance
