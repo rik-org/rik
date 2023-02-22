@@ -40,6 +40,7 @@ pub struct InstanceStatus {
     pub status: String,
 }
 impl InstanceStatus {
+    #[allow(dead_code)]
     pub fn new(status: usize) -> InstanceStatus {
         let str_status = match status {
             0 => "Unknown".to_string(),
