@@ -1,4 +1,4 @@
-mod config;
+mod cli;
 mod constants;
 mod core;
 mod emitters;

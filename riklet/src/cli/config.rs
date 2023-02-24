@@ -1,18 +1,19 @@
+use clap::Parser;
 use cri::container::RuncConfiguration;
 use oci::image_manager::ImageManagerConfiguration;
 use oci::skopeo::SkopeoConfiguration;
 use oci::umoci::UmociConfiguration;
 use serde::{Deserialize, Serialize};
 use shared::utils::{create_directory_if_not_exists, create_file_with_parent_folders};
-use snafu::Snafu;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::constants::DEFAULT_COMMAND_TIMEOUT;
 use clap::Parser;
-
 use tracing::{event, Level};
+use snafu::Snafu;
+use super::CliConfiguration;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -38,39 +39,6 @@ pub enum Error {
     InvalidIp { source: std::net::AddrParseError },
 }
 
-/// The configuration of the riklet.
-#[derive(Debug, Clone, Parser)]
-#[command(name = "Riklet", version, about)]
-pub struct CliConfiguration {
-    #[arg(
-        short,
-        long,
-        default_value = "/etc/riklet/configuration.toml",
-        help = "The path to the Riklet configuration file. If the file not exists, it will be created."
-    )]
-    pub config_file: String,
-    #[arg(short, long, help = "The IP of the Rik master node.")]
-    pub master_ip: Option<String>,
-    #[arg(short, long, help = "The level of verbosity.", action = clap::ArgAction::Count)]
-    pub verbose: u8,
-    #[arg(
-        long,
-        help = "If set and there is a config file, values defined by the CLI will override values of the configuration file."
-    )]
-    pub override_config: bool,
-}
-
-impl CliConfiguration {
-    /// Get the log level
-    pub fn get_log_level(&self) -> &str {
-        match self.verbose {
-            0 => "info",
-            1 => "debug",
-            _ => "trace",
-        }
-    }
-}
-
 #[derive(Deserialize, Debug, Serialize, PartialEq, Clone)]
 pub struct Configuration {
     pub master_ip: String,
@@ -80,8 +48,8 @@ pub struct Configuration {
 }
 
 impl Configuration {
-    fn get_cli_args() -> Result<CliConfiguration, Box<dyn std::error::Error>> {
-        Ok(CliConfiguration::parse())
+    fn get_cli_args() -> CliConfiguration {
+        CliConfiguration::parse()
     }
 
     /// Create the configuration file and store the default config into it
@@ -117,7 +85,7 @@ impl Configuration {
     /// If not exists, create it and return the default configuration
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
         event!(Level::DEBUG, "Loading configuration");
-        let opts = Configuration::get_cli_args()?;
+        let opts = Configuration::get_cli_args();
 
         let path = PathBuf::from(&opts.config_file);
 

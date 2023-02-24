@@ -1,4 +1,5 @@
-use crate::config::Configuration;
+use crate::cli::config::Configuration;
+use crate::cli::function_config::FnConfiguration;
 use crate::emitters::metrics_emitter::MetricsEmitter;
 use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
@@ -16,7 +17,6 @@ use proto::worker::worker_client::WorkerClient;
 use proto::worker::InstanceScheduling;
 use shared::utils::ip_allocator::IpAllocator;
 use std::collections::HashMap;
-use std::env;
 use std::error::Error;
 use std::net::Ipv4Addr;
 use std::path::PathBuf;
@@ -32,13 +32,8 @@ use tracing::{event, Level};
 // const TAP_SCRIPT_DEFAULT_LOCATION: &str = "/app/setup-host-tap.sh";
 const TAP_ID: &str = "fc";
 const MASK_LONG: &str = "255.255.255.252";
-const DEFAULT_IFACE: &str = "wlp2s0";
 
-const TAP_SCRIPT_DEFAULT_LOCATION: &str =
-    "/home/kalil/Project/polyxia/rik/scripts/setup-host-tap.sh";
-const KERNEL_DEFAULT_LOCATION: &str = "/app/vmlinux.bin";
-const ROOTFS_DEFAULT_LOCATION: &str = "/app/rootfs.ext4";
-const FIRECRACKER_DEFAULT_LOCATION: &str = "/app/firecracker";
+const SCRIPT_LOCATION: &str = "./scripts/setup-host-tap.sh";
 
 #[derive(Debug)]
 pub struct Riklet {
@@ -49,6 +44,7 @@ pub struct Riklet {
     container_runtime: Runc,
     workloads: HashMap<String, Vec<Container>>,
     ip_allocator: IpAllocator,
+    function_config: FnConfiguration,
 }
 
 impl Riklet {
@@ -78,6 +74,9 @@ impl Riklet {
         // Load the configuration
         let config = Configuration::load()?;
 
+        // load the function runtime configuration
+        let function_config = FnConfiguration::load();
+
         // Connect to the master node scheduler
         let mut client = WorkerClient::connect(config.master_ip.clone()).await?;
         event!(Level::DEBUG, "gRPC WorkerClient connected.");
@@ -105,6 +104,7 @@ impl Riklet {
             stream,
             workloads: HashMap::<String, Vec<Container>>::new(),
             ip_allocator,
+            function_config,
         })
     }
 
@@ -229,7 +229,7 @@ impl Riklet {
             let firecracker_ip = subnet.nth(2).ok_or("Fail to get firecracker ip")?;
 
             let output = Command::new("/bin/sh")
-                .arg(env::var("TAP_SCRIPT").unwrap_or(TAP_SCRIPT_DEFAULT_LOCATION.to_string()))
+                .arg(SCRIPT_LOCATION)
                 .arg(TAP_ID)
                 .arg(tap_ip.to_string())
                 .output()?;
@@ -246,28 +246,33 @@ impl Riklet {
             let ipt = iptables::new(false).unwrap();
 
             // Allow NAT on the interface connected to the internet.
-            ipt.append("nat", "POSTROUTING", "-o wlp2s0 -j MASQUERADE")?;
+            ipt.append(
+                "nat",
+                "POSTROUTING",
+                &format!("-o {} -j MASQUERADE", self.function_config.ifnet),
+            )
+            .unwrap();
 
             // Add the FORWARD rules to the filter table
             ipt.append_unique(
                 "filter",
                 "FORWARD",
                 &"-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT",
-            )?;
+            )
+            .unwrap();
             ipt.append(
                 "filter",
                 "FORWARD",
                 &format!(
                     "-i rik-{}-tap -o {} -j ACCEPT",
-                    TAP_ID,
-                    env::var("IFACE").unwrap_or(DEFAULT_IFACE.to_string())
+                    TAP_ID, self.function_config.ifnet
                 ),
-            )?;
+            )
+            .unwrap();
 
             let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
                 command: Some(PathBuf::from(
-                    env::var("FIRECRACKER_LOCATION")
-                        .unwrap_or(FIRECRACKER_DEFAULT_LOCATION.to_string()),
+                    self.function_config.firecracker_location.clone(),
                 )),
                 ..Default::default()
             }))
@@ -277,7 +282,7 @@ impl Riklet {
             let vm = MicroVM::from(Config {
                 boot_source: BootSource {
                     kernel_image_path: PathBuf::from(
-                        env::var("KERNEL_LOCATION").unwrap_or(KERNEL_DEFAULT_LOCATION.to_string()),
+                        self.function_config.kernel_location.clone(),
                     ),
                     boot_args: Some(format!(
                         "console=ttyS0 reboot=k nomodules random.trust_cpu=on panic=1 pci=off tsc=reliable i8042.nokbd i8042.noaux ipv6.disable=1 quiet loglevel=0 ip={firecracker_ip}::{tap_ip}:{MASK_LONG}::eth0:off"
