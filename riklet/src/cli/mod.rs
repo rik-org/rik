@@ -1,9 +1,8 @@
 pub mod config;
 pub mod function_config;
 
-use std::net::Ipv4Addr;
-
 use clap::{value_parser, Parser};
+use std::net::Ipv4Addr;
 
 /// The configuration of the riklet.
 #[derive(Debug, Clone, Parser)]
@@ -62,17 +61,6 @@ pub struct CliConfiguration {
     )]
     pub ifnet_ip: Ipv4Addr,
     /// Path to the script to create tap interfaces
-    #[arg(long, value_name = "SCRIPT_LOCATION", env = "SCRIPT_LOCATION")]
+    #[arg(short, long, value_name = "SCRIPT_LOCATION", env = "SCRIPT_LOCATION")]
     pub script_path: String,
-}
-
-impl CliConfiguration {
-    /// Get the log level
-    pub fn get_log_level(&self) -> &str {
-        match self.verbose {
-            0 => "info",
-            1 => "debug",
-            _ => "trace",
-        }
-    }
 }
