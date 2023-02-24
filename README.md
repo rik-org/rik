@@ -7,7 +7,7 @@
 
 RIK (pronounced /rɪk/) is an experimental workload orchestrator written in Rust that aims to be able to natively schedule **containers** and **virtual machines** workloads. RIK stands for **R**ust **i**n **K**ubernetes.
 
-### Getting started
+## Getting started
 
 Please refer to our [documentation](https://polyxia-org.github.io/rik/).
 
