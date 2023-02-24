@@ -20,6 +20,8 @@ services:
     build:
       dockerfile: ./scheduler/Dev.Dockerfile
       context: .
+    ports:
+      - "4995:4995"
 
   worker:
     container_name: rik-worker
