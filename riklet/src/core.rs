@@ -5,11 +5,11 @@ use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use cri::console::ConsoleSocket;
 use cri::container::{CreateArgs, DeleteArgs, Runc};
-use firepilot::microvm::{BootSource, Config, Drive, MicroVM, NetworkInterface};
 use curl::easy::Easy;
+use firepilot::microvm::{BootSource, Config, Drive, MicroVM, NetworkInterface};
 use firepilot::Firecracker;
-use lz4::Decoder;
 use ipnetwork::Ipv4Network;
+use lz4::Decoder;
 use node_metrics::metrics_manager::MetricsManager;
 use oci::image_manager::ImageManager;
 use proto::common::{InstanceMetric, WorkerMetric, WorkerRegistration, WorkerStatus};
@@ -18,22 +18,19 @@ use proto::worker::InstanceScheduling;
 use shared::utils::ip_allocator::IpAllocator;
 use std::collections::HashMap;
 use std::error::Error;
-use std::net::Ipv4Addr;
-use std::path::PathBuf;
-use std::process::Command;
 use std::fs::File;
 use std::io::Write;
+use std::net::Ipv4Addr;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::Duration;
 use std::{fs, io, thread};
 use tonic::{transport::Channel, Request, Streaming};
 use tracing::{event, Level};
 
 // const TAP_SCRIPT_DEFAULT_LOCATION: &str = "/app/setup-host-tap.sh";
-const TAP_ID: &str = "fc";
 const MASK_LONG: &str = "255.255.255.252";
-
-const SCRIPT_LOCATION: &str = "./scripts/setup-host-tap.sh";
+const DEFAULT_AGENT_PORT: u16 = 8080;
 
 #[derive(Debug)]
 pub struct Riklet {
@@ -219,6 +216,15 @@ impl Riklet {
                 })?;
             }
 
+            // Get port to expose function
+            let exposed_port = workload_definition
+                .spec
+                .function
+                .map(|f| f.exposure.map(|e| e.port))
+                .flatten()
+                .ok_or(())
+                .unwrap();
+
             // Alocate ip range for tap interface and firecracker micro VM
             let subnet = self
                 .ip_allocator
@@ -229,21 +235,32 @@ impl Riklet {
             let firecracker_ip = subnet.nth(2).ok_or("Fail to get firecracker ip")?;
 
             let output = Command::new("/bin/sh")
-                .arg(SCRIPT_LOCATION)
-                .arg(TAP_ID)
+                .arg(&self.function_config.script_path)
+                .arg(&workload_definition.name)
                 .arg(tap_ip.to_string())
                 .output()?;
 
             if !output.status.success() {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 if !stderr.is_empty() {
-                    log::error!("stderr: {}", stderr);
+                    event!(Level::ERROR, "stderr: {}", stderr);
                 }
                 return Err(stderr.into());
             }
 
             // Create a new IPTables object
             let ipt = iptables::new(false).unwrap();
+
+            // Port forward microvm on the host
+            ipt.append(
+                "nat",
+                "OUTPUT",
+                &format!(
+                    "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
+                    exposed_port, self.function_config.ifnet_ip, firecracker_ip, DEFAULT_AGENT_PORT
+                ),
+            )
+            .unwrap();
 
             // Allow NAT on the interface connected to the internet.
             ipt.append(
@@ -265,15 +282,13 @@ impl Riklet {
                 "FORWARD",
                 &format!(
                     "-i rik-{}-tap -o {} -j ACCEPT",
-                    TAP_ID, self.function_config.ifnet
+                    workload_definition.name, self.function_config.ifnet
                 ),
             )
             .unwrap();
 
             let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
-                command: Some(PathBuf::from(
-                    self.function_config.firecracker_location.clone(),
-                )),
+                command: Some(PathBuf::from(&self.function_config.firecracker_location)),
                 ..Default::default()
             }))
             .unwrap();
@@ -282,7 +297,7 @@ impl Riklet {
             let vm = MicroVM::from(Config {
                 boot_source: BootSource {
                     kernel_image_path: PathBuf::from(
-                        self.function_config.kernel_location.clone(),
+                        &self.function_config.kernel_location,
                     ),
                     boot_args: Some(format!(
                         "console=ttyS0 reboot=k nomodules random.trust_cpu=on panic=1 pci=off tsc=reliable i8042.nokbd i8042.noaux ipv6.disable=1 quiet loglevel=0 ip={firecracker_ip}::{tap_ip}:{MASK_LONG}::eth0:off"
@@ -298,15 +313,22 @@ impl Riklet {
                 network_interfaces: vec![NetworkInterface {
                     iface_id: "eth0".to_string(),
                     guest_mac: Some("AA:FC:00:00:00:01".to_string()),
-                    host_dev_name: format!("rik-{TAP_ID}-tap"),
+                    host_dev_name: format!("rik-{}-tap", workload_definition.name),
                 }],
             });
-
 
             event!(Level::DEBUG, "Starting the MicroVM");
             thread::spawn(move || {
                 firecracker.start(&vm).unwrap();
             });
+
+            event!(
+                Level::INFO,
+                "Function '{}' scheduled and available at {}:{}",
+                workload_definition.name,
+                firecracker_ip,
+                DEFAULT_AGENT_PORT
+            )
         } else {
             event!(Level::INFO, "Container workload detected");
 
