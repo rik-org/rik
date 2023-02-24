@@ -4,8 +4,10 @@ use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use cri::console::ConsoleSocket;
 use cri::container::{CreateArgs, DeleteArgs, Runc};
+use curl::easy::Easy;
 use firepilot::microvm::{BootSource, Config, Drive, MicroVM};
 use firepilot::Firecracker;
+use lz4::Decoder;
 use node_metrics::metrics_manager::MetricsManager;
 use oci::image_manager::ImageManager;
 use proto::common::{InstanceMetric, WorkerMetric, WorkerRegistration, WorkerStatus};
@@ -13,9 +15,11 @@ use proto::worker::worker_client::WorkerClient;
 use proto::worker::InstanceScheduling;
 use std::collections::HashMap;
 use std::error::Error;
-use std::path::PathBuf;
-use std::thread;
+use std::fs::File;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
+use std::{fs, io, thread};
 use tonic::{transport::Channel, Request, Streaming};
 
 #[derive(Debug)]
@@ -103,6 +107,39 @@ impl Riklet {
         Ok(())
     }
 
+    fn download_image(url: &String, file_path: &String) -> Result<(), Box<dyn Error>> {
+        let mut easy = Easy::new();
+        let mut dst = Vec::new();
+        easy.url(&url).unwrap();
+        let _redirect = easy.follow_location(true);
+
+        {
+            let mut transfer = easy.transfer();
+            transfer
+                .write_function(|data| {
+                    dst.extend_from_slice(data);
+                    Ok(data.len())
+                })
+                .unwrap();
+            transfer.perform().unwrap();
+        }
+
+        {
+            let mut file = File::create(&file_path)?;
+            file.write_all(dst.as_slice())?;
+        }
+
+        Ok(())
+    }
+
+    fn decompress(source: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
+        let input_file = File::open(source)?;
+        let mut decoder = Decoder::new(input_file)?;
+        let mut output_file = File::create(destination)?;
+        io::copy(&mut decoder, &mut output_file)?;
+        Ok(())
+    }
+
     async fn create_workload(
         &mut self,
         workload: &InstanceScheduling,
@@ -111,8 +148,28 @@ impl Riklet {
             serde_json::from_str(&workload.definition[..]).unwrap();
         let instance_id: &String = &workload.instance_id;
 
-        if workload_definition.kind == "function" {
+        if workload_definition.kind == "Function" {
             log::info!("Function workload detected");
+
+            let rootfs_url = workload_definition
+                .spec
+                .function
+                .clone()
+                .unwrap()
+                .execution
+                .rootfs
+                .to_string();
+
+            let download_directory = format!("/tmp/{}", &workload_definition.name);
+            let file_path = format!("{}/rootfs.ext4", &download_directory);
+
+            if !Path::new(&file_path).exists() {
+                let lz4_path = format!("{}.lz4", &file_path);
+                fs::create_dir(&download_directory)?;
+                Self::download_image(&rootfs_url, &lz4_path)?;
+
+                Self::decompress(Path::new(&lz4_path), Path::new(&file_path))?;
+            }
 
             let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
                 command: Some(PathBuf::from("/app/firecracker")),
@@ -128,7 +185,7 @@ impl Riklet {
                 },
                 drives: vec![Drive {
                     drive_id: "rootfs".to_string(),
-                    path_on_host: PathBuf::from("/app/rootfs.ext4"),
+                    path_on_host: PathBuf::from(&file_path),
                     is_read_only: false,
                     is_root_device: true,
                 }],
