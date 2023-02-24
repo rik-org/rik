@@ -30,10 +30,8 @@ use tonic::{transport::Channel, Request, Streaming};
 use tracing::{event, Level};
 
 // const TAP_SCRIPT_DEFAULT_LOCATION: &str = "/app/setup-host-tap.sh";
-const TAP_ID: &str = "fc";
 const MASK_LONG: &str = "255.255.255.252";
-
-const SCRIPT_LOCATION: &str = "./scripts/setup-host-tap.sh";
+const DEFAULT_AGENT_PORT: u16 = 8080;
 
 #[derive(Debug)]
 pub struct Riklet {
@@ -219,6 +217,15 @@ impl Riklet {
                 })?;
             }
 
+            // Get port to expose function
+            let exposed_port = workload_definition
+                .spec
+                .function
+                .map(|f| f.exposure.map(|e| e.port))
+                .flatten()
+                .ok_or(())
+                .unwrap();
+
             // Alocate ip range for tap interface and firecracker micro VM
             let subnet = self
                 .ip_allocator
@@ -229,8 +236,8 @@ impl Riklet {
             let firecracker_ip = subnet.nth(2).ok_or("Fail to get firecracker ip")?;
 
             let output = Command::new("/bin/sh")
-                .arg(SCRIPT_LOCATION)
-                .arg(TAP_ID)
+                .arg(&self.function_config.script_path)
+                .arg(&workload_definition.name)
                 .arg(tap_ip.to_string())
                 .output()?;
 
@@ -244,6 +251,17 @@ impl Riklet {
 
             // Create a new IPTables object
             let ipt = iptables::new(false).unwrap();
+
+            // Port forward microvm on the host
+            ipt.append(
+                "nat",
+                "OUTPUT",
+                &format!(
+                    "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
+                    exposed_port, self.function_config.ifnet_ip, firecracker_ip, DEFAULT_AGENT_PORT
+                ),
+            )
+            .unwrap();
 
             // Allow NAT on the interface connected to the internet.
             ipt.append(
@@ -265,15 +283,13 @@ impl Riklet {
                 "FORWARD",
                 &format!(
                     "-i rik-{}-tap -o {} -j ACCEPT",
-                    TAP_ID, self.function_config.ifnet
+                    workload_definition.name, self.function_config.ifnet
                 ),
             )
             .unwrap();
 
             let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
-                command: Some(PathBuf::from(
-                    self.function_config.firecracker_location.clone(),
-                )),
+                command: Some(PathBuf::from(&self.function_config.firecracker_location)),
                 ..Default::default()
             }))
             .unwrap();
@@ -282,7 +298,7 @@ impl Riklet {
             let vm = MicroVM::from(Config {
                 boot_source: BootSource {
                     kernel_image_path: PathBuf::from(
-                        self.function_config.kernel_location.clone(),
+                        &self.function_config.kernel_location,
                     ),
                     boot_args: Some(format!(
                         "console=ttyS0 reboot=k nomodules random.trust_cpu=on panic=1 pci=off tsc=reliable i8042.nokbd i8042.noaux ipv6.disable=1 quiet loglevel=0 ip={firecracker_ip}::{tap_ip}:{MASK_LONG}::eth0:off"
@@ -298,7 +314,7 @@ impl Riklet {
                 network_interfaces: vec![NetworkInterface {
                     iface_id: "eth0".to_string(),
                     guest_mac: Some("AA:FC:00:00:00:01".to_string()),
-                    host_dev_name: format!("rik-{TAP_ID}-tap"),
+                    host_dev_name: format!("rik-{}-tap", workload_definition.name),
                 }],
             });
 
@@ -307,6 +323,13 @@ impl Riklet {
             thread::spawn(move || {
                 firecracker.start(&vm).unwrap();
             });
+
+            log::info!(
+                "Function '{}' scheduled and available at {}:{}",
+                workload_definition.name,
+                firecracker_ip,
+                DEFAULT_AGENT_PORT
+            )
         } else {
             event!(Level::INFO, "Container workload detected");
 
