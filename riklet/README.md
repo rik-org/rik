@@ -1,14 +1,16 @@
-# Riklet 
+# Riklet
 
 [Rust in Kube (RIK)](https://github.com/dev-sys-do/rik) node agent
 
 ## Dependencies
 
-To work, Riklet requires the following packages : 
+To work, Riklet requires the following packages :
 
 - [Runc](https://github.com/opencontainers/runc) : to run containers
-- [Skopeo](https://github.com/containers/skopeo) : to pull containers images from multiples sources.
-- [Umoci](https://github.com/opencontainers/umoci) : to unpack & modifies OCI images.
+- [Skopeo](https://github.com/containers/skopeo) : to pull containers images
+  from multiples sources.
+- [Umoci](https://github.com/opencontainers/umoci) : to unpack & modifies OCI
+  images.
 
 ## Concept
 
@@ -20,7 +22,22 @@ Also, it is able to send metrics about node and pods regularly to the scheduler.
 
 ## Usage
 
-**To run the Riklet, you must have setup previously your RIK master node and get it's IP address.**
+### Configuration
+
+set environement variables to configure runtime:
+
+`IFACE`: Network interface to access internet
+
+`FIRECRACKER_LOCATION`: Path to the firecracker binary
+
+`ROOTFS_LOCATION`: Path to the rootfs location
+
+`KERNEL_LOCATION`: Path to the kernel location
+
+### Run
+
+**To run the Riklet, you must have setup previously your RIK master node and get
+it's IP address.**
 
 ```bash
 riklet --master-ip <YOUR_IP>:<PORT>
@@ -35,7 +52,6 @@ CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER='sudo -E' cargo run --bin riklet
 You should see something like that : 
 
 ```
-
         ______ _____ _   __ _      _____ _____
         | ___ \_   _| | / /| |    |  ___|_   _|
         | |_/ / | | | |/ / | |    | |__   | |
