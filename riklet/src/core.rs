@@ -30,10 +30,12 @@ use tonic::{transport::Channel, Request, Streaming};
 use tracing::{event, Level};
 
 // const TAP_SCRIPT_DEFAULT_LOCATION: &str = "/app/setup-host-tap.sh";
+const TAP_ID: &str = "fc";
+const MASK_LONG: &str = "255.255.255.252";
+const DEFAULT_IFACE: &str = "wlp2s0";
+
 const TAP_SCRIPT_DEFAULT_LOCATION: &str =
     "/home/kalil/Project/polyxia/rik/scripts/setup-host-tap.sh";
-const TAP_ID: &str = "fc";
-
 const KERNEL_DEFAULT_LOCATION: &str = "/app/vmlinux.bin";
 const ROOTFS_DEFAULT_LOCATION: &str = "/app/rootfs.ext4";
 const FIRECRACKER_DEFAULT_LOCATION: &str = "/app/firecracker";
@@ -240,6 +242,28 @@ impl Riklet {
                 return Err(stderr.into());
             }
 
+            // Create a new IPTables object
+            let ipt = iptables::new(false).unwrap();
+
+            // Allow NAT on the interface connected to the internet.
+            ipt.append("nat", "POSTROUTING", "-o wlp2s0 -j MASQUERADE")?;
+
+            // Add the FORWARD rules to the filter table
+            ipt.append_unique(
+                "filter",
+                "FORWARD",
+                &"-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT",
+            )?;
+            ipt.append(
+                "filter",
+                "FORWARD",
+                &format!(
+                    "-i rik-{}-tap -o {} -j ACCEPT",
+                    TAP_ID,
+                    env::var("IFACE").unwrap_or(DEFAULT_IFACE.to_string())
+                ),
+            )?;
+
             let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
                 command: Some(PathBuf::from(
                     env::var("FIRECRACKER_LOCATION")
@@ -255,7 +279,9 @@ impl Riklet {
                     kernel_image_path: PathBuf::from(
                         env::var("KERNEL_LOCATION").unwrap_or(KERNEL_DEFAULT_LOCATION.to_string()),
                     ),
-                    boot_args: None,
+                    boot_args: Some(format!(
+                        "console=ttyS0 reboot=k nomodules random.trust_cpu=on panic=1 pci=off tsc=reliable i8042.nokbd i8042.noaux ipv6.disable=1 quiet loglevel=0 ip={firecracker_ip}::{tap_ip}:{MASK_LONG}::eth0:off"
+                    )),
                     initrd_path: None,
                 },
                 drives: vec![Drive {
@@ -267,7 +293,7 @@ impl Riklet {
                 network_interfaces: vec![NetworkInterface {
                     iface_id: "eth0".to_string(),
                     guest_mac: Some("AA:FC:00:00:00:01".to_string()),
-                    host_dev_name: "tap0".to_string(),
+                    host_dev_name: format!("rik-{TAP_ID}-tap"),
                 }],
             });
 
