@@ -39,7 +39,7 @@ snafu = "0.6.10"
 libc="0.2.97"
 toml="0.5.8"
 uuid = { version = "0.8", features = ["v4"] }
-clap = {version = "4.0.26", features = ["derive"]}
+clap = { version = "4.0.26", features = ["derive", "env"] }
 nix="0.21.0"
 gethostname = "0.2.1"
 firepilot = { git = "https://github.com/polyxia-org/firepilot.git", branch = "main" }
