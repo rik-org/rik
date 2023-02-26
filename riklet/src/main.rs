@@ -6,17 +6,12 @@ mod structs;
 mod traits;
 
 use crate::core::Riklet;
-use tracing::{event, instrument, Level};
-
-// #[instrument]
-// fn test_instrument() {
-//     event!(Level::INFO, "Hello, world!");
-// }
+use tracing::{event, Level};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
-        .with_max_level(Level::TRACE)
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
     // run a function to test #[instrument] macro
     // test_instrument();

@@ -109,25 +109,36 @@ impl Riklet {
     }
 
     fn download_image(url: &String, file_path: &String) -> Result<(), Box<dyn Error>> {
+        event!(
+            Level::DEBUG,
+            "Downloading image from {} to {}",
+            url,
+            file_path
+        );
+
         let mut easy = Easy::new();
-        let mut dst = Vec::new();
-        easy.url(&url).unwrap();
-        let _redirect = easy.follow_location(true);
+        let mut buffer = Vec::new();
+        easy.url(&url)?;
+        easy.follow_location(true)?;
 
         {
             let mut transfer = easy.transfer();
-            transfer
-                .write_function(|data| {
-                    dst.extend_from_slice(data);
-                    Ok(data.len())
-                })
-                .unwrap();
-            transfer.perform().unwrap();
+            transfer.write_function(|data| {
+                buffer.extend_from_slice(data);
+                Ok(data.len())
+            })?;
+            transfer.perform()?;
+        }
+
+        let response_code = easy.response_code()?;
+        if response_code != 200 {
+            return Err(format!("Response code from registry: {}", response_code).into());
         }
 
         {
+            event!(Level::DEBUG, "Writing data to {}", file_path);
             let mut file = File::create(&file_path)?;
-            file.write_all(dst.as_slice())?;
+            file.write_all(buffer.as_slice())?;
         }
 
         Ok(())
@@ -165,12 +176,24 @@ impl Riklet {
             let download_directory = format!("/tmp/{}", &workload_definition.name);
             let file_path = format!("{}/rootfs.ext4", &download_directory);
 
-            if !Path::new(&file_path).exists() {
+            let file_pathbuf = Path::new(&file_path);
+            if !file_pathbuf.exists() {
                 let lz4_path = format!("{}.lz4", &file_path);
                 fs::create_dir(&download_directory)?;
-                Self::download_image(&rootfs_url, &lz4_path)?;
 
-                Self::decompress(Path::new(&lz4_path), Path::new(&file_path))?;
+                Self::download_image(&rootfs_url, &lz4_path).map_err(|e| {
+                    event!(Level::ERROR, "Error while downloading image: {}", e);
+                    fs::remove_dir_all(&download_directory)
+                        .expect("Error while removing directory");
+                    e
+                })?;
+
+                Self::decompress(Path::new(&lz4_path), file_pathbuf).map_err(|e| {
+                    event!(Level::ERROR, "Error while decompressing image: {}", e);
+                    fs::remove_dir_all(&download_directory)
+                        .expect("Error while removing directory");
+                    e
+                })?;
             }
 
             let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
