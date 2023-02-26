@@ -13,7 +13,6 @@ use crate::constants::DEFAULT_COMMAND_TIMEOUT;
 use clap::Parser;
 
 use tracing::{event, Level};
-use tracing_subscriber;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -133,13 +132,6 @@ impl Configuration {
                 configuration.override_config(&opts);
             }
         };
-
-        // Init the logger with the log level defined by the -v option.
-        let filter = tracing_subscriber::EnvFilter::try_from_default_env()
-            .or_else(|_| tracing_subscriber::EnvFilter::try_new(opts.get_log_level()))
-            .unwrap();
-        tracing_subscriber::fmt().with_env_filter(filter).init();
-        // env_logger::Builder::from_env(Env::default().default_filter_or(opts.get_log_level())).init();
 
         event!(
             Level::DEBUG,
