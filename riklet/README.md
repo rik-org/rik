@@ -26,6 +26,12 @@ Also, it is able to send metrics about node and pods regularly to the scheduler.
 riklet --master-ip <YOUR_IP>:<PORT>
 ```
 
+To run riklet as root with **cargo**:
+        
+```bash
+CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER='sudo -E' cargo run --bin riklet
+```
+
 You should see something like that : 
 
 ```
