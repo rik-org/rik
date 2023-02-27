@@ -6,28 +6,17 @@
 
 <div>
 <img src="https://img.shields.io/badge/Rik-rust-orange?style=for-the-badge&logo=appveyor" />
-<img src="https://img.shields.io/github/workflow/status/thomasgouveia/rik/RIK%20CI?style=for-the-badge" />
-<img alt="Discord" src="https://img.shields.io/discord/863020591984148502?style=for-the-badge">
+<img src="https://img.shields.io/github/actions/workflow/status/polyxia-org/rik/.github/workflows/rust.yml?branch=main&style=for-the-badge" />
 </div>
 
-### Getting started
+## Getting started
 
 Please refer to our [documentation](https://polyxia-org.github.io/rik/).
 
-### Contributing
+## Contributing
 
-**RIK** is open-source and contributions are welcome. Please read the [CONTRIBUTING.md](CONTRIBUTING.md) for more information on how to contribute to this project.
+**RIK** is open-source and contributions are welcome. Please read the [CONTRIBUTING.md](https://github.com/polyxia-org/.github/blob/main/.github/CONTRIBUTING.md) for more information on how to contribute to this project.
 
 ## Troubleshooting
 
-**`cargo build` fails because cannot build `openssl-sys`**
-
-This is due to missing packages in your system, install `libssl-dev` to fix this.
-
-- Ubuntu: `sudo apt update && sudo apt install libssl-dev protobuf-compiler`
-
-**protoc failed: Explicit 'optional' labels are disallowed in the Proto3
-Syntax**
-
-This is due to the version of `protoc` you are using, you need to use version
-3.14 or later.
+Please refer to our [troubleshooting page](https://polyxia-org.github.io/rik/troubleshooting).
