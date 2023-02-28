@@ -37,7 +37,7 @@ considering that, this service must be able to recover from a crash **quickly** 
 
 ## Architecture overview
 
-![Architecture overview](https://cdn.discordapp.com/attachments/828205813336244254/842476988290695187/a051f160-4d85-4c5c-a49b-0354ca9272d2.png)
+![Architecture overview](./assets/arch_overview.png)
 
 ## Communication in the cluster
 
@@ -90,7 +90,7 @@ _The V0 needs only a single worker and doesn't have a CLI._
 
 ## Schematic
 
-![v0_schema](./assets/arch_v0.png)
+![v0_schema](assets/arch_v0.png)
 
 ### API Definition
 
