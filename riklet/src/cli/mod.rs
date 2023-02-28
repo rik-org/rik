@@ -1,14 +1,8 @@
 pub mod config;
 pub mod function_config;
 
-<<<<<<< HEAD
-use std::net::Ipv4Addr;
-
-use clap::{value_parser, Parser};
-=======
 use clap::{value_parser, Parser};
 use std::net::Ipv4Addr;
->>>>>>> 141e041 (feat(riklet): read function port exposure from workload definition)
 
 /// The configuration of the riklet.
 #[derive(Debug, Clone, Parser)]
@@ -60,10 +54,6 @@ pub struct CliConfiguration {
     pub ifnet: String,
     /// IP of the network interface
     #[arg(
-<<<<<<< HEAD
-=======
-        short,
->>>>>>> 141e041 (feat(riklet): read function port exposure from workload definition)
         long,
         value_name = "IFNET_IP",
         env = "IFNET_IP",
@@ -71,21 +61,6 @@ pub struct CliConfiguration {
     )]
     pub ifnet_ip: Ipv4Addr,
     /// Path to the script to create tap interfaces
-<<<<<<< HEAD
-    #[arg(long, value_name = "SCRIPT_LOCATION", env = "SCRIPT_LOCATION")]
-=======
     #[arg(short, long, value_name = "SCRIPT_LOCATION", env = "SCRIPT_LOCATION")]
->>>>>>> 141e041 (feat(riklet): read function port exposure from workload definition)
     pub script_path: String,
-}
-
-impl CliConfiguration {
-    /// Get the log level
-    pub fn get_log_level(&self) -> &str {
-        match self.verbose {
-            0 => "info",
-            1 => "debug",
-            _ => "trace",
-        }
-    }
 }

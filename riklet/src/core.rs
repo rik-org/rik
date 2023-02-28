@@ -5,11 +5,11 @@ use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use cri::console::ConsoleSocket;
 use cri::container::{CreateArgs, DeleteArgs, Runc};
-use firepilot::microvm::{BootSource, Config, Drive, MicroVM, NetworkInterface};
 use curl::easy::Easy;
+use firepilot::microvm::{BootSource, Config, Drive, MicroVM, NetworkInterface};
 use firepilot::Firecracker;
-use lz4::Decoder;
 use ipnetwork::Ipv4Network;
+use lz4::Decoder;
 use node_metrics::metrics_manager::MetricsManager;
 use oci::image_manager::ImageManager;
 use proto::common::{InstanceMetric, WorkerMetric, WorkerRegistration, WorkerStatus};
@@ -18,12 +18,11 @@ use proto::worker::InstanceScheduling;
 use shared::utils::ip_allocator::IpAllocator;
 use std::collections::HashMap;
 use std::error::Error;
-use std::net::Ipv4Addr;
-use std::path::PathBuf;
-use std::process::Command;
 use std::fs::File;
 use std::io::Write;
+use std::net::Ipv4Addr;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::Duration;
 use std::{fs, io, thread};
 use tonic::{transport::Channel, Request, Streaming};
@@ -244,7 +243,7 @@ impl Riklet {
             if !output.status.success() {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 if !stderr.is_empty() {
-                    log::error!("stderr: {}", stderr);
+                    event!(Level::ERROR, "stderr: {}", stderr);
                 }
                 return Err(stderr.into());
             }
@@ -318,13 +317,13 @@ impl Riklet {
                 }],
             });
 
-
             event!(Level::DEBUG, "Starting the MicroVM");
             thread::spawn(move || {
                 firecracker.start(&vm).unwrap();
             });
 
-            log::info!(
+            event!(
+                Level::INFO,
                 "Function '{}' scheduled and available at {}:{}",
                 workload_definition.name,
                 firecracker_ip,

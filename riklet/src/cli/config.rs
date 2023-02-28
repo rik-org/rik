@@ -9,11 +9,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::constants::DEFAULT_COMMAND_TIMEOUT;
-use clap::Parser;
-use tracing::{event, Level};
-use snafu::Snafu;
 use super::CliConfiguration;
+use crate::constants::DEFAULT_COMMAND_TIMEOUT;
+use snafu::Snafu;
+use tracing::{event, Level};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
