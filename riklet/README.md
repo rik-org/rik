@@ -41,10 +41,22 @@ CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER='sudo -E' cargo run --bin riklet
 
 **Prerequisite**: You need firecracker in yout PATH.
 
+Here is a list of **required** environment variables to run riklet:
+
+| Environment Variable   | Description                                                                                                             | Default |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------- |
+| `IFACE`                | Network interface connected to the internet                                                                             | ""      |
+| `IFACE_IP`             | IP of the Network interface connected to the internet                                                                   | ""      |
+| `FIRECRACKER_LOCATION` | Path to the firecracker binary                                                                                          | ""      |
+| `KERNEL_LOCATION`      | Path to the kernel location                                                                                             | ""      |
+| `SCRIPT_LOCATION`      | Path to the [script](https://github.com/polyxia-org/rik/blob/main/scripts/setup-host-tap.sh) that create tap interface. | ""      |
+
 To run riklet with FAAS configuration.
 
 ```bash
-sudo riklet --firecracker-path <FIRECRACKER_LOCATION> --kernel-path <KERNEL_LOCATION> --ifnet <IFACE> --ifnet-ip <IFACE_IP> --script-path <SCRIPT_LOCATION>
+sudo riklet --firecracker-path ${FIRECRACKER_LOCATION} \
+    --kernel-path ${KERNEL_LOCATION} --ifnet ${IFACE} \
+    --ifnet-ip ${IFACE_IP} --script-path ${SCRIPT_LOCATION}
 ```
 
 Exemple:
@@ -52,20 +64,6 @@ Exemple:
 ```bash
 sudo riklet --firecracker-path $(which firecracker) --kernel-path ./vmlinux.bin --ifnet wlp2s0 --ifnet-ip 192.168.1.84 --script-path ./scripts/setup-host-tap.sh
 ```
-
-`IFACE`: Network interface connected to the internet.
-
-`IFACE_IP`: IP of the Network interface connected to the internet.
-
-`FIRECRACKER_LOCATION`: Path to the firecracker binary.
-
-`KERNEL_LOCATION`: Path to the kernel location.
-
-`SCRIPT_LOCATION`: Path to the
-[script](https://github.com/polyxia-org/rik/blob/main/scripts/setup-host-tap.sh)
-that create tap interface.
-
-You can set this configuration as environement variable.
 
 You should see something like that :
 
@@ -82,17 +80,19 @@ You should see something like that :
 
 ## Cleaning up
 
-For now the Riklet don't clean his network configuration by his self.
+For now the Riklet doesn't clean its network configuration by itself.
+
+| Environment Variable | Description                                | Default |
+| -------------------- | ------------------------------------------ | ------- |
+| `FUNCTION_NAME`      | the name of the function that is scheduled | ""      |
 
 To clean the network configuration:
 
 ```bash
 sudo iptables -D FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-sudo iptables -D FORWARD -i rik-<FUNCTION_NAME>-tap -o <IFACE> -j ACCEPT
-sudo iptables -t nat -D POSTROUTING -o <IFACE> -j MASQUERADE
+sudo iptables -D FORWARD -i rik-${FUNCTION_NAME}-tap -o ${IFACE} -j ACCEPT
+sudo iptables -t nat -D POSTROUTING -o ${IFACE} -j MASQUERADE
 ```
-
-`FUNCTION_NAME`: the name of the function that is scheduled.
 
 ## Authors
 
