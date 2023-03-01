@@ -1,8 +1,9 @@
 pub mod workload {
     use serde::{Deserialize, Serialize};
     use std::fmt::Display;
+    use tracing::error;
 
-    const DEFAULT_FUNCTION_RUNTIME_PORT: u16 = 3000;
+    const DEFAULT_FUNCTION_RUNTIME_PORT: u16 = 8080;
 
     #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
     pub struct EnvConfig {
@@ -110,5 +111,21 @@ pub mod workload {
         pub name: String,
         pub spec: Spec,
         pub replicas: Option<u16>,
+    }
+
+    impl WorkloadDefinition {
+        /// Determine whether the workload is a kind function
+        pub fn is_function(&self) -> bool {
+            self.kind == WorkloadKind::Function
+        }
+
+        pub fn set_function_port(&mut self, port: u16) {
+            if !self.is_function() {
+                error!("Cannot set function port on non-function workload");
+            }
+            if let Some(function) = &mut self.spec.function {
+                function.exposure = Some(FunctionPort::new(port));
+            }
+        }
     }
 }

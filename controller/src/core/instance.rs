@@ -1,11 +1,11 @@
 use crate::api::ApiChannel;
-use definition::workload::WorkloadKind;
+use definition::workload::{Spec, WorkloadKind};
 use names::{Generator, Name};
 use proto::common::ResourceStatus;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum InstanceStatus {
     Unknown(String),
     Pending,
@@ -30,7 +30,7 @@ impl Display for InstanceStatus {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Instance {
     /// Unique identifier of the workload
     pub workload_id: String,
@@ -43,6 +43,8 @@ pub struct Instance {
     pub kind: WorkloadKind,
 
     pub status: InstanceStatus,
+
+    pub spec: Spec,
 }
 
 impl From<ResourceStatus> for InstanceStatus {
@@ -76,28 +78,31 @@ impl From<i32> for InstanceStatus {
 
 impl From<ApiChannel> for Instance {
     fn from(value: ApiChannel) -> Self {
+        let workload_definition = value.workload_definition.unwrap();
         Self {
             workload_id: value.workload_id.unwrap(),
             namespace: String::from("default"),
-            kind: value.workload_definition.unwrap().kind,
+            kind: workload_definition.kind,
             id: value.instance_id.unwrap(),
             status: InstanceStatus::Unknown(String::from("Generated with APIChannel event")),
+            spec: workload_definition.spec,
         }
     }
 }
 
 impl Instance {
-    pub fn new(workload_id: String, kind: WorkloadKind, id: Option<String>) -> Self {
+    pub fn new(workload_id: String, kind: WorkloadKind, id: Option<String>, spec: Spec) -> Self {
         Self {
             workload_id,
             namespace: String::from("default"),
             kind,
             id: id.unwrap_or_else(Self::generate_name),
             status: InstanceStatus::Pending,
+            spec,
         }
     }
 
-    fn generate_name() -> String {
+    pub fn generate_name() -> String {
         let mut random_name_generator = Generator::with_naming(Name::Numbered);
         random_name_generator.next().unwrap()
     }

@@ -17,25 +17,14 @@ pub fn send_create_instance(
     };
     let workload: WorkloadDefinition =
         serde_json::from_str(&workload_db.value.to_string()).unwrap();
-
-    let instance = Instance::new(workload_id.clone(), workload.kind.clone(), name.clone());
-    match RikRepository::upsert(
-        connection,
-        &instance.id,
-        &instance.get_full_name(),
-        &serde_json::to_string(&instance).unwrap(),
-        "/instance",
-    ) {
-        Ok(_) => (),
-        Err(err) => panic!("{}", err),
-    }
+    let instance_name = name.clone().unwrap_or(Instance::generate_name());
 
     internal_sender
         .send(ApiChannel {
             action: Crud::Create,
             workload_id: Some(workload_id),
             workload_definition: Some(workload),
-            instance_id: Some(instance.id),
+            instance_id: Some(instance_name),
         })
         .unwrap();
 }
