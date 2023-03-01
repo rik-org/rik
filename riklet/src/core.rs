@@ -288,7 +288,7 @@ impl Riklet {
             .unwrap();
 
             let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
-                command: Some(PathBuf::from(&self.function_config.firecracker_location)),
+                command: Some(self.function_config.firecracker_location.clone()),
                 ..Default::default()
             }))
             .unwrap();
@@ -296,9 +296,7 @@ impl Riklet {
             event!(Level::DEBUG, "Creating a new MicroVM");
             let vm = MicroVM::from(Config {
                 boot_source: BootSource {
-                    kernel_image_path: PathBuf::from(
-                        &self.function_config.kernel_location,
-                    ),
+                    kernel_image_path: self.function_config.kernel_location.clone(),
                     boot_args: Some(format!(
                         "console=ttyS0 reboot=k nomodules random.trust_cpu=on panic=1 pci=off tsc=reliable i8042.nokbd i8042.noaux ipv6.disable=1 quiet loglevel=0 ip={firecracker_ip}::{tap_ip}:{MASK_LONG}::eth0:off"
                     )),
