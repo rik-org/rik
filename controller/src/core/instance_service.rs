@@ -4,18 +4,27 @@ use crate::core::instance::{Instance, InstanceStatus};
 use crate::core::instance_repository::InstanceRepositoryImpl;
 use crate::core::{with_backoff, InstanceRepository, InstanceService, Listener};
 use async_trait::async_trait;
-use definition::workload::WorkloadDefinition;
+use definition::workload::{WorkloadDefinition, WorkloadKind};
 use dotenv::dotenv;
 use proto::common::worker_status::Status;
 use proto::common::InstanceMetric;
 use proto::controller::controller_client::ControllerClient;
 use proto::controller::WorkloadScheduling;
+use rand::Rng;
 use std::net::SocketAddr;
+use std::ops::Range;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
 use tracing::{event, Level};
 
+const WORKLOAD_PORTS: Range<u16> = 45000..50000;
 const DEFAULT_SCHEDULER_URL: &str = "http://localhost:4996";
+
+pub fn mutate_function_port(mut workload: WorkloadDefinition) -> WorkloadDefinition {
+    let random_port = rand::thread_rng().gen_range(WORKLOAD_PORTS);
+    workload.set_function_port(random_port);
+    workload
+}
 
 pub struct InstanceServiceImpl {
     client: ControllerClient<tonic::transport::Channel>,
@@ -88,10 +97,10 @@ impl InstanceServiceImpl {
         action: Crud,
     ) -> Result<(), tonic::Status> {
         let scheduling = WorkloadScheduling {
-            workload_id: instance.workload_id,
+            workload_id: instance.workload_id.clone(),
             definition: serde_json::to_string(&workload_def).unwrap(),
             action: action as i32,
-            instance_id: instance.id,
+            instance_id: instance.id.clone(),
         };
         let request = tonic::Request::new(scheduling);
         self.client.schedule_instance(request).await?;
@@ -103,10 +112,17 @@ impl InstanceServiceImpl {
 impl InstanceService for InstanceServiceImpl {
     async fn create_instance(
         &mut self,
-        instance: Instance,
-        workload_def: WorkloadDefinition,
+        mut instance: Instance,
+        mut workload_def: WorkloadDefinition,
     ) -> Result<(), RikError> {
         event!(Level::INFO, "Schedule instance {}", instance.id);
+
+        if instance.kind == WorkloadKind::Function {
+            workload_def = mutate_function_port(workload_def);
+        }
+
+        instance.spec = workload_def.spec.clone();
+        self.service.register_instance(instance.clone())?;
         self.schedule_instance(instance, workload_def, Crud::Create)
             .await
             .map_err(|e| {

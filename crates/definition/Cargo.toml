@@ -10,3 +10,4 @@ edition = "2018"
 serde = { version = "1.0.126", features = ["derive"] }
 serde_json = "1.0.64"
 url = { version = "2.3.1", features = ["serde"] }
+tracing = { workspace = true }

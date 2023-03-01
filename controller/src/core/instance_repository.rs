@@ -60,7 +60,7 @@ impl InstanceRepository for InstanceRepositoryImpl {
 mod tests {
     use super::*;
     use crate::tests::fixtures::db_connection;
-    use definition::workload::WorkloadKind;
+    use definition::workload::{Spec, WorkloadKind};
     use rstest::rstest;
 
     #[rstest]
@@ -70,11 +70,16 @@ mod tests {
 
         let workload_id = "workload_id";
         let instance_id = "instance_id";
+        let spec = Spec {
+            containers: vec![],
+            function: None,
+        };
 
         let instance = Instance::new(
             workload_id.to_string(),
             WorkloadKind::Function,
             Some(instance_id.to_string()),
+            spec,
         );
 
         let instance_repository = InstanceRepositoryImpl::new(db_connection);
@@ -95,11 +100,16 @@ mod tests {
 
         let workload_id = "workload_id";
         let instance_id = "instance_id";
+        let spec = Spec {
+            containers: vec![],
+            function: None,
+        };
 
         let instance = Instance::new(
             workload_id.to_string(),
             WorkloadKind::Pod,
             Some(instance_id.to_string()),
+            spec,
         );
 
         let instance_repository = InstanceRepositoryImpl::new(db_connection);
@@ -127,11 +137,16 @@ mod tests {
 
         let workload_id = "workload_id";
         let instance_id = "instance_id";
+        let spec = Spec {
+            containers: vec![],
+            function: None,
+        };
 
         let instance = Instance::new(
             workload_id.to_string(),
             WorkloadKind::Function,
             Some(instance_id.to_string()),
+            spec,
         );
 
         let instance_repository = InstanceRepositoryImpl::new(db_connection);
@@ -152,11 +167,16 @@ mod tests {
 
         let workload_id = "workload_id";
         let instance_id = "instance_id";
+        let spec = Spec {
+            containers: vec![],
+            function: None,
+        };
 
         let instance = Instance::new(
             workload_id.to_string(),
             WorkloadKind::Pod,
             Some(instance_id.to_string()),
+            spec,
         );
 
         let instance_repository = InstanceRepositoryImpl::new(db_connection);
