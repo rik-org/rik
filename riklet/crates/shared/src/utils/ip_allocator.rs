@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct IpAllocator {
-    network: Ipv4Network,
     subnet_pool: HashMap<Ipv4Network, bool>,
 }
 
@@ -14,10 +13,7 @@ impl IpAllocator {
             let subnet = Ipv4Network::new(ip, 30).unwrap();
             subnet_pool.insert(subnet, true);
         }
-        IpAllocator {
-            network,
-            subnet_pool,
-        }
+        IpAllocator { subnet_pool }
     }
 
     pub fn allocate_subnet(&mut self) -> Option<Ipv4Network> {
