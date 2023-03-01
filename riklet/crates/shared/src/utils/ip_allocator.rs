@@ -33,9 +33,6 @@ impl IpAllocator {
     }
 
     pub fn available(&self) -> usize {
-        self.subnet_pool
-            .iter()
-            .filter(|subnet| *subnet.1 == true)
-            .count()
+        self.subnet_pool.iter().filter(|subnet| *subnet.1).count()
     }
 }

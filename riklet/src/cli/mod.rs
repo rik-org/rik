@@ -2,19 +2,14 @@ pub mod config;
 pub mod function_config;
 
 use clap::{value_parser, Parser};
-use std::net::Ipv4Addr;
+use std::{net::Ipv4Addr, path::PathBuf};
 
 /// The configuration of the riklet.
 #[derive(Debug, Clone, Parser)]
 #[command(name = "Riklet", version, about)]
 pub struct CliConfiguration {
     /// The path to the Riklet configuration file. If the file not exists, it will be created.
-    #[arg(
-        short,
-        long,
-        default_value = "/etc/riklet/configuration.toml",
-        help = ""
-    )]
+    #[arg(short, long, default_value = "/etc/riklet/configuration.toml")]
     pub config_file: String,
     /// The IP of the Rik master node.
     #[arg(short, long)]
@@ -30,25 +25,17 @@ pub struct CliConfiguration {
         long,
         value_name = "FIRECRACKER_LOCATION",
         env = "FIRECRACKER_LOCATION",
-        default_value = "/app/fireckracker"
+        default_value = "firecracker"
     )]
-    pub firecracker_path: String,
-    /// Path to the rootfs.
-    #[arg(
-        long,
-        value_name = "ROOTFS_LOCATION",
-        env = "ROOTFS_LOCATION",
-        default_value = "/app/rootfs.ext4"
-    )]
-    pub rootfs_path: String,
+    pub firecracker_path: PathBuf,
     /// Path to the linux kernel.
     #[arg(
         long,
         value_name = "KERNEL_LOCATION",
         env = "KERNEL_LOCATION",
-        default_value = "/app/vmlinux.bin"
+        default_value = "vmlinux.bin"
     )]
-    pub kernel_path: String,
+    pub kernel_path: PathBuf,
     /// Network interface connected to internet.
     #[arg(long, value_name = "IFNET", env = "IFNET", default_value = "eth0")]
     pub ifnet: String,
@@ -61,6 +48,12 @@ pub struct CliConfiguration {
     )]
     pub ifnet_ip: Ipv4Addr,
     /// Path to the script to create tap interfaces
-    #[arg(short, long, value_name = "SCRIPT_LOCATION", env = "SCRIPT_LOCATION")]
-    pub script_path: String,
+    #[arg(
+        short,
+        long,
+        value_name = "SCRIPT_LOCATION",
+        env = "SCRIPT_LOCATION",
+        default_value = "setup-host-tap.sh"
+    )]
+    pub script_path: PathBuf,
 }
