@@ -398,6 +398,7 @@ dependencies = [
  "nix 0.26.2",
  "prost",
  "proto",
+ "rand",
  "route-recognizer",
  "rstest",
  "rusqlite",
@@ -656,6 +657,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "tracing",
  "url",
 ]
 
