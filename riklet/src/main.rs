@@ -4,16 +4,18 @@ mod core;
 mod emitters;
 mod iptables;
 mod network;
+mod runtime;
 mod structs;
 mod traits;
 
 use crate::core::Riklet;
+use anyhow::Result;
 use tracing::{event, Level};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::builder()
@@ -30,20 +32,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    let mut riklet = match Riklet::bootstrap().await {
-        Ok(instance) => instance,
-        Err(error) => {
-            // if there is an error during the boostrap process of the riklet, log & error
+    Riklet::new()
+        .await
+        .unwrap_or_else(|_| {
             event!(
                 Level::ERROR,
-                "An error occured during the bootstraping process of the Riklet. Details : {}",
-                error.to_string()
+                "An error occured during the bootstraping process of the Riklet."
             );
             std::process::exit(2);
-        }
-    };
-
-    riklet.accept().await?;
+        })
+        .run()
+        .await;
 
     Ok(())
 }
