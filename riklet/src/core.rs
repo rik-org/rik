@@ -76,6 +76,7 @@ impl Into<WorkloadAction> for i32 {
 
 #[derive(Debug)]
 pub struct Riklet {
+    config: Configuration,
     hostname: String,
     client: WorkerClient<Channel>,
     stream: Streaming<InstanceScheduling>,
@@ -93,6 +94,7 @@ impl Riklet {
             serde_json::from_str(workload.definition.as_str()).unwrap();
 
         let runtime: DynamicRuntimeManager = RuntimeConfigurator::create(&workload_definition);
+
         match &workload.action.into() {
             WorkloadAction::CREATE => self.create_workload(workload, runtime).await,
             WorkloadAction::DELETE => self.delete_workload(workload, runtime).await,
@@ -105,11 +107,8 @@ impl Riklet {
         workload: &InstanceScheduling,
         runtime: DynamicRuntimeManager<'_>,
     ) {
-        let workload_definition: WorkloadDefinition =
-            serde_json::from_str(workload.definition.as_str()).unwrap();
-
         event!(Level::DEBUG, "Creating workload");
-        runtime.create(workload_definition, self.ip_allocator.clone());
+        runtime.create(workload, self.ip_allocator.clone(), self.config.clone());
 
         let instance_id: &String = &workload.instance_id;
         self.send_status(2, instance_id).await;
@@ -207,5 +206,6 @@ impl Riklet {
             stream,
             workloads: HashMap::<String, Vec<Container>>::new(),
             ip_allocator,
+            config,
         })
     }
