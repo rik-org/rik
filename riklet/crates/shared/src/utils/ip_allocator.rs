@@ -1,7 +1,7 @@
 use ipnetwork::Ipv4Network;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IpAllocator {
     subnet_pool: HashMap<Ipv4Network, bool>,
 }

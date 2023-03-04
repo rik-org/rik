@@ -74,13 +74,13 @@ pub struct Function {
     pub exposure: Option<FunctionPort>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Spec {
     pub containers: Vec<Container>,
     pub function: Option<Function>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WorkloadDefinition {
     #[serde(rename = "apiVersion")]
     pub api_version: String,

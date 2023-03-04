@@ -1,5 +1,4 @@
 use crate::cli::config::Configuration;
-use crate::cli::function_config::FnConfiguration;
 use crate::emitters::metrics_emitter::MetricsEmitter;
 use crate::iptables::rule::Rule;
 use crate::iptables::{Chain, Iptables, MutateIptables, Table};
@@ -84,7 +83,7 @@ pub struct Riklet {
     container_runtime: Runc,
     workloads: HashMap<String, Vec<Container>>,
     ip_allocator: IpAllocator,
-    function_config: FnConfiguration,
+    // function_config: FnConfiguration,
 }
 
 impl Riklet {
@@ -106,8 +105,11 @@ impl Riklet {
         workload: &InstanceScheduling,
         runtime: DynamicRuntimeManager<'_>,
     ) {
+        let workload_definition: WorkloadDefinition =
+            serde_json::from_str(workload.definition.as_str()).unwrap();
+
         event!(Level::DEBUG, "Creating workload");
-        runtime.create();
+        runtime.create(workload_definition, self.ip_allocator.clone());
 
         let instance_id: &String = &workload.instance_id;
         self.send_status(2, instance_id).await;
@@ -174,7 +176,7 @@ impl Riklet {
         let hostname = gethostname::gethostname().into_string().unwrap();
 
         let config = Configuration::load().unwrap();
-        let function_config = FnConfiguration::load();
+        // let function_config = FnConfiguration::load();
 
         let mut client = WorkerClient::connect(config.master_ip.clone())
             .await
@@ -205,6 +207,5 @@ impl Riklet {
             stream,
             workloads: HashMap::<String, Vec<Container>>::new(),
             ip_allocator,
-            function_config,
         })
     }
