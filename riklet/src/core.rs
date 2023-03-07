@@ -3,7 +3,7 @@ use crate::emitters::metrics_emitter::MetricsEmitter;
 use crate::iptables::rule::Rule;
 use crate::iptables::{Chain, Iptables, MutateIptables, Table};
 use crate::network::net::{Net, NetworkInterfaceConfig};
-use crate::runtime::{DynamicRuntimeManager, RuntimeConfigurator};
+use crate::runtime::{DynamicRuntimeManager, Runtime, RuntimeConfigurator};
 use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use cri::container::Runc;
@@ -12,6 +12,7 @@ use oci::image_manager::ImageManager;
 use proto::common::{InstanceMetric, WorkerRegistration, WorkerStatus};
 use proto::worker::worker_client::WorkerClient;
 use proto::worker::InstanceScheduling;
+use proto::InstanceStatus;
 use shared::utils::ip_allocator::IpAllocator;
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
@@ -41,14 +42,14 @@ enum WorkloadAction {
 
 struct RikletWorkerStatus(WorkerStatus);
 impl RikletWorkerStatus {
-    fn new(identifier: String, instance_id: String, status: i32) -> Self {
+    fn new(identifier: String, instance_id: String, status: InstanceStatus) -> Self {
         Self(WorkerStatus {
             identifier,
             host_address: None,
             status: Some(proto::common::worker_status::Status::Instance(
                 InstanceMetric {
                     instance_id,
-                    status,
+                    status: status.into(),
                     metrics: "".to_string(),
                 },
             )),
@@ -80,9 +81,7 @@ pub struct Riklet {
     hostname: String,
     client: WorkerClient<Channel>,
     stream: Streaming<InstanceScheduling>,
-    image_manager: ImageManager,
-    container_runtime: Runc,
-    workloads: HashMap<String, Vec<Container>>,
+    runtimes: HashMap<String, Box<dyn Runtime>>,
     ip_allocator: IpAllocator,
     // function_config: FnConfiguration,
 }
@@ -93,11 +92,18 @@ impl Riklet {
         let workload_definition: WorkloadDefinition =
             serde_json::from_str(workload.definition.as_str()).unwrap();
 
-        let runtime: DynamicRuntimeManager = RuntimeConfigurator::create(&workload_definition);
+        let dynamic_runtime_manager: DynamicRuntimeManager =
+            RuntimeConfigurator::create(&workload_definition);
 
         match &workload.action.into() {
-            WorkloadAction::CREATE => self.create_workload(workload, runtime).await,
-            WorkloadAction::DELETE => self.delete_workload(workload, runtime).await,
+            WorkloadAction::CREATE => {
+                self.create_workload(workload, dynamic_runtime_manager)
+                    .await
+            }
+            WorkloadAction::DELETE => {
+                self.delete_workload(workload, dynamic_runtime_manager)
+                    .await
+            }
             _ => event!(Level::ERROR, "Method not allowed"),
         }
     }
@@ -105,13 +111,17 @@ impl Riklet {
     async fn create_workload(
         &mut self,
         workload: &InstanceScheduling,
-        runtime: DynamicRuntimeManager<'_>,
+        dynamic_runtime_manager: DynamicRuntimeManager<'_>,
     ) {
         event!(Level::DEBUG, "Creating workload");
-        runtime.create(workload, self.ip_allocator.clone(), self.config.clone());
-
         let instance_id: &String = &workload.instance_id;
-        self.send_status(2, instance_id).await;
+        let runtime = dynamic_runtime_manager
+            .create(workload, self.ip_allocator.clone(), self.config.clone())
+            .await;
+
+        self.runtimes.insert(instance_id.clone(), runtime);
+
+        self.send_status(InstanceStatus::Running, instance_id).await;
     }
 
     async fn delete_workload(
@@ -120,6 +130,15 @@ impl Riklet {
         runtime: DynamicRuntimeManager<'_>,
     ) {
         event!(Level::DEBUG, "Destroying workload");
+        let instance_id: &String = &workload.instance_id;
+        // Destroy the runtime
+        // TODO
+
+        self.runtimes.remove(instance_id);
+
+        self.send_status(InstanceStatus::Terminated, instance_id)
+            .await;
+
         runtime.destroy();
     }
 
@@ -136,7 +155,7 @@ impl Riklet {
         );
     }
 
-    async fn send_status(&self, status: i32, instance_id: &str) {
+    async fn send_status(&self, status: InstanceStatus, instance_id: &str) {
         event!(Level::DEBUG, "Sending status : {}", status);
 
         let status =
@@ -188,23 +207,15 @@ impl Riklet {
         });
         let stream = client.register(request).await.unwrap().into_inner();
 
-        event!(Level::DEBUG, "Container runtime initialization");
-        let container_runtime = Runc::new(config.runner.clone()).unwrap();
-
-        event!(Level::DEBUG, "Image manager initialization");
-        let image_manager = ImageManager::new(config.manager.clone()).unwrap();
-
         // TODO Network
         let network = Ipv4Network::new(Ipv4Addr::new(192, 168, 1, 0), 24).unwrap();
         let ip_allocator = IpAllocator::new(network);
 
         Ok(Self {
             hostname,
-            container_runtime,
-            image_manager,
             client,
             stream,
-            workloads: HashMap::<String, Vec<Container>>::new(),
+            runtimes: HashMap::<String, Box<dyn Runtime>>::new(),
             ip_allocator,
             config,
         })

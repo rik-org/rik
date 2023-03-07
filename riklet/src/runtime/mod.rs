@@ -6,7 +6,7 @@ use crate::{cli::config::Configuration, structs::WorkloadDefinition};
 use async_trait::async_trait;
 use proto::worker::InstanceScheduling;
 use shared::utils::ip_allocator::IpAllocator;
-use std::net::Ipv4Addr;
+use std::{fmt::Debug, net::Ipv4Addr};
 
 #[derive(Debug, Clone)]
 pub struct NetworkDefinition {
@@ -15,16 +15,18 @@ pub struct NetworkDefinition {
     pub tap_ip: Ipv4Addr,
 }
 
-pub trait Network {
+#[async_trait]
+pub trait Network: Send + Sync {
     fn init(&self) -> NetworkDefinition;
 }
 
 #[async_trait]
-pub trait Runtime {
+pub trait Runtime: Send + Sync + Debug {
     async fn run(&mut self, network_definition: &NetworkDefinition);
 }
 
-pub trait RuntimeManager {
+#[async_trait]
+pub trait RuntimeManager: Send + Sync {
     fn create_network(
         &self,
         workload: InstanceScheduling,
@@ -36,17 +38,19 @@ pub trait RuntimeManager {
         config: Configuration,
     ) -> Box<dyn Runtime>;
 
-    fn create(
+    async fn create(
         &self,
         workload: &InstanceScheduling,
         ip_allocator: IpAllocator,
         config: Configuration,
-    ) {
+    ) -> Box<dyn Runtime> {
         let network = self.create_network(workload.clone(), ip_allocator.clone());
         let mut runtime = self.create_runtime(workload.clone(), config.clone());
 
         let network_definition = network.init();
-        runtime.run(&network_definition);
+        runtime.run(&network_definition).await;
+
+        runtime
     }
 
     fn destroy(&self) {

@@ -2440,6 +2440,7 @@ version = "0.2.1"
 dependencies = [
  "prost",
  "protobuf",
+ "serde",
  "tonic",
  "tonic-build",
 ]

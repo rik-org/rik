@@ -29,6 +29,7 @@ use tracing::{event, Level};
 
 use super::{Network, NetworkDefinition, Runtime, RuntimeManager};
 
+#[derive(Debug)]
 struct PodRuntime {
     image_manager: ImageManager,
     workload_definition: WorkloadDefinition,

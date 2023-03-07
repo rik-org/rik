@@ -1,5 +1,6 @@
 use crate::{
     cli::{config::Configuration, function_config::FnConfiguration},
+    iptables::{rule::Rule, Chain, Iptables, MutateIptables, Table},
     structs::WorkloadDefinition,
 };
 use async_trait::async_trait;
@@ -23,6 +24,7 @@ use tracing::{event, Level};
 
 use super::{Network, NetworkDefinition, Runtime, RuntimeManager};
 
+#[derive(Debug)]
 struct FunctionRuntime {
     function_config: FnConfiguration,
     file_path: String,
@@ -244,43 +246,43 @@ impl Network for FunctionNetwork {
         }
 
         // Create a new IPTables object
-        let ipt = iptables::new(false).unwrap();
+        let mut ipt = Iptables::new(false).unwrap();
 
         // Port forward microvm on the host
-        ipt.append(
-            "nat",
-            "OUTPUT",
-            &format!(
+        let rule = Rule {
+            rule: format!(
                 "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
-                exposed_port, self.function_config.ifnet_ip, firecracker_ip, default_agent_port
+                exposed_port, self.function_config.ifnet_ip, firecracker_ip, 8080
             ),
-        )
-        .unwrap();
+            chain: Chain::Output,
+            table: Table::Nat,
+        };
+        ipt.create(&rule).unwrap();
 
         // Allow NAT on the interface connected to the internet.
-        ipt.append(
-            "nat",
-            "POSTROUTING",
-            &format!("-o {} -j MASQUERADE", self.function_config.ifnet),
-        )
-        .unwrap();
+        let rule = Rule {
+            rule: format!("-o {} -j MASQUERADE", self.function_config.ifnet),
+            chain: Chain::PostRouting,
+            table: Table::Nat,
+        };
+        ipt.create(&rule).unwrap();
 
         // Add the FORWARD rules to the filter table
-        ipt.append_unique(
-            "filter",
-            "FORWARD",
-            &"-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT",
-        )
-        .unwrap();
-        ipt.append(
-            "filter",
-            "FORWARD",
-            &format!(
+        let rule = Rule {
+            rule: "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".to_string(),
+            chain: Chain::Forward,
+            table: Table::Filter,
+        };
+        ipt.create(&rule).unwrap();
+        let rule = Rule {
+            rule: format!(
                 "-i rik-{}-tap -o {} -j ACCEPT",
                 self.workload_definition.name, self.function_config.ifnet
             ),
-        )
-        .unwrap();
+            chain: Chain::Forward,
+            table: Table::Filter,
+        };
+        ipt.create(&rule).unwrap();
 
         NetworkDefinition {
             mask_long: mask_long.to_string(),
