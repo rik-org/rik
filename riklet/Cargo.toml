@@ -48,5 +48,8 @@ firepilot = { git = "https://github.com/polyxia-org/firepilot.git", branch = "ma
 url = { version = "2.3.1", features = ["serde"] }
 curl = "0.4.44"
 lz4 = "1.23.1"
+thiserror = "1.0.38"
+derive_more = "0.99.17"
+
 [dependencies.proto]
 path = "../proto"

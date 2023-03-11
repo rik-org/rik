@@ -4,6 +4,7 @@ mod core;
 mod emitters;
 mod structs;
 mod traits;
+mod iptables;
 
 use crate::core::Riklet;
 

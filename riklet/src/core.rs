@@ -1,5 +1,6 @@
 use crate::config::Configuration;
 use crate::emitters::metrics_emitter::MetricsEmitter;
+use crate::iptables::{Chain, Iptables, MutateIptables, Rule, Table};
 use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use cri::console::ConsoleSocket;
@@ -170,6 +171,45 @@ impl Riklet {
 
                 Self::decompress(Path::new(&lz4_path), Path::new(&file_path))?;
             }
+
+            // Create a new IPTables object
+            let ipt = Iptables::new()?;
+
+            // Port forward microvm on the host
+            let rule = Rule {
+                rule: format!(
+                    "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
+                    exposed_port, self.function_config.ifnet_ip, firecracker_ip, DEFAULT_AGENT_PORT
+                ),
+                chain: Chain::Output,
+                table: Table::Nat,
+            };
+            ipt.create(&rule)?;
+
+            // Allow NAT on the interface connected to the internet.
+            let rule = Rule {
+                rule: format!("-o {} -j MASQUERADE", self.function_config.ifnet),
+                chain: Chain::PostRouting,
+                table: Table::Nat,
+            };
+            ipt.create(&rule)?;
+
+            // Add the FORWARD rules to the filter table
+            let rule = Rule {
+                rule: "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".to_string(),
+                chain: Chain::Forward,
+                table: Table::Filter,
+            };
+            ipt.create(&rule)?;
+            let rule = Rule {
+                rule: format!(
+                    "-i rik-{}-tap -o {} -j ACCEPT",
+                    workload_definition.name, self.function_config.ifnet
+                ),
+                chain: Chain::Forward,
+                table: Table::Filter,
+            };
+            ipt.create(&rule)?;
 
             let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
                 command: Some(PathBuf::from("/app/firecracker")),
