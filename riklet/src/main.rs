@@ -2,6 +2,7 @@ mod cli;
 mod constants;
 mod core;
 mod emitters;
+mod iptables;
 mod structs;
 mod traits;
 

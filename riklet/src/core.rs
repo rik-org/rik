@@ -1,6 +1,8 @@
 use crate::cli::config::Configuration;
 use crate::cli::function_config::FnConfiguration;
 use crate::emitters::metrics_emitter::MetricsEmitter;
+use crate::iptables::rule::Rule;
+use crate::iptables::{Chain, Iptables, MutateIptables, Table};
 use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use cri::console::ConsoleSocket;
@@ -249,43 +251,43 @@ impl Riklet {
             }
 
             // Create a new IPTables object
-            let ipt = iptables::new(false).unwrap();
+            let mut ipt = Iptables::new(false)?;
 
             // Port forward microvm on the host
-            ipt.append(
-                "nat",
-                "OUTPUT",
-                &format!(
+            let rule = Rule {
+                rule: format!(
                     "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
                     exposed_port, self.function_config.ifnet_ip, firecracker_ip, DEFAULT_AGENT_PORT
                 ),
-            )
-            .unwrap();
+                chain: Chain::Output,
+                table: Table::Nat,
+            };
+            ipt.create(&rule)?;
 
             // Allow NAT on the interface connected to the internet.
-            ipt.append(
-                "nat",
-                "POSTROUTING",
-                &format!("-o {} -j MASQUERADE", self.function_config.ifnet),
-            )
-            .unwrap();
+            let rule = Rule {
+                rule: format!("-o {} -j MASQUERADE", self.function_config.ifnet),
+                chain: Chain::PostRouting,
+                table: Table::Nat,
+            };
+            ipt.create(&rule)?;
 
             // Add the FORWARD rules to the filter table
-            ipt.append_unique(
-                "filter",
-                "FORWARD",
-                &"-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT",
-            )
-            .unwrap();
-            ipt.append(
-                "filter",
-                "FORWARD",
-                &format!(
+            let rule = Rule {
+                rule: "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".to_string(),
+                chain: Chain::Forward,
+                table: Table::Filter,
+            };
+            ipt.create(&rule)?;
+            let rule = Rule {
+                rule: format!(
                     "-i rik-{}-tap -o {} -j ACCEPT",
                     workload_definition.name, self.function_config.ifnet
                 ),
-            )
-            .unwrap();
+                chain: Chain::Forward,
+                table: Table::Filter,
+            };
+            ipt.create(&rule)?;
 
             let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
                 command: Some(self.function_config.firecracker_location.clone()),
