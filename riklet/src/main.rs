@@ -7,6 +7,7 @@ mod network;
 mod runtime;
 mod structs;
 mod traits;
+mod utils;
 
 use crate::core::Riklet;
 use anyhow::Result;
@@ -42,7 +43,7 @@ async fn main() -> Result<()> {
             std::process::exit(2);
         })
         .run()
-        .await;
+        .await?;
 
     Ok(())
 }

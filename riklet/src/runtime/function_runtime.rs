@@ -1,6 +1,7 @@
 use crate::{
     cli::{config::Configuration, function_config::FnConfiguration},
     iptables::{rule::Rule, Chain, Iptables, MutateIptables, Table},
+    runtime::{NetworkError, RuntimeError, RuntimeManagerError},
     structs::WorkloadDefinition,
 };
 use async_trait::async_trait;
@@ -34,7 +35,7 @@ struct FunctionRuntime {
 
 #[async_trait]
 impl Runtime for FunctionRuntime {
-    async fn run(&mut self, network_definition: &NetworkDefinition) {
+    async fn run(&mut self, network_definition: &NetworkDefinition) -> super::RuntimeResult<()> {
         event!(Level::INFO, "Function workload detected");
 
         event!(Level::INFO, "Define network");
@@ -44,7 +45,7 @@ impl Runtime for FunctionRuntime {
             command: Some(self.function_config.firecracker_location.clone()),
             ..Default::default()
         }))
-        .unwrap();
+        .map_err(RuntimeError::Firecracker)?;
 
         event!(Level::DEBUG, "Creating a new MicroVM");
         let vm = MicroVM::from(Config {
@@ -70,9 +71,10 @@ impl Runtime for FunctionRuntime {
         });
 
         event!(Level::DEBUG, "Starting the MicroVM");
-        thread::spawn(move || {
+        thread::spawn(move || -> super::RuntimeResult<()> {
             event!(Level::INFO, "Function started");
-            firecracker.start(&vm).unwrap();
+            firecracker.start(&vm).map_err(RuntimeError::Firecracker)?;
+            Ok(())
         });
 
         /*
@@ -89,13 +91,14 @@ impl Runtime for FunctionRuntime {
             firepilot.start();
         });
         */
+        Ok(())
     }
 }
 
 pub struct FunctionRuntimeManager {}
 
 impl FunctionRuntimeManager {
-    fn download_image(&self, url: &String, file_path: &String) {
+    fn download_image(&self, url: &String, file_path: &String) -> super::Result<()> {
         event!(
             Level::DEBUG,
             "Downloading image from {} to {}",
@@ -105,8 +108,9 @@ impl FunctionRuntimeManager {
 
         let mut easy = Easy::new();
         let mut buffer = Vec::new();
-        easy.url(&url).unwrap();
-        easy.follow_location(true).unwrap();
+        easy.url(&url).map_err(RuntimeManagerError::CurlError)?;
+        easy.follow_location(true)
+            .map_err(RuntimeManagerError::CurlError)?;
 
         {
             let mut transfer = easy.transfer();
@@ -115,30 +119,36 @@ impl FunctionRuntimeManager {
                     buffer.extend_from_slice(data);
                     Ok(data.len())
                 })
-                .unwrap();
-            transfer.perform().unwrap();
+                .map_err(RuntimeManagerError::CurlError)?;
+            transfer.perform().map_err(RuntimeManagerError::CurlError)?;
         }
 
-        let response_code = easy.response_code().unwrap();
+        let response_code = easy
+            .response_code()
+            .map_err(RuntimeManagerError::CurlError)?;
         if response_code != 200 {
             // return Err(format!("Response code from registry: {}", response_code).into());
         }
 
         {
             event!(Level::DEBUG, "Writing data to {}", file_path);
-            let mut file = File::create(&file_path).unwrap();
-            file.write_all(buffer.as_slice()).unwrap();
+            let mut file = File::create(&file_path).map_err(RuntimeManagerError::IoError)?;
+            file.write_all(buffer.as_slice())
+                .map_err(RuntimeManagerError::IoError)?;
         }
+
+        Ok(())
     }
 
-    fn decompress(&self, source: &Path, destination: &Path) {
-        let input_file = File::open(source).unwrap();
-        let mut decoder = Decoder::new(input_file).unwrap();
-        let mut output_file = File::create(destination).unwrap();
-        io::copy(&mut decoder, &mut output_file).unwrap();
+    fn decompress(&self, source: &Path, destination: &Path) -> super::Result<()> {
+        let input_file = File::open(source).map_err(RuntimeManagerError::IoError)?;
+        let mut decoder = Decoder::new(input_file).map_err(RuntimeManagerError::IoError)?;
+        let mut output_file = File::create(destination).map_err(RuntimeManagerError::IoError)?;
+        io::copy(&mut decoder, &mut output_file).map_err(RuntimeManagerError::IoError)?;
+        Ok(())
     }
 
-    fn create_fs(&self, workload_definition: WorkloadDefinition) -> String {
+    fn create_fs(&self, workload_definition: WorkloadDefinition) -> super::Result<String> {
         let rootfs_url = workload_definition.get_rootfs_url();
 
         let download_directory = format!("/tmp/{}", &workload_definition.name);
@@ -147,27 +157,23 @@ impl FunctionRuntimeManager {
 
         if !file_pathbuf.exists() {
             let lz4_path = format!("{}.lz4", &file_path);
-            fs::create_dir(&download_directory).unwrap();
+            fs::create_dir(&download_directory).map_err(RuntimeManagerError::IoError)?;
 
-            self.download_image(&rootfs_url, &lz4_path);
-            // .map_err(|e| {
-            //     event!(Level::ERROR, "Error while downloading image: {}", e);
-            //     fs::remove_dir_all(&download_directory)
-            //         .expect("Error while removing directory"); // TODO error
-            //     e
-            // })
-            // .unwrap();
+            self.download_image(&rootfs_url, &lz4_path).map_err(|e| {
+                event!(Level::ERROR, "Error while downloading image: {}", e);
+                fs::remove_dir_all(&download_directory).expect("Error while removing directory");
+                e
+            })?;
 
-            self.decompress(Path::new(&lz4_path), file_pathbuf);
-            // .map_err(|e| {
-            //     event!(Level::ERROR, "Error while decompressing image: {}", e);
-            //     fs::remove_dir_all(&download_directory)
-            //         .expect("Error while removing directory"); // TODO error
-            //     e
-            // })
-            // .unwrap();
+            self.decompress(Path::new(&lz4_path), file_pathbuf)
+                .map_err(|e| {
+                    event!(Level::ERROR, "Error while decompressing image: {}", e);
+                    fs::remove_dir_all(&download_directory)
+                        .expect("Error while removing directory");
+                    e
+                })?;
         }
-        file_path
+        Ok(file_path)
     }
 }
 
@@ -176,32 +182,34 @@ impl RuntimeManager for FunctionRuntimeManager {
         &self,
         workload: InstanceScheduling,
         ip_allocator: IpAllocator,
-    ) -> Box<dyn Network> {
+    ) -> super::Result<Box<dyn Network>> {
         let workload_definition: WorkloadDefinition =
-            serde_json::from_str(workload.definition.as_str()).unwrap();
+            serde_json::from_str(workload.definition.as_str())
+                .map_err(RuntimeManagerError::JsonError)?;
 
-        Box::new(FunctionNetwork {
+        Ok(Box::new(FunctionNetwork {
             function_config: FnConfiguration::load(),
             workload_definition,
             ip_allocator,
-        })
+        }))
     }
 
     fn create_runtime(
         &self,
         workload: InstanceScheduling,
-        config: Configuration,
-    ) -> Box<dyn Runtime> {
+        _config: Configuration,
+    ) -> super::Result<Box<dyn Runtime>> {
         event!(Level::INFO, "Function workload detected");
         let workload_definition: WorkloadDefinition =
-            serde_json::from_str(workload.definition.as_str()).unwrap();
+            serde_json::from_str(workload.definition.as_str())
+                .map_err(RuntimeManagerError::JsonError)?;
 
-        Box::new(FunctionRuntime {
+        Ok(Box::new(FunctionRuntime {
             function_config: FnConfiguration::load(),
-            file_path: self.create_fs(workload_definition.clone()),
+            file_path: self.create_fs(workload_definition.clone())?,
             workload_definition,
             network_definition: None,
-        })
+        }))
     }
 }
 
@@ -211,7 +219,7 @@ struct FunctionNetwork {
     ip_allocator: IpAllocator,
 }
 impl Network for FunctionNetwork {
-    fn init(&self) -> NetworkDefinition {
+    fn init(&self) -> super::NetworkResult<NetworkDefinition> {
         println!("Function network initialized");
         let default_agent_port: u16 = 8080;
 
@@ -224,10 +232,16 @@ impl Network for FunctionNetwork {
             .clone()
             .allocate_subnet()
             .ok_or("No more internal ip available")
-            .unwrap();
+            .map_err(|e| NetworkError::CommonNetworkError(e.to_string()))?;
 
-        let tap_ip = subnet.nth(1).ok_or("Fail get tap ip").unwrap();
-        let firecracker_ip = subnet.nth(2).ok_or("Fail to get firecracker ip").unwrap();
+        let tap_ip = subnet
+            .nth(1)
+            .ok_or("Fail get tap ip")
+            .map_err(|e| NetworkError::CommonNetworkError(e.to_string()))?;
+        let firecracker_ip = subnet
+            .nth(2)
+            .ok_or("Fail to get firecracker ip")
+            .map_err(|e| NetworkError::CommonNetworkError(e.to_string()))?;
         let mask_long: &str = "255.255.255.252";
 
         let output = Command::new("/bin/sh")
@@ -235,7 +249,7 @@ impl Network for FunctionNetwork {
             .arg(&self.workload_definition.name)
             .arg(tap_ip.to_string())
             .output()
-            .unwrap();
+            .map_err(NetworkError::IoError)?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -246,18 +260,18 @@ impl Network for FunctionNetwork {
         }
 
         // Create a new IPTables object
-        let mut ipt = Iptables::new(false).unwrap();
+        let mut ipt = Iptables::new(false).map_err(NetworkError::Iptables)?;
 
         // Port forward microvm on the host
         let rule = Rule {
             rule: format!(
                 "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
-                exposed_port, self.function_config.ifnet_ip, firecracker_ip, 8080
+                exposed_port, self.function_config.ifnet_ip, firecracker_ip, default_agent_port
             ),
             chain: Chain::Output,
             table: Table::Nat,
         };
-        ipt.create(&rule).unwrap();
+        ipt.create(&rule).map_err(NetworkError::Iptables)?;
 
         // Allow NAT on the interface connected to the internet.
         let rule = Rule {
@@ -265,7 +279,7 @@ impl Network for FunctionNetwork {
             chain: Chain::PostRouting,
             table: Table::Nat,
         };
-        ipt.create(&rule).unwrap();
+        ipt.create(&rule).map_err(NetworkError::Iptables)?;
 
         // Add the FORWARD rules to the filter table
         let rule = Rule {
@@ -273,7 +287,7 @@ impl Network for FunctionNetwork {
             chain: Chain::Forward,
             table: Table::Filter,
         };
-        ipt.create(&rule).unwrap();
+        ipt.create(&rule).map_err(NetworkError::Iptables)?;
         let rule = Rule {
             rule: format!(
                 "-i rik-{}-tap -o {} -j ACCEPT",
@@ -282,12 +296,12 @@ impl Network for FunctionNetwork {
             chain: Chain::Forward,
             table: Table::Filter,
         };
-        ipt.create(&rule).unwrap();
+        ipt.create(&rule).map_err(NetworkError::Iptables)?;
 
-        NetworkDefinition {
+        Ok(NetworkDefinition {
             mask_long: mask_long.to_string(),
             firecracker_ip,
             tap_ip,
-        }
+        })
     }
 }

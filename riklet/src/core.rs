@@ -1,14 +1,13 @@
-use crate::cli::config::Configuration;
+use crate::cli::config::{Configuration, ConfigurationError};
 use crate::emitters::metrics_emitter::MetricsEmitter;
 use crate::iptables::rule::Rule;
 use crate::iptables::{Chain, Iptables, MutateIptables, Table};
 use crate::network::net::{Net, NetworkInterfaceConfig};
-use crate::runtime::{DynamicRuntimeManager, Runtime, RuntimeConfigurator};
 use crate::structs::{Container, WorkloadDefinition};
+use crate::runtime::{DynamicRuntimeManager, Runtime, RuntimeConfigurator, RuntimeManagerError};
 use crate::traits::EventEmitter;
-use cri::container::Runc;
+use crate::utils::banner;
 use ipnetwork::Ipv4Network;
-use oci::image_manager::ImageManager;
 use proto::common::{InstanceMetric, WorkerRegistration, WorkerStatus};
 use proto::worker::worker_client::WorkerClient;
 use proto::worker::InstanceScheduling;
@@ -25,14 +24,28 @@ use thiserror::Error;
 use tonic::{transport::Channel, Request, Streaming};
 use tracing::{debug, event, Level};
 
-// const TAP_SCRIPT_DEFAULT_LOCATION: &str = "/app/setup-host-tap.sh";
-const MASK_LONG: &str = "255.255.255.252";
-const DEFAULT_AGENT_PORT: u16 = 8080;
-
 const METRICS_UPDATER_INTERVAL: u64 = 15 * 1000;
 
 #[derive(Error, Debug)]
-pub enum RikletError {}
+pub enum RikletError {
+    #[error("Failed to parse workload definition: {0}")]
+    WorkloadParseError(serde_json::Error),
+
+    #[error("Message status error: {0}")]
+    MessageStatusError(tonic::Status),
+
+    #[error("Configuration error: {0}")]
+    ConfigurationError(ConfigurationError),
+
+    #[error("Failed to connect client: {0}")]
+    ConnectionError(tonic::transport::Error),
+
+    #[error("Network error: {0}")]
+    NetworkError(ipnetwork::IpNetworkError),
+
+    #[error("Runtime error: {0}")]
+    RuntimeManagerError(RuntimeManagerError),
+}
 type Result<T> = std::result::Result<T, RikletError>;
 
 enum WorkloadAction {
@@ -87,48 +100,51 @@ pub struct Riklet {
 }
 
 impl Riklet {
-    async fn handle_workload(&mut self, workload: &InstanceScheduling) {
+    async fn handle_workload(&mut self, workload: &InstanceScheduling) -> Result<()> {
         event!(Level::DEBUG, "Handling workload");
         let workload_definition: WorkloadDefinition =
-            serde_json::from_str(workload.definition.as_str()).unwrap();
+            serde_json::from_str(workload.definition.as_str())
+                .map_err(RikletError::WorkloadParseError)?;
 
         let dynamic_runtime_manager: DynamicRuntimeManager =
             RuntimeConfigurator::create(&workload_definition);
 
-        match &workload.action.into() {
+        Ok(match &workload.action.into() {
             WorkloadAction::CREATE => {
                 self.create_workload(workload, dynamic_runtime_manager)
-                    .await
+                    .await?
             }
             WorkloadAction::DELETE => {
                 self.delete_workload(workload, dynamic_runtime_manager)
-                    .await
+                    .await?
             }
-            _ => event!(Level::ERROR, "Method not allowed"),
-        }
+        })
     }
 
     async fn create_workload(
         &mut self,
         workload: &InstanceScheduling,
         dynamic_runtime_manager: DynamicRuntimeManager<'_>,
-    ) {
+    ) -> Result<()> {
         event!(Level::DEBUG, "Creating workload");
         let instance_id: &String = &workload.instance_id;
         let runtime = dynamic_runtime_manager
             .create(workload, self.ip_allocator.clone(), self.config.clone())
-            .await;
+            .await
+            .map_err(RikletError::RuntimeManagerError)?;
 
         self.runtimes.insert(instance_id.clone(), runtime);
 
-        self.send_status(InstanceStatus::Running, instance_id).await;
+        self.send_status(InstanceStatus::Running, instance_id)
+            .await?;
+        Ok(())
     }
 
     async fn delete_workload(
         &mut self,
         workload: &InstanceScheduling,
         runtime: DynamicRuntimeManager<'_>,
-    ) {
+    ) -> Result<()> {
         event!(Level::DEBUG, "Destroying workload");
         let instance_id: &String = &workload.instance_id;
         // Destroy the runtime
@@ -137,25 +153,13 @@ impl Riklet {
         self.runtimes.remove(instance_id);
 
         self.send_status(InstanceStatus::Terminated, instance_id)
-            .await;
+            .await?;
 
         runtime.destroy();
+        Ok(())
     }
 
-    fn banner() {
-        println!(
-            r#"
-        ______ _____ _   __ _      _____ _____
-        | ___ \_   _| | / /| |    |  ___|_   _|
-        | |_/ / | | | |/ / | |    | |__   | |
-        |    /  | | |    \ | |    |  __|  | |
-        | |\ \ _| |_| |\  \| |____| |___  | |
-        \_| \_|\___/\_| \_/\_____/\____/  \_/
-        "#
-        );
-    }
-
-    async fn send_status(&self, status: InstanceStatus, instance_id: &str) {
+    async fn send_status(&self, status: InstanceStatus, instance_id: &str) -> Result<()> {
         event!(Level::DEBUG, "Sending status : {}", status);
 
         let status =
@@ -164,15 +168,22 @@ impl Riklet {
         MetricsEmitter::emit_event(self.client.clone(), vec![status.0])
             .await
             .unwrap_or_else(|err| event!(Level::ERROR, "Error while sending status : {:?}", err));
+        Ok(())
     }
 
-    pub async fn run(&mut self) {
+    pub async fn run(&mut self) -> Result<()> {
         event!(Level::INFO, "Riklet is running.");
         self.start_metrics_updater();
 
-        while let Some(workload) = self.stream.message().await.unwrap() {
-            self.handle_workload(&workload).await;
+        while let Some(workload) = self
+            .stream
+            .message()
+            .await
+            .map_err(RikletError::MessageStatusError)?
+        {
+            self.handle_workload(&workload).await?;
         }
+        Ok(())
     }
 
     fn start_metrics_updater(&self) {
@@ -190,15 +201,15 @@ impl Riklet {
 
     pub async fn new() -> Result<Self> {
         event!(Level::DEBUG, "Riklet bootstraping process started.");
-        Riklet::banner();
+        banner();
         let hostname = gethostname::gethostname().into_string().unwrap();
 
-        let config = Configuration::load().unwrap();
+        let config = Configuration::load().map_err(RikletError::ConfigurationError)?;
         // let function_config = FnConfiguration::load();
 
         let mut client = WorkerClient::connect(config.master_ip.clone())
             .await
-            .unwrap();
+            .map_err(RikletError::ConnectionError)?;
         event!(Level::DEBUG, "gRPC WorkerClient connected.");
 
         event!(Level::DEBUG, "Node's registration to the master");
@@ -208,7 +219,8 @@ impl Riklet {
         let stream = client.register(request).await.unwrap().into_inner();
 
         // TODO Network
-        let network = Ipv4Network::new(Ipv4Addr::new(192, 168, 1, 0), 24).unwrap();
+        let network = Ipv4Network::new(Ipv4Addr::new(192, 168, 1, 0), 24)
+            .map_err(RikletError::NetworkError)?;
         let ip_allocator = IpAllocator::new(network);
 
         Ok(Self {
