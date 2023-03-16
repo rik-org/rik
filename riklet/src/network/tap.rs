@@ -3,7 +3,7 @@ use rand::Rng;
 use rate_limiter::RateLimiter;
 use utils::net::mac::MacAddr;
 
-use super::{NetworkInterfaceConfig, NetworkInterfaceError};
+use super::net::{NetworkInterfaceConfig, NetworkInterfaceError};
 
 /// Tries to create a new tap interface with the given name
 /// Name should be unique and follow RFC, learn more here:
