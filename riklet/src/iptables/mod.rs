@@ -191,7 +191,7 @@ mod test {
         let rule = Rule::new(
             Chain::Input,
             Table::Filter,
-            "-p tcp --dport 80 -j ACCEPT".to_string(),
+            "-p tcp --dport 440 -j ACCEPT".to_string(),
         );
         iptables.create(&rule).unwrap();
         assert!(iptables.exists(&rule).unwrap());
@@ -206,7 +206,7 @@ mod test {
         let rule = Rule::new(
             Chain::Input,
             Table::Filter,
-            "-p tcp --dport 80 -j ACCEPT".to_string(),
+            "-p tcp --dport 442 -j ACCEPT".to_string(),
         );
         iptables.create(&rule).unwrap();
         assert!(iptables.exists(&rule).unwrap());

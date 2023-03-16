@@ -1,9 +1,9 @@
 use std::net::{IpAddr, Ipv4Addr};
 
+use crate::network::tap;
 use devices::virtio::Net as VirtioNet;
 use futures_util::TryStreamExt;
 use rtnetlink::new_connection;
-use crate::network::tap;
 
 use tracing::debug;
 
