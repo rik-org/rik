@@ -3,7 +3,7 @@ use crate::cli::function_config::FnConfiguration;
 use crate::emitters::metrics_emitter::MetricsEmitter;
 use crate::iptables::rule::Rule;
 use crate::iptables::{Chain, Iptables, MutateIptables, Table};
-use crate::network::{Net, NetworkInterfaceConfig};
+use crate::network::net::{Net, NetworkInterfaceConfig};
 use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use cri::console::ConsoleSocket;
@@ -25,11 +25,11 @@ use std::fs::File;
 use std::io::Write;
 use std::net::Ipv4Addr;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+
 use std::time::Duration;
 use std::{fs, io, thread};
 use tonic::{transport::Channel, Request, Streaming};
-use tracing::{debug, event, info, Level};
+use tracing::{debug, event, Level};
 
 // const TAP_SCRIPT_DEFAULT_LOCATION: &str = "/app/setup-host-tap.sh";
 const MASK_LONG: &str = "255.255.255.252";
@@ -242,7 +242,7 @@ impl Riklet {
                 workload_definition.name.clone(),
                 tap_ip,
             );
-            let tap = Net::new_with_tap(config).await?;
+            let _tap = Net::new_with_tap(config).await?;
             debug!("Waiting for the microvm to start");
 
             // Create a new IPTables object

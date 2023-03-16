@@ -84,3 +84,62 @@ impl MutateIptables for Iptables {
             .map_err(|_| IptablesError::InvalidRule(rule.clone()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::iptables::rule::Rule;
+    use crate::iptables::Chain;
+    use crate::iptables::Table;
+
+    #[test]
+    fn test_create() {
+        let mut ipt = Iptables::new(false).unwrap();
+        let rule = Rule::new(
+            Chain::Input,
+            Table::Filter,
+            "-p tcp --dport 80 -j ACCEPT".to_string(),
+        );
+        let result = ipt.create(&rule);
+        assert!(result.is_ok());
+        let result = ipt.create(&rule);
+        assert!(result.is_err());
+        let result = ipt.delete(&rule);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_delete() {
+        let mut ipt = Iptables::new(false).unwrap();
+        let rule = Rule::new(
+            Chain::Input,
+            Table::Filter,
+            "-p tcp --dport 444 -j ACCEPT".to_string(),
+        );
+        let result = ipt.create(&rule);
+        assert!(result.is_ok());
+        let result = ipt.delete(&rule);
+        assert!(result.is_ok());
+        let result = ipt.delete(&rule);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_exists() {
+        let mut ipt = Iptables::new(false).unwrap();
+        let rule = Rule::new(
+            Chain::Input,
+            Table::Filter,
+            "-p tcp --dport 443 -j ACCEPT".to_string(),
+        );
+        let result = ipt.create(&rule);
+        assert!(result.is_ok());
+        let result = ipt.exists(&rule);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+        ipt.delete(&rule).unwrap();
+        let result = ipt.exists(&rule);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), false);
+    }
+}

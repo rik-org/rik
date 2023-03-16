@@ -184,4 +184,35 @@ mod test {
         let iptables = Iptables::new(false);
         assert!(iptables.is_ok());
     }
+
+    #[test]
+    fn iptables_drop_clean() {
+        let mut iptables = Iptables::new(true).unwrap();
+        let rule = Rule::new(
+            Chain::Input,
+            Table::Filter,
+            "-p tcp --dport 80 -j ACCEPT".to_string(),
+        );
+        iptables.create(&rule).unwrap();
+        assert!(iptables.exists(&rule).unwrap());
+        drop(iptables);
+        let iptables = Iptables::new(false).unwrap();
+        assert!(!iptables.exists(&rule).unwrap());
+    }
+
+    #[test]
+    fn iptables_clean_disabled_doesnt_drop() {
+        let mut iptables = Iptables::new(false).unwrap();
+        let rule = Rule::new(
+            Chain::Input,
+            Table::Filter,
+            "-p tcp --dport 80 -j ACCEPT".to_string(),
+        );
+        iptables.create(&rule).unwrap();
+        assert!(iptables.exists(&rule).unwrap());
+        drop(iptables);
+        let mut iptables = Iptables::new(false).unwrap();
+        assert!(iptables.exists(&rule).unwrap());
+        iptables.delete(&rule).unwrap();
+    }
 }
