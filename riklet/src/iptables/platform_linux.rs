@@ -2,7 +2,6 @@ use crate::iptables::rule::Rule;
 use crate::iptables::Result;
 use crate::iptables::{Iptables, IptablesError, MutateIptables};
 
-// #[cfg(target_os = "linux")]
 impl MutateIptables for Iptables {
     /// Tries to create a rule, in case it already exists it will throw [IptablesError::AlreadyExist]
     /// Also, it will throw if your rule is invalid
