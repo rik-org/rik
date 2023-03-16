@@ -47,13 +47,4 @@ pub struct CliConfiguration {
         value_parser = value_parser!(Ipv4Addr)
     )]
     pub ifnet_ip: Ipv4Addr,
-    /// Path to the script to create tap interfaces
-    #[arg(
-        short,
-        long,
-        value_name = "SCRIPT_LOCATION",
-        env = "SCRIPT_LOCATION",
-        default_value = "setup-host-tap.sh"
-    )]
-    pub script_path: PathBuf,
 }

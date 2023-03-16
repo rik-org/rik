@@ -3,20 +3,17 @@ mod constants;
 mod core;
 mod emitters;
 mod iptables;
+mod network;
 mod structs;
 mod traits;
 
 use crate::core::Riklet;
-use tracing::level_filters::LevelFilter;
 use tracing::{event, Level};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("h2=OFF".parse().unwrap()), // disable all events from the `h2` crate
-        )
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
     // run a function to test #[instrument] macro
     // test_instrument();
