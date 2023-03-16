@@ -1,4 +1,6 @@
+#[cfg(target_os = "linux")]
 pub mod platform_linux;
+#[cfg(not(target_os = "linux"))]
 pub mod platform_others;
 pub mod rule;
 

@@ -3,7 +3,6 @@ use crate::iptables::Result;
 use crate::iptables::{Iptables, IptablesError, MutateIptables};
 use tracing::warn;
 
-#[cfg(not(target_os = "linux"))]
 impl MutateIptables for Iptables {
     /// Implementation is not supported on other platform than linux
     fn create(&mut self, _: &Rule) -> Result<()> {
