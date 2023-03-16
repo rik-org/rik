@@ -251,7 +251,7 @@ impl Riklet {
             }
 
             // Create a new IPTables object
-            let mut ipt = Iptables::new(false)?;
+            let mut ipt = Iptables::new(true)?;
 
             // Port forward microvm on the host
             let rule = Rule {
