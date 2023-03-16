@@ -7,7 +7,6 @@ use cri::{
 
 use oci::image_manager::ImageManager;
 use proto::worker::InstanceScheduling;
-use shared::utils::ip_allocator::IpAllocator;
 use std::path::PathBuf;
 use tracing::{event, Level};
 
@@ -89,11 +88,7 @@ impl Runtime for PodRuntime {
 pub struct PodRuntimeManager {}
 
 impl RuntimeManager for PodRuntimeManager {
-    fn create_network(
-        &self,
-        workload: InstanceScheduling,
-        ip_allocator: IpAllocator,
-    ) -> super::Result<Box<dyn Network>> {
+    fn create_network(&self, workload: InstanceScheduling) -> super::Result<Box<dyn Network>> {
         Ok(Box::new(PodNetwork {}))
     }
 

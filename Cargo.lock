@@ -2700,6 +2700,7 @@ dependencies = [
  "nix 0.21.0",
  "node_metrics",
  "oci",
+ "once_cell",
  "pretty_assertions",
  "prost",
  "proto",

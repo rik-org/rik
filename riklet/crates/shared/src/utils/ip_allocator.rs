@@ -1,5 +1,5 @@
-use ipnetwork::Ipv4Network;
-use std::collections::HashMap;
+use ipnetwork::{IpNetworkError, Ipv4Network};
+use std::{collections::HashMap, net::Ipv4Addr};
 
 #[derive(Debug, Clone)]
 pub struct IpAllocator {
@@ -7,13 +7,14 @@ pub struct IpAllocator {
 }
 
 impl IpAllocator {
-    pub fn new(network: Ipv4Network) -> IpAllocator {
+    pub fn new() -> Result<IpAllocator, IpNetworkError> {
         let mut subnet_pool: HashMap<Ipv4Network, bool> = HashMap::new();
+        let network = Ipv4Network::new(Ipv4Addr::new(192, 168, 1, 0), 24).unwrap();
         for ip in network.iter().step_by(4) {
-            let subnet = Ipv4Network::new(ip, 30).unwrap();
+            let subnet = Ipv4Network::new(ip, 30)?;
             subnet_pool.insert(subnet, true);
         }
-        IpAllocator { subnet_pool }
+        Ok(IpAllocator { subnet_pool })
     }
 
     pub fn allocate_subnet(&mut self) -> Option<Ipv4Network> {

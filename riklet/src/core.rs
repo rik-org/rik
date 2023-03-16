@@ -3,23 +3,21 @@ use crate::emitters::metrics_emitter::MetricsEmitter;
 use crate::iptables::rule::Rule;
 use crate::iptables::{Chain, Iptables, MutateIptables, Table};
 use crate::network::net::{Net, NetworkInterfaceConfig};
-use crate::structs::{Container, WorkloadDefinition};
 use crate::runtime::{DynamicRuntimeManager, Runtime, RuntimeConfigurator, RuntimeManagerError};
+use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use crate::utils::banner;
-use ipnetwork::Ipv4Network;
 use proto::common::{InstanceMetric, WorkerRegistration, WorkerStatus};
 use proto::worker::worker_client::WorkerClient;
 use proto::worker::InstanceScheduling;
 use proto::InstanceStatus;
-use shared::utils::ip_allocator::IpAllocator;
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 use std::path::{Path, PathBuf};
 
+use std::ops::Deref;
 use std::time::Duration;
 use std::{fs, io, thread};
-use std::ops::Deref;
 use thiserror::Error;
 use tonic::{transport::Channel, Request, Streaming};
 use tracing::{debug, event, Level};
@@ -81,8 +79,8 @@ impl Deref for RikletWorkerStatus {
 impl Into<WorkloadAction> for i32 {
     fn into(self) -> WorkloadAction {
         match self {
-            1 => WorkloadAction::CREATE,
-            2 => WorkloadAction::DELETE,
+            0 => WorkloadAction::CREATE,
+            1 => WorkloadAction::DELETE,
             _ => panic!("Unknown workload action"),
         }
     }
@@ -95,7 +93,6 @@ pub struct Riklet {
     client: WorkerClient<Channel>,
     stream: Streaming<InstanceScheduling>,
     runtimes: HashMap<String, Box<dyn Runtime>>,
-    ip_allocator: IpAllocator,
     // function_config: FnConfiguration,
 }
 
@@ -108,6 +105,8 @@ impl Riklet {
 
         let dynamic_runtime_manager: DynamicRuntimeManager =
             RuntimeConfigurator::create(&workload_definition);
+
+        println!("workload action: {}", &workload.action);
 
         Ok(match &workload.action.into() {
             WorkloadAction::CREATE => {
@@ -129,7 +128,7 @@ impl Riklet {
         event!(Level::DEBUG, "Creating workload");
         let instance_id: &String = &workload.instance_id;
         let runtime = dynamic_runtime_manager
-            .create(workload, self.ip_allocator.clone(), self.config.clone())
+            .create(workload, self.config.clone())
             .await
             .map_err(RikletError::RuntimeManagerError)?;
 
@@ -219,16 +218,13 @@ impl Riklet {
         let stream = client.register(request).await.unwrap().into_inner();
 
         // TODO Network
-        let network = Ipv4Network::new(Ipv4Addr::new(192, 168, 1, 0), 24)
-            .map_err(RikletError::NetworkError)?;
-        let ip_allocator = IpAllocator::new(network);
 
         Ok(Self {
             hostname,
             client,
             stream,
             runtimes: HashMap::<String, Box<dyn Runtime>>::new(),
-            ip_allocator,
             config,
         })
     }
+}

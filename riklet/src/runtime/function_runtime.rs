@@ -3,6 +3,7 @@ use crate::{
     iptables::{rule::Rule, Chain, Iptables, MutateIptables, Table},
     runtime::{NetworkError, RuntimeError, RuntimeManagerError},
     structs::WorkloadDefinition,
+    IP_ALLOCATOR,
 };
 use async_trait::async_trait;
 use curl::easy::Easy;
@@ -12,7 +13,6 @@ use firepilot::{
 };
 use lz4::Decoder;
 use proto::worker::InstanceScheduling;
-use shared::utils::ip_allocator::IpAllocator;
 use std::{
     fs,
     fs::File,
@@ -178,11 +178,7 @@ impl FunctionRuntimeManager {
 }
 
 impl RuntimeManager for FunctionRuntimeManager {
-    fn create_network(
-        &self,
-        workload: InstanceScheduling,
-        ip_allocator: IpAllocator,
-    ) -> super::Result<Box<dyn Network>> {
+    fn create_network(&self, workload: InstanceScheduling) -> super::Result<Box<dyn Network>> {
         let workload_definition: WorkloadDefinition =
             serde_json::from_str(workload.definition.as_str())
                 .map_err(RuntimeManagerError::JsonError)?;
@@ -190,7 +186,6 @@ impl RuntimeManager for FunctionRuntimeManager {
         Ok(Box::new(FunctionNetwork {
             function_config: FnConfiguration::load(),
             workload_definition,
-            ip_allocator,
         }))
     }
 
@@ -216,7 +211,6 @@ impl RuntimeManager for FunctionRuntimeManager {
 struct FunctionNetwork {
     workload_definition: WorkloadDefinition,
     function_config: FnConfiguration,
-    ip_allocator: IpAllocator,
 }
 impl Network for FunctionNetwork {
     fn init(&self) -> super::NetworkResult<NetworkDefinition> {
@@ -227,9 +221,9 @@ impl Network for FunctionNetwork {
         let exposed_port = self.workload_definition.get_expected_port();
 
         // Alocate ip range for tap interface and firecracker micro VM
-        let subnet = self
-            .ip_allocator
-            .clone()
+        let subnet = IP_ALLOCATOR
+            .lock()
+            .unwrap()
             .allocate_subnet()
             .ok_or("No more internal ip available")
             .map_err(|e| NetworkError::CommonNetworkError(e.to_string()))?;

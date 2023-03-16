@@ -6,7 +6,6 @@ use crate::{cli::config::Configuration, iptables::IptablesError, structs::Worklo
 use async_trait::async_trait;
 use firepilot::FirecrackerError;
 use proto::worker::InstanceScheduling;
-use shared::utils::ip_allocator::IpAllocator;
 use std::{fmt::Debug, net::Ipv4Addr};
 use thiserror::Error;
 
@@ -80,11 +79,7 @@ pub trait Runtime: Send + Sync + Debug {
 
 #[async_trait]
 pub trait RuntimeManager: Send + Sync {
-    fn create_network(
-        &self,
-        workload: InstanceScheduling,
-        ip_allocator: IpAllocator,
-    ) -> Result<Box<dyn Network>>;
+    fn create_network(&self, workload: InstanceScheduling) -> Result<Box<dyn Network>>;
     fn create_runtime(
         &self,
         workload: InstanceScheduling,
@@ -94,10 +89,9 @@ pub trait RuntimeManager: Send + Sync {
     async fn create(
         &self,
         workload: &InstanceScheduling,
-        ip_allocator: IpAllocator,
         config: Configuration,
     ) -> Result<Box<dyn Runtime>> {
-        let network = self.create_network(workload.clone(), ip_allocator.clone())?;
+        let network = self.create_network(workload.clone())?;
         let mut runtime = self.create_runtime(workload.clone(), config.clone())?;
 
         let network_definition = network.init().map_err(RuntimeManagerError::Network)?;
@@ -122,8 +116,8 @@ enum WorkloadKind {
 impl Into<WorkloadKind> for String {
     fn into(self) -> WorkloadKind {
         match self.as_str() {
-            "FUNCTION" => WorkloadKind::FUNCTION,
-            "POD" => WorkloadKind::POD,
+            "Function" => WorkloadKind::FUNCTION,
+            "Pod" => WorkloadKind::POD,
             _ => panic!("Unknown workload kind"),
         }
     }
