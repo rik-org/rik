@@ -3,6 +3,7 @@ use crate::cli::function_config::FnConfiguration;
 use crate::emitters::metrics_emitter::MetricsEmitter;
 use crate::iptables::rule::Rule;
 use crate::iptables::{Chain, Iptables, MutateIptables, Table};
+use crate::network::{Net, NetworkInterfaceConfig};
 use crate::structs::{Container, WorkloadDefinition};
 use crate::traits::EventEmitter;
 use cri::console::ConsoleSocket;
@@ -28,7 +29,7 @@ use std::process::Command;
 use std::time::Duration;
 use std::{fs, io, thread};
 use tonic::{transport::Channel, Request, Streaming};
-use tracing::{event, Level};
+use tracing::{debug, event, info, Level};
 
 // const TAP_SCRIPT_DEFAULT_LOCATION: &str = "/app/setup-host-tap.sh";
 const MASK_LONG: &str = "255.255.255.252";
@@ -236,22 +237,16 @@ impl Riklet {
             let tap_ip = subnet.nth(1).ok_or("Fail get tap ip")?;
             let firecracker_ip = subnet.nth(2).ok_or("Fail to get firecracker ip")?;
 
-            let output = Command::new("/bin/sh")
-                .arg(&self.function_config.script_path)
-                .arg(&workload_definition.name)
-                .arg(tap_ip.to_string())
-                .output()?;
-
-            if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                if !stderr.is_empty() {
-                    event!(Level::ERROR, "stderr: {}", stderr);
-                }
-                return Err(stderr.into());
-            }
+            let config = NetworkInterfaceConfig::new(
+                workload.instance_id.clone(),
+                workload_definition.name.clone(),
+                tap_ip,
+            );
+            let tap = Net::new_with_tap(config).await?;
+            debug!("Waiting for the microvm to start");
 
             // Create a new IPTables object
-            let mut ipt = Iptables::new(true)?;
+            let mut ipt = Iptables::new(false)?;
 
             // Port forward microvm on the host
             let rule = Rule {

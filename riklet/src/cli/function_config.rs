@@ -9,7 +9,6 @@ pub struct FnConfiguration {
     pub kernel_location: PathBuf,
     pub ifnet: String,
     pub ifnet_ip: Ipv4Addr,
-    pub script_path: PathBuf,
 }
 
 impl From<CliConfiguration> for FnConfiguration {
@@ -19,7 +18,6 @@ impl From<CliConfiguration> for FnConfiguration {
             kernel_location: cli.kernel_path,
             ifnet: cli.ifnet,
             ifnet_ip: cli.ifnet_ip,
-            script_path: cli.script_path,
         }
     }
 }
