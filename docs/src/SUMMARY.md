@@ -7,5 +7,6 @@
 
 ---
 
-- [Developer Guide]()
+- [Developer Reference]()
   - [Controller](./controller.md)
+  - [Network](./network.md)
