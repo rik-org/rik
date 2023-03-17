@@ -64,12 +64,6 @@ pub struct Net {
     interface: NetworkInterface,
 }
 
-impl Drop for Net {
-    fn drop(&mut self) {
-        debug!("Drop net interface with id: {}", self.id);
-    }
-}
-
 impl Net {
     /// Creates a new network interface with a tap interface, it will allocate an IP address to the
     /// interface depending on the input configuration
