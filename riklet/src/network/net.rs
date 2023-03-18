@@ -7,6 +7,10 @@ use rtnetlink::new_connection;
 
 use tracing::debug;
 
+const MAX_IFACE_NAME_LEN: usize = 15;
+
+type Result<T> = std::result::Result<T, NetworkInterfaceError>;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NetworkInterfaceConfig {
     /// Name of the interface created
@@ -18,12 +22,45 @@ pub struct NetworkInterfaceConfig {
 }
 
 impl NetworkInterfaceConfig {
-    pub fn new(id: String, iface_name: String, ipv4_addr: Ipv4Addr) -> Self {
-        NetworkInterfaceConfig {
+    pub fn new(
+        id: String,
+        iface_name: String,
+        ipv4_addr: Ipv4Addr,
+    ) -> Result<NetworkInterfaceConfig> {
+        if iface_name.len() > MAX_IFACE_NAME_LEN {
+            return Err(NetworkInterfaceError::InvalidInterfaceName);
+        }
+        Ok(NetworkInterfaceConfig {
             iface_name,
             id,
             ipv4_addr,
-        }
+        })
+    }
+
+    /// Creates a new network interface with a random name
+    ///
+    /// Random format is expected to be the following: {id}-1234 where 1234 is a random number
+    /// Also, {id} is truncated to 10 characters
+    ///
+    /// # Example
+    /// ```
+    /// use crate::network::NetworkInterfaceConfig;
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let config = NetworkInterfaceConfig::new_with_random_name("superlonginterfacename".to_string(), Ipv4Addr::new(127, 0, 0, 1));
+    /// assert_eq!(config.iface_name, "1234-superlongi".to_string());
+    /// ```
+    pub fn new_with_random_name(id: String, ipv4_addr: Ipv4Addr) -> Result<NetworkInterfaceConfig> {
+        // Generate 4 random digits
+        let random = rand::random::<u16>();
+        let random = format!("{:04}", random);
+        let id_shorten = if id.len() > 10 { &id[..10] } else { &id };
+        let iface_name = format!("{}-{}", id_shorten, random);
+        Ok(NetworkInterfaceConfig {
+            iface_name,
+            id,
+            ipv4_addr,
+        })
     }
 }
 
@@ -36,6 +73,8 @@ pub enum NetworkInterfaceError {
     IpSocket(#[from] std::io::Error),
     #[error("Could not allocate IP address to interface: {0}")]
     IpAllocation(#[from] rtnetlink::Error),
+    #[error("Interface name is invalid, expected to be less than 15 characters")]
+    InvalidInterfaceName,
 }
 
 pub enum NetworkInterface {
@@ -67,9 +106,7 @@ pub struct Net {
 impl Net {
     /// Creates a new network interface with a tap interface, it will allocate an IP address to the
     /// interface depending on the input configuration
-    pub async fn new_with_tap(
-        config: NetworkInterfaceConfig,
-    ) -> Result<Self, NetworkInterfaceError> {
+    pub async fn new_with_tap(config: NetworkInterfaceConfig) -> Result<Self> {
         debug!("New net tap interface with name: {}", config.iface_name);
         let interface = NetworkInterface::TapInterface(tap::open_tap(&config)?);
         let net = Net {
@@ -82,11 +119,7 @@ impl Net {
     }
 
     /// Configures the IP address of the interface
-    async fn configure_ipv4_address(
-        &self,
-        ipv4_addr: Ipv4Addr,
-        prefix: u8,
-    ) -> Result<(), NetworkInterfaceError> {
+    async fn configure_ipv4_address(&self, ipv4_addr: Ipv4Addr, prefix: u8) -> Result<()> {
         debug!("Give IP address to netid: {} -> {}", ipv4_addr, self.id);
         let (connection, handle, _) = new_connection().map_err(NetworkInterfaceError::IpSocket)?;
         tokio::spawn(connection);
@@ -181,5 +214,25 @@ mod tests {
         // of rtnetlink which is not accessible from the test
         let debug_ips = format!("{:?}", ips);
         assert_eq!(debug_ips, "[Address([172, 0, 0, 17])]")
+    }
+
+    #[test]
+    fn new_with_random_name_long() {
+        let config = NetworkInterfaceConfig::new_with_random_name(
+            "rust5nettest".to_string(),
+            Ipv4Addr::new(172, 0, 0, 17),
+        )
+        .unwrap();
+        assert!(config.iface_name.starts_with("rust5nette-"));
+    }
+
+    #[test]
+    fn new_with_random_name_short() {
+        let config = NetworkInterfaceConfig::new_with_random_name(
+            "short".to_string(),
+            Ipv4Addr::new(172, 0, 0, 17),
+        )
+        .unwrap();
+        assert!(config.iface_name.starts_with("short-"));
     }
 }
