@@ -237,16 +237,13 @@ impl Riklet {
             let tap_ip = subnet.nth(1).ok_or("Fail get tap ip")?;
             let firecracker_ip = subnet.nth(2).ok_or("Fail to get firecracker ip")?;
 
-            let config = NetworkInterfaceConfig::new(
-                workload.instance_id.clone(),
-                workload_definition.name.clone(),
-                tap_ip,
-            );
+            let config =
+                NetworkInterfaceConfig::new_with_random_name(workload.instance_id.clone(), tap_ip)?;
             let _tap = Net::new_with_tap(config).await?;
             debug!("Waiting for the microvm to start");
 
             // Create a new IPTables object
-            let mut ipt = Iptables::new(false)?;
+            let mut ipt = Iptables::new(true)?;
 
             // Port forward microvm on the host
             let rule = Rule {
