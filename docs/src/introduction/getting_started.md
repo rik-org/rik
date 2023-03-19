@@ -20,7 +20,7 @@ Install packages required to build the project:
 Start by cloning the project using Git:
 
 ```bash
-git clone https://github.com/polyxia-org/rik.git
+git clone https://github.com/rik-org/rik.git
 ```
 
 ## Start a cluster

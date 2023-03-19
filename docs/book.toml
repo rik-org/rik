@@ -6,4 +6,4 @@ title = "Rust In Kube"
 
 
 [output.html]
-git-repository-url = "https://github.com/polyxia-org/rik/docs"
+git-repository-url = "https://github.com/rik-org/rik"
