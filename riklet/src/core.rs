@@ -281,10 +281,10 @@ impl Riklet {
             };
             ipt.create(&rule)?;
 
-            let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
+            let firecracker = Firecracker::new(firepilot::FirecrackerOptions {
                 command: Some(self.function_config.firecracker_location.clone()),
                 ..Default::default()
-            }))
+            })
             .unwrap();
 
             event!(Level::DEBUG, "Creating a new MicroVM");
