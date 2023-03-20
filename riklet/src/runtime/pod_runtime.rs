@@ -28,7 +28,7 @@ struct PodRuntime {
 #[async_trait]
 impl Runtime for PodRuntime {
     async fn run(&mut self) -> super::RuntimeResult<()> {
-        self.network.init().map_err(RuntimeError::Network)?;
+        self.network.init().await.map_err(RuntimeError::Network)?;
 
         event!(Level::INFO, "Container workload detected");
 

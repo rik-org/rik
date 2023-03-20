@@ -1,6 +1,6 @@
 use crate::{
     cli::{config::Configuration, function_config::FnConfiguration},
-    runtime::{RuntimeError, RuntimeManagerError},
+    runtime::{network::RuntimeNetwork, RuntimeError, RuntimeManagerError},
     structs::WorkloadDefinition,
 };
 use async_trait::async_trait;
@@ -20,10 +20,7 @@ use std::{
 };
 use tracing::{event, Level};
 
-use super::{
-    network::{FunctionRuntimeNetwork, RuntimeNetwork},
-    Runtime, RuntimeManager,
-};
+use super::{network::FunctionRuntimeNetwork, Runtime, RuntimeManager};
 
 #[derive(Debug)]
 struct FunctionRuntime {
@@ -36,16 +33,16 @@ struct FunctionRuntime {
 #[async_trait]
 impl Runtime for FunctionRuntime {
     async fn run(&mut self) -> super::RuntimeResult<()> {
-        self.network.init().map_err(RuntimeError::Network)?;
+        self.network.init().await.map_err(RuntimeError::Network)?;
 
         event!(Level::INFO, "Function workload detected");
 
         event!(Level::INFO, "Define network");
 
-        let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
+        let firecracker = Firecracker::new(firepilot::FirecrackerOptions {
             command: Some(self.function_config.firecracker_location.clone()),
             ..Default::default()
-        }))
+        })
         .map_err(RuntimeError::Firecracker)?;
 
         event!(Level::DEBUG, "Creating a new MicroVM");
@@ -192,7 +189,7 @@ impl RuntimeManager for FunctionRuntimeManager {
         Ok(Box::new(FunctionRuntime {
             function_config: FnConfiguration::load(),
             file_path: self.create_fs(&workload_definition)?,
-            network: FunctionRuntimeNetwork::new(&workload_definition)
+            network: FunctionRuntimeNetwork::new(&workload)
                 .map_err(RuntimeManagerError::Network)?,
             workload_definition,
         }))

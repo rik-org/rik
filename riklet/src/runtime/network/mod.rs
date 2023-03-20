@@ -1,8 +1,10 @@
 use std::{net::Ipv4Addr, process::Command};
 
+use async_trait::async_trait;
+use proto::worker::InstanceScheduling;
 use std::fmt::Debug;
 use thiserror::Error;
-use tracing::{event, Level};
+use tracing::{debug, event, Level};
 
 #[derive(Debug, Error)]
 pub enum NetworkError {
@@ -14,10 +16,14 @@ pub enum NetworkError {
 
     #[error("Iptables error: {0}")]
     Iptables(IptablesError),
+
+    #[error("Json error: {0}")]
+    JsonError(serde_json::Error),
 }
 
 type Result<T> = std::result::Result<T, NetworkError>;
 
+use crate::network::net::{Net, NetworkInterfaceConfig};
 use crate::{
     cli::function_config::FnConfiguration,
     iptables::{rule::Rule, Chain, Iptables, IptablesError, MutateIptables, Table},
@@ -25,10 +31,11 @@ use crate::{
     IP_ALLOCATOR,
 };
 
+#[async_trait]
 pub trait RuntimeNetwork: Send + Sync + Debug {
-    fn init(&self) -> Result<()>;
+    async fn init(&self) -> Result<()>;
 
-    fn destroy(&self) -> Result<()>;
+    async fn destroy(&self) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -39,12 +46,15 @@ pub struct FunctionRuntimeNetwork {
     pub function_config: FnConfiguration,
     pub default_agent_port: u16,
     pub workload_definition: WorkloadDefinition,
+    pub workload: InstanceScheduling,
 }
 
 impl FunctionRuntimeNetwork {
-    pub fn new(workload_definition: &WorkloadDefinition) -> Result<Self> {
+    pub fn new(workload: &InstanceScheduling) -> Result<Self> {
         let default_agent_port: u16 = 8080;
         let mask_long: &str = "255.255.255.252";
+        let workload_definition: WorkloadDefinition =
+            serde_json::from_str(workload.definition.as_str()).map_err(NetworkError::JsonError)?;
 
         // Alocate ip range for tap interface and firecracker micro VM
         let subnet = IP_ALLOCATOR
@@ -70,31 +80,25 @@ impl FunctionRuntimeNetwork {
             function_config: FnConfiguration::load(),
             tap_ip,
             default_agent_port,
+            workload: workload.clone(),
             workload_definition: workload_definition.clone(),
         })
     }
 }
 
+#[async_trait]
 impl RuntimeNetwork for FunctionRuntimeNetwork {
-    fn init(&self) -> Result<()> {
+    async fn init(&self) -> Result<()> {
         println!("Function network initialized");
 
-        // Get port to expose function
-
-        let output = Command::new("/bin/sh")
-            .arg(self.function_config.script_path.clone())
-            .arg(&self.workload_definition.name)
-            .arg(self.tap_ip.to_string())
-            .output()
-            .map_err(NetworkError::IoError)?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            if !stderr.is_empty() {
-                event!(Level::ERROR, "stderr: {}", stderr);
-            }
-            // return Err(stderr.into());
-        }
+        let config = NetworkInterfaceConfig::new(
+            self.workload.instance_id.clone(),
+            self.workload_definition.name.clone(),
+            self.tap_ip,
+        )
+        .unwrap();
+        let tap = Net::new_with_tap(config).await.unwrap(); // TODO Error;
+        debug!("Waiting for the microvm to start");
 
         // Create a new IPTables object
         let mut ipt = Iptables::new(false).map_err(NetworkError::Iptables)?;
@@ -142,7 +146,7 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
         Ok(())
     }
 
-    fn destroy(&self) -> Result<()> {
+    async fn destroy(&self) -> Result<()> {
         todo!()
     }
 }
@@ -156,12 +160,13 @@ impl PodRuntimeNetwork {
     }
 }
 
+#[async_trait]
 impl RuntimeNetwork for PodRuntimeNetwork {
-    fn init(&self) -> Result<()> {
+    async fn init(&self) -> Result<()> {
         todo!()
     }
 
-    fn destroy(&self) -> Result<()> {
+    async fn destroy(&self) -> Result<()> {
         todo!()
     }
 }
