@@ -5,12 +5,19 @@ use utils::net::mac::MacAddr;
 
 use super::net::{NetworkInterfaceConfig, NetworkInterfaceError};
 
+pub const MAX_IFACE_NAME_LEN: usize = 15;
+
 /// Tries to create a new tap interface with the given name
 /// Name should be unique and follow RFC, learn more here:
 /// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_and_managing_networking/consistent-network-interface-device-naming_configuring-and-managing-networking
 pub fn open_tap(config: &NetworkInterfaceConfig) -> Result<VirtioNet, NetworkInterfaceError> {
     let mac_addr = generate_mac_addr();
     let (rx_rate_limiter, tx_rate_limiter) = create_rate_limiters();
+
+    if config.iface_name.len() > MAX_IFACE_NAME_LEN {
+        return Err(NetworkInterfaceError::InvalidInterfaceName);
+    }
+
     VirtioNet::new(
         config.id.clone(),
         config.iface_name.clone().as_str(),
@@ -73,7 +80,7 @@ mod tests {
         let net = net_rs.err().unwrap();
         assert_eq!(
             net.to_string(),
-            "Open tap device failed: Invalid interface name"
+            "Interface name is invalid, expected to be less than 15 characters"
         );
     }
 

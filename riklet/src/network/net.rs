@@ -7,8 +7,6 @@ use rtnetlink::new_connection;
 
 use tracing::debug;
 
-const MAX_IFACE_NAME_LEN: usize = 15;
-
 type Result<T> = std::result::Result<T, NetworkInterfaceError>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,7 +25,7 @@ impl NetworkInterfaceConfig {
         iface_name: String,
         ipv4_addr: Ipv4Addr,
     ) -> Result<NetworkInterfaceConfig> {
-        if iface_name.len() > MAX_IFACE_NAME_LEN {
+        if iface_name.len() > tap::MAX_IFACE_NAME_LEN {
             return Err(NetworkInterfaceError::InvalidInterfaceName);
         }
         Ok(NetworkInterfaceConfig {
@@ -54,7 +52,7 @@ impl NetworkInterfaceConfig {
         // Generate 4 random digits
         let random = rand::random::<u16>();
         let random = format!("{:04}", random);
-        let id_shorten = if id.len() > 10 { &id[..10] } else { &id };
+        let id_shorten = if id.len() > 9 { &id[..9] } else { &id };
         let iface_name = format!("{}-{}", id_shorten, random);
         Ok(NetworkInterfaceConfig {
             iface_name,
@@ -150,6 +148,10 @@ impl Net {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use netlink_packet_route::{
+        constants::{AF_BRIDGE, RTEXT_FILTER_BRVLAN},
+        link::nlas::Nla,
+    };
     use pretty_assertions::assert_eq;
 
     #[tokio::test]
@@ -223,7 +225,35 @@ mod tests {
             Ipv4Addr::new(172, 0, 0, 17),
         )
         .unwrap();
-        assert!(config.iface_name.starts_with("rust5nette-"));
+        assert!(config.iface_name.starts_with("rust5nett-"));
+    }
+
+    #[tokio::test]
+    async fn new_with_random_name_long_tap() {
+        let config = NetworkInterfaceConfig::new_with_random_name(
+            "mysuperlongname".to_string(),
+            Ipv4Addr::new(172, 0, 0, 17),
+        )
+        .unwrap();
+        let _net = Net::new_with_tap(config).await.unwrap();
+        let (connection, handle, _) = new_connection().unwrap();
+        tokio::spawn(connection);
+
+        let mut exist = false;
+        let mut links = handle.link().get().execute();
+        'outer: while let Some(msg) = links.try_next().await.unwrap() {
+            for nla in msg.nlas.into_iter() {
+                if let Nla::IfName(name) = nla {
+                    println!("found link {} ({})", msg.header.index, name);
+                    if name.starts_with("mysuper") {
+                        exist = true;
+                    }
+                    continue 'outer;
+                }
+            }
+        }
+
+        assert!(exist);
     }
 
     #[test]
