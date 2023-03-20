@@ -1,4 +1,8 @@
-use crate::{cli::config::Configuration, runtime::RuntimeError, structs::WorkloadDefinition};
+use crate::{
+    cli::config::Configuration,
+    runtime::{network::RuntimeNetwork, RuntimeError},
+    structs::WorkloadDefinition,
+};
 use async_trait::async_trait;
 use cri::{
     console::ConsoleSocket,
@@ -10,21 +14,22 @@ use proto::worker::InstanceScheduling;
 use std::path::PathBuf;
 use tracing::{event, Level};
 
-use super::{Network, NetworkDefinition, Runtime, RuntimeManager, RuntimeManagerError};
+use super::{network::PodRuntimeNetwork, Runtime, RuntimeManager, RuntimeManagerError};
 
 #[derive(Debug)]
 struct PodRuntime {
     image_manager: ImageManager,
     workload_definition: WorkloadDefinition,
-    network_definition: Option<NetworkDefinition>,
+    network: PodRuntimeNetwork,
     container_runtime: Runc,
     instance_id: String,
 }
 
 #[async_trait]
 impl Runtime for PodRuntime {
-    async fn run(&mut self, network_definition: &NetworkDefinition) -> super::RuntimeResult<()> {
-        self.network_definition = Some(network_definition.clone());
+    async fn run(&mut self) -> super::RuntimeResult<()> {
+        self.network.init().map_err(RuntimeError::Network)?;
+
         event!(Level::INFO, "Container workload detected");
 
         let containers = self.workload_definition.get_containers(&self.instance_id);
@@ -88,9 +93,9 @@ impl Runtime for PodRuntime {
 pub struct PodRuntimeManager {}
 
 impl RuntimeManager for PodRuntimeManager {
-    fn create_network(&self, workload: InstanceScheduling) -> super::Result<Box<dyn Network>> {
-        Ok(Box::new(PodNetwork {}))
-    }
+    // fn create_network(&self, workload: InstanceScheduling) -> super::Result<Box<dyn Network>> {
+    //     Ok(Box::new(PodNetwork {}))
+    // }
 
     fn create_runtime(
         &self,
@@ -105,18 +110,10 @@ impl RuntimeManager for PodRuntimeManager {
             image_manager: ImageManager::new(config.manager.clone())
                 .map_err(RuntimeManagerError::OCI)?,
             workload_definition,
-            network_definition: None,
+            network: PodRuntimeNetwork::new(),
             container_runtime: Runc::new(config.runner.clone())
                 .map_err(RuntimeManagerError::CRI)?,
             instance_id,
         }))
-    }
-}
-
-struct PodNetwork {}
-impl Network for PodNetwork {
-    fn init(&self) -> super::NetworkResult<NetworkDefinition> {
-        println!("Pod network initialized");
-        todo!()
     }
 }

@@ -38,9 +38,6 @@ pub enum RikletError {
     #[error("Failed to connect client: {0}")]
     ConnectionError(tonic::transport::Error),
 
-    #[error("Network error: {0}")]
-    NetworkError(ipnetwork::IpNetworkError),
-
     #[error("Runtime error: {0}")]
     RuntimeManagerError(RuntimeManagerError),
 }
@@ -128,7 +125,7 @@ impl Riklet {
         event!(Level::DEBUG, "Creating workload");
         let instance_id: &String = &workload.instance_id;
         let runtime = dynamic_runtime_manager
-            .create(workload, self.config.clone())
+            .run(workload, self.config.clone())
             .await
             .map_err(RikletError::RuntimeManagerError)?;
 

@@ -1,9 +1,7 @@
 use crate::{
     cli::{config::Configuration, function_config::FnConfiguration},
-    iptables::{rule::Rule, Chain, Iptables, MutateIptables, Table},
-    runtime::{NetworkError, RuntimeError, RuntimeManagerError},
+    runtime::{RuntimeError, RuntimeManagerError},
     structs::WorkloadDefinition,
-    IP_ALLOCATOR,
 };
 use async_trait::async_trait;
 use curl::easy::Easy;
@@ -18,28 +16,31 @@ use std::{
     fs::File,
     io::{self, Write},
     path::{Path, PathBuf},
-    process::Command,
     thread,
 };
 use tracing::{event, Level};
 
-use super::{Network, NetworkDefinition, Runtime, RuntimeManager};
+use super::{
+    network::{FunctionRuntimeNetwork, RuntimeNetwork},
+    Runtime, RuntimeManager,
+};
 
 #[derive(Debug)]
 struct FunctionRuntime {
     function_config: FnConfiguration,
     file_path: String,
+    network: FunctionRuntimeNetwork,
     workload_definition: WorkloadDefinition,
-    network_definition: Option<NetworkDefinition>,
 }
 
 #[async_trait]
 impl Runtime for FunctionRuntime {
-    async fn run(&mut self, network_definition: &NetworkDefinition) -> super::RuntimeResult<()> {
+    async fn run(&mut self) -> super::RuntimeResult<()> {
+        self.network.init().map_err(RuntimeError::Network)?;
+
         event!(Level::INFO, "Function workload detected");
 
         event!(Level::INFO, "Define network");
-        self.network_definition = Some(network_definition.clone());
 
         let firecracker = Firecracker::new(Some(firepilot::FirecrackerOptions {
             command: Some(self.function_config.firecracker_location.clone()),
@@ -53,7 +54,7 @@ impl Runtime for FunctionRuntime {
                 kernel_image_path: self.function_config.kernel_location.clone(),
                 boot_args: Some(format!(
                     "console=ttyS0 reboot=k nomodules random.trust_cpu=on panic=1 pci=off tsc=reliable i8042.nokbd i8042.noaux ipv6.disable=1 quiet loglevel=0 ip={}::{}:{}::eth0:off",
-                    network_definition.firecracker_ip, network_definition.tap_ip, network_definition.mask_long)
+                    self.network.firecracker_ip, self.network.tap_ip, self.network.mask_long)
                 ),
                 initrd_path: None,
             },
@@ -148,7 +149,7 @@ impl FunctionRuntimeManager {
         Ok(())
     }
 
-    fn create_fs(&self, workload_definition: WorkloadDefinition) -> super::Result<String> {
+    fn create_fs(&self, workload_definition: &WorkloadDefinition) -> super::Result<String> {
         let rootfs_url = workload_definition.get_rootfs_url();
 
         let download_directory = format!("/tmp/{}", &workload_definition.name);
@@ -178,17 +179,6 @@ impl FunctionRuntimeManager {
 }
 
 impl RuntimeManager for FunctionRuntimeManager {
-    fn create_network(&self, workload: InstanceScheduling) -> super::Result<Box<dyn Network>> {
-        let workload_definition: WorkloadDefinition =
-            serde_json::from_str(workload.definition.as_str())
-                .map_err(RuntimeManagerError::JsonError)?;
-
-        Ok(Box::new(FunctionNetwork {
-            function_config: FnConfiguration::load(),
-            workload_definition,
-        }))
-    }
-
     fn create_runtime(
         &self,
         workload: InstanceScheduling,
@@ -201,101 +191,10 @@ impl RuntimeManager for FunctionRuntimeManager {
 
         Ok(Box::new(FunctionRuntime {
             function_config: FnConfiguration::load(),
-            file_path: self.create_fs(workload_definition.clone())?,
+            file_path: self.create_fs(&workload_definition)?,
+            network: FunctionRuntimeNetwork::new(&workload_definition)
+                .map_err(RuntimeManagerError::Network)?,
             workload_definition,
-            network_definition: None,
         }))
-    }
-}
-
-struct FunctionNetwork {
-    workload_definition: WorkloadDefinition,
-    function_config: FnConfiguration,
-}
-impl Network for FunctionNetwork {
-    fn init(&self) -> super::NetworkResult<NetworkDefinition> {
-        println!("Function network initialized");
-        let default_agent_port: u16 = 8080;
-
-        // Get port to expose function
-        let exposed_port = self.workload_definition.get_expected_port();
-
-        // Alocate ip range for tap interface and firecracker micro VM
-        let subnet = IP_ALLOCATOR
-            .lock()
-            .unwrap()
-            .allocate_subnet()
-            .ok_or("No more internal ip available")
-            .map_err(|e| NetworkError::CommonNetworkError(e.to_string()))?;
-
-        let tap_ip = subnet
-            .nth(1)
-            .ok_or("Fail get tap ip")
-            .map_err(|e| NetworkError::CommonNetworkError(e.to_string()))?;
-        let firecracker_ip = subnet
-            .nth(2)
-            .ok_or("Fail to get firecracker ip")
-            .map_err(|e| NetworkError::CommonNetworkError(e.to_string()))?;
-        let mask_long: &str = "255.255.255.252";
-
-        let output = Command::new("/bin/sh")
-            .arg(&self.function_config.script_path)
-            .arg(&self.workload_definition.name)
-            .arg(tap_ip.to_string())
-            .output()
-            .map_err(NetworkError::IoError)?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            if !stderr.is_empty() {
-                event!(Level::ERROR, "stderr: {}", stderr);
-            }
-            // return Err(stderr.into());
-        }
-
-        // Create a new IPTables object
-        let mut ipt = Iptables::new(false).map_err(NetworkError::Iptables)?;
-
-        // Port forward microvm on the host
-        let rule = Rule {
-            rule: format!(
-                "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
-                exposed_port, self.function_config.ifnet_ip, firecracker_ip, default_agent_port
-            ),
-            chain: Chain::Output,
-            table: Table::Nat,
-        };
-        ipt.create(&rule).map_err(NetworkError::Iptables)?;
-
-        // Allow NAT on the interface connected to the internet.
-        let rule = Rule {
-            rule: format!("-o {} -j MASQUERADE", self.function_config.ifnet),
-            chain: Chain::PostRouting,
-            table: Table::Nat,
-        };
-        ipt.create(&rule).map_err(NetworkError::Iptables)?;
-
-        // Add the FORWARD rules to the filter table
-        let rule = Rule {
-            rule: "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".to_string(),
-            chain: Chain::Forward,
-            table: Table::Filter,
-        };
-        ipt.create(&rule).map_err(NetworkError::Iptables)?;
-        let rule = Rule {
-            rule: format!(
-                "-i rik-{}-tap -o {} -j ACCEPT",
-                self.workload_definition.name, self.function_config.ifnet
-            ),
-            chain: Chain::Forward,
-            table: Table::Filter,
-        };
-        ipt.create(&rule).map_err(NetworkError::Iptables)?;
-
-        Ok(NetworkDefinition {
-            mask_long: mask_long.to_string(),
-            firecracker_ip,
-            tap_ip,
-        })
     }
 }
