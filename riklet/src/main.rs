@@ -9,12 +9,16 @@ mod traits;
 
 use crate::core::Riklet;
 use tracing::{event, Level};
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy()
                 .add_directive("h2=OFF".parse().unwrap()), // disable all events from the `h2` crate
         )
         .init();
