@@ -10,6 +10,7 @@ pub struct Rule {
     pub rule: String,
 }
 
+#[allow(dead_code)]
 impl Rule {
     pub fn new(chain: Chain, table: Table, rule: String) -> Self {
         Rule { chain, table, rule }
@@ -18,12 +19,6 @@ impl Rule {
 
 impl Display for Rule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}({}): {}",
-            self.table.to_string(),
-            self.chain.to_string(),
-            self.rule
-        )
+        write!(f, "{}({}): {}", self.table, self.chain, self.rule)
     }
 }

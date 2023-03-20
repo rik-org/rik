@@ -14,49 +14,34 @@ use std::fmt::Debug;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum RuntimeManagerError {
-    #[error("Runtime error: {0}")]
-    Runtime(RuntimeError),
-
+pub enum RuntimeError {
     #[error("Network error: {0}")]
-    Network(NetworkError),
+    NetworkError(NetworkError),
 
-    #[error("Curl error: {0}")]
-    CurlError(curl::Error),
+    #[error("Fetching error: {0}")]
+    FetchingError(curl::Error),
 
     #[error("IO error: {0}")]
     IoError(std::io::Error),
 
-    #[error("JSON error: {0}")]
-    JsonError(serde_json::Error),
+    #[error("Parsing error: {0}")]
+    ParsingError(serde_json::Error),
 
     #[error("OCI error: {0}")]
-    OCI(oci::Error),
+    OciError(oci::Error),
 
     #[error("CRI error: {0}")]
-    CRI(cri::Error),
-}
+    CriError(cri::Error),
 
-type Result<T> = std::result::Result<T, RuntimeManagerError>;
-
-#[derive(Debug, Error)]
-pub enum RuntimeError {
     #[error("Firecracker error: {0}")]
-    Firecracker(FirecrackerError),
-
-    #[error("OCI error: {0}")]
-    OCI(oci::Error),
-
-    #[error("CRI error: {0}")]
-    CRI(cri::Error),
-
-    #[error("Network error: {0}")]
-    Network(NetworkError),
+    FirecrackerError(FirecrackerError),
 }
-type RuntimeResult<T> = std::result::Result<T, RuntimeError>;
+
+type Result<T> = std::result::Result<T, RuntimeError>;
+
 #[async_trait]
 pub trait Runtime: Send + Sync + Debug {
-    async fn run(&mut self) -> RuntimeResult<()>;
+    async fn run(&mut self) -> Result<()>;
 }
 
 #[async_trait]
@@ -74,7 +59,7 @@ pub trait RuntimeManager: Send + Sync {
         config: Configuration,
     ) -> Result<Box<dyn Runtime>> {
         let mut runtime = self.create_runtime(workload.clone(), config.clone())?;
-        runtime.run().await.map_err(RuntimeManagerError::Runtime)?;
+        runtime.run().await?;
 
         Ok(runtime)
     }
@@ -85,15 +70,15 @@ pub trait RuntimeManager: Send + Sync {
 }
 
 enum WorkloadKind {
-    FUNCTION,
-    POD,
+    Function,
+    Pod,
 }
 
-impl Into<WorkloadKind> for String {
-    fn into(self) -> WorkloadKind {
-        match self.as_str() {
-            "Function" => WorkloadKind::FUNCTION,
-            "Pod" => WorkloadKind::POD,
+impl From<String> for WorkloadKind {
+    fn from(kind: String) -> Self {
+        match kind.as_str() {
+            "Function" => WorkloadKind::Function,
+            "Pod" => WorkloadKind::Pod,
             _ => panic!("Unknown workload kind"),
         }
     }
@@ -104,8 +89,8 @@ pub type DynamicRuntimeManager<'a> = &'a dyn RuntimeManager;
 impl RuntimeConfigurator {
     pub fn create(workload_definition: &WorkloadDefinition) -> DynamicRuntimeManager {
         match workload_definition.kind.clone().into() {
-            WorkloadKind::FUNCTION => &FunctionRuntimeManager {},
-            WorkloadKind::POD => &PodRuntimeManager {},
+            WorkloadKind::Function => &FunctionRuntimeManager {},
+            WorkloadKind::Pod => &PodRuntimeManager {},
         }
     }
 }

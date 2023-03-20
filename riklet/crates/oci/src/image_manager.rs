@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::{event, Level};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ImageManagerConfiguration {
     pub oci_manager: UmociConfiguration,
     pub image_puller: SkopeoConfiguration,

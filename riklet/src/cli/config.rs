@@ -32,7 +32,7 @@ pub enum ConfigurationError {
 
 type Result<T> = std::result::Result<T, ConfigurationError>;
 
-#[derive(Deserialize, Debug, Serialize, PartialEq, Clone)]
+#[derive(Deserialize, Debug, Serialize, PartialEq, Eq, Clone)]
 pub struct Configuration {
     pub master_ip: String,
     pub log_level: String,
@@ -68,7 +68,7 @@ impl Configuration {
         );
         let contents = std::fs::read(path).map_err(ConfigurationError::Load)?;
 
-        Ok(toml::from_slice(&contents).map_err(ConfigurationError::Parse)?)
+        toml::from_slice(&contents).map_err(ConfigurationError::Parse)
     }
 
     /// Load the configuration file

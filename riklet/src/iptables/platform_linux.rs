@@ -27,10 +27,7 @@ impl MutateIptables for Iptables {
         self.inner
             .append(&rule.table.to_string(), &rule.chain.to_string(), &rule.rule)
             .map_err(|e| IptablesError::LoadFailed(e.to_string()))
-            .and_then(|_| {
-                self.rules.push(rule.clone());
-                Ok(())
-            })
+            .map(|_| self.rules.push(rule.clone()))
     }
     /// Tries to delete a rule, in case it does not exist it will throw [IptablesError::AlreadyDeleted]
     /// ## Example
@@ -54,10 +51,7 @@ impl MutateIptables for Iptables {
         self.inner
             .delete(&rule.table.to_string(), &rule.chain.to_string(), &rule.rule)
             .map_err(|e| IptablesError::LoadFailed(e.to_string()))
-            .and_then(|_| {
-                self.rules.retain(|r| r != rule);
-                Ok(())
-            })
+            .map(|_| self.rules.retain(|r| r != rule))
     }
 
     /// Tries to determine whether a rule exists or not. If it does return true, else false

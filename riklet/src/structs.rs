@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use shared::utils::get_random_hash;
 use tracing::{event, Level};
 
+#[allow(dead_code)]
 const DEFAULT_FUNCTION_RUNTIME_PORT: u16 = 3000;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -119,8 +120,7 @@ impl WorkloadDefinition {
         self.spec
             .function
             .as_ref()
-            .map(|f| f.exposure.as_ref().map(|e| e.port))
-            .flatten()
+            .and_then(|f| f.exposure.as_ref().map(|e| e.port))
             .unwrap() // TODO unwrap
     }
 }

@@ -14,7 +14,7 @@ use proto::worker::InstanceScheduling;
 use std::path::PathBuf;
 use tracing::{event, Level};
 
-use super::{network::PodRuntimeNetwork, Runtime, RuntimeManager, RuntimeManagerError};
+use super::{network::pod_network::PodRuntimeNetwork, Runtime, RuntimeManager};
 
 #[derive(Debug)]
 struct PodRuntime {
@@ -27,18 +27,15 @@ struct PodRuntime {
 
 #[async_trait]
 impl Runtime for PodRuntime {
-    async fn run(&mut self) -> super::RuntimeResult<()> {
-        self.network.init().await.map_err(RuntimeError::Network)?;
+    async fn run(&mut self) -> super::Result<()> {
+        self.network
+            .init()
+            .await
+            .map_err(RuntimeError::NetworkError)?;
 
         event!(Level::INFO, "Container workload detected");
 
         let containers = self.workload_definition.get_containers(&self.instance_id);
-
-        // Inform the scheduler that the workload is creating
-        // self.send_status(5, instance_id).await;
-
-        // self.workloads
-        //     .insert(instance_id.clone(), containers.clone());
 
         for container in containers {
             let id = container.id.unwrap(); // TODO Some / None
@@ -47,11 +44,12 @@ impl Runtime for PodRuntime {
                 .image_manager
                 .pull(&container.image[..])
                 .await
-                .map_err(RuntimeError::OCI)?;
+                .map_err(RuntimeError::OciError)?;
 
             // New console socket for the container
             let socket_path = PathBuf::from(format!("/tmp/{}", &id));
-            let console_socket = ConsoleSocket::new(&socket_path).map_err(RuntimeError::CRI)?;
+            let console_socket =
+                ConsoleSocket::new(&socket_path).map_err(RuntimeError::CriError)?;
 
             tokio::spawn(async move {
                 match console_socket
@@ -93,10 +91,6 @@ impl Runtime for PodRuntime {
 pub struct PodRuntimeManager {}
 
 impl RuntimeManager for PodRuntimeManager {
-    // fn create_network(&self, workload: InstanceScheduling) -> super::Result<Box<dyn Network>> {
-    //     Ok(Box::new(PodNetwork {}))
-    // }
-
     fn create_runtime(
         &self,
         workload: InstanceScheduling,
@@ -108,11 +102,10 @@ impl RuntimeManager for PodRuntimeManager {
 
         Ok(Box::new(PodRuntime {
             image_manager: ImageManager::new(config.manager.clone())
-                .map_err(RuntimeManagerError::OCI)?,
+                .map_err(RuntimeError::OciError)?,
             workload_definition,
             network: PodRuntimeNetwork::new(),
-            container_runtime: Runc::new(config.runner.clone())
-                .map_err(RuntimeManagerError::CRI)?,
+            container_runtime: Runc::new(config.runner).map_err(RuntimeError::CriError)?,
             instance_id,
         }))
     }

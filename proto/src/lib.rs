@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
-use common::{ResourceStatus, WorkloadRequestKind};
+use common::{worker_status::Status, InstanceMetric, ResourceStatus, WorkloadRequestKind};
 use serde::{Deserialize, Serialize};
-
+use std::ops::Deref;
 pub mod common {
     tonic::include_proto!("common");
 }
@@ -77,9 +77,9 @@ impl From<ResourceStatus> for InstanceStatus {
     }
 }
 
-impl Into<i32> for InstanceStatus {
-    fn into(self) -> i32 {
-        match self {
+impl From<InstanceStatus> for i32 {
+    fn from(value: InstanceStatus) -> Self {
+        match value {
             InstanceStatus::Unknown(_) => 0,
             InstanceStatus::Pending => 1,
             InstanceStatus::Running => 2,
@@ -107,3 +107,41 @@ impl From<i32> for InstanceStatus {
 }
 
 pub extern crate protobuf;
+
+pub enum WorkloadAction {
+    CREATE,
+    DELETE,
+}
+
+pub struct WorkerStatus(pub common::WorkerStatus);
+impl WorkerStatus {
+    pub fn new(identifier: String, instance_id: String, status: InstanceStatus) -> Self {
+        Self(common::WorkerStatus {
+            identifier,
+            host_address: None,
+            status: Some(Status::Instance(InstanceMetric {
+                instance_id,
+                status: status.into(),
+                metrics: "".to_string(),
+            })),
+        })
+    }
+}
+
+impl Deref for WorkerStatus {
+    type Target = common::WorkerStatus;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<i32> for WorkloadAction {
+    fn from(value: i32) -> Self {
+        match value {
+            0 => WorkloadAction::CREATE,
+            1 => WorkloadAction::DELETE,
+            _ => panic!("Unknown workload action"),
+        }
+    }
+}

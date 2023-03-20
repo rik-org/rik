@@ -1,6 +1,6 @@
 use crate::{
     cli::{config::Configuration, function_config::FnConfiguration},
-    runtime::{network::RuntimeNetwork, RuntimeError, RuntimeManagerError},
+    runtime::{network::RuntimeNetwork, RuntimeError},
     structs::WorkloadDefinition,
 };
 use async_trait::async_trait;
@@ -20,7 +20,7 @@ use std::{
 };
 use tracing::{event, Level};
 
-use super::{network::FunctionRuntimeNetwork, Runtime, RuntimeManager};
+use super::{network::function_network::FunctionRuntimeNetwork, Runtime, RuntimeManager};
 
 #[derive(Debug)]
 struct FunctionRuntime {
@@ -32,8 +32,11 @@ struct FunctionRuntime {
 
 #[async_trait]
 impl Runtime for FunctionRuntime {
-    async fn run(&mut self) -> super::RuntimeResult<()> {
-        self.network.init().await.map_err(RuntimeError::Network)?;
+    async fn run(&mut self) -> super::Result<()> {
+        self.network
+            .init()
+            .await
+            .map_err(RuntimeError::NetworkError)?;
 
         event!(Level::INFO, "Function workload detected");
 
@@ -43,7 +46,7 @@ impl Runtime for FunctionRuntime {
             command: Some(self.function_config.firecracker_location.clone()),
             ..Default::default()
         })
-        .map_err(RuntimeError::Firecracker)?;
+        .map_err(RuntimeError::FirecrackerError)?;
 
         event!(Level::DEBUG, "Creating a new MicroVM");
         let vm = MicroVM::from(Config {
@@ -69,9 +72,11 @@ impl Runtime for FunctionRuntime {
         });
 
         event!(Level::DEBUG, "Starting the MicroVM");
-        thread::spawn(move || -> super::RuntimeResult<()> {
+        thread::spawn(move || -> super::Result<()> {
             event!(Level::INFO, "Function started");
-            firecracker.start(&vm).map_err(RuntimeError::Firecracker)?;
+            firecracker
+                .start(&vm)
+                .map_err(RuntimeError::FirecrackerError)?;
             Ok(())
         });
 
@@ -106,9 +111,9 @@ impl FunctionRuntimeManager {
 
         let mut easy = Easy::new();
         let mut buffer = Vec::new();
-        easy.url(&url).map_err(RuntimeManagerError::CurlError)?;
+        easy.url(url).map_err(RuntimeError::FetchingError)?;
         easy.follow_location(true)
-            .map_err(RuntimeManagerError::CurlError)?;
+            .map_err(RuntimeError::FetchingError)?;
 
         {
             let mut transfer = easy.transfer();
@@ -117,32 +122,30 @@ impl FunctionRuntimeManager {
                     buffer.extend_from_slice(data);
                     Ok(data.len())
                 })
-                .map_err(RuntimeManagerError::CurlError)?;
-            transfer.perform().map_err(RuntimeManagerError::CurlError)?;
+                .map_err(RuntimeError::FetchingError)?;
+            transfer.perform().map_err(RuntimeError::FetchingError)?;
         }
 
-        let response_code = easy
-            .response_code()
-            .map_err(RuntimeManagerError::CurlError)?;
+        let response_code = easy.response_code().map_err(RuntimeError::FetchingError)?;
         if response_code != 200 {
             // return Err(format!("Response code from registry: {}", response_code).into());
         }
 
         {
             event!(Level::DEBUG, "Writing data to {}", file_path);
-            let mut file = File::create(&file_path).map_err(RuntimeManagerError::IoError)?;
+            let mut file = File::create(file_path).map_err(RuntimeError::IoError)?;
             file.write_all(buffer.as_slice())
-                .map_err(RuntimeManagerError::IoError)?;
+                .map_err(RuntimeError::IoError)?;
         }
 
         Ok(())
     }
 
     fn decompress(&self, source: &Path, destination: &Path) -> super::Result<()> {
-        let input_file = File::open(source).map_err(RuntimeManagerError::IoError)?;
-        let mut decoder = Decoder::new(input_file).map_err(RuntimeManagerError::IoError)?;
-        let mut output_file = File::create(destination).map_err(RuntimeManagerError::IoError)?;
-        io::copy(&mut decoder, &mut output_file).map_err(RuntimeManagerError::IoError)?;
+        let input_file = File::open(source).map_err(RuntimeError::IoError)?;
+        let mut decoder = Decoder::new(input_file).map_err(RuntimeError::IoError)?;
+        let mut output_file = File::create(destination).map_err(RuntimeError::IoError)?;
+        io::copy(&mut decoder, &mut output_file).map_err(RuntimeError::IoError)?;
         Ok(())
     }
 
@@ -155,7 +158,7 @@ impl FunctionRuntimeManager {
 
         if !file_pathbuf.exists() {
             let lz4_path = format!("{}.lz4", &file_path);
-            fs::create_dir(&download_directory).map_err(RuntimeManagerError::IoError)?;
+            fs::create_dir(&download_directory).map_err(RuntimeError::IoError)?;
 
             self.download_image(&rootfs_url, &lz4_path).map_err(|e| {
                 event!(Level::ERROR, "Error while downloading image: {}", e);
@@ -184,13 +187,12 @@ impl RuntimeManager for FunctionRuntimeManager {
         event!(Level::INFO, "Function workload detected");
         let workload_definition: WorkloadDefinition =
             serde_json::from_str(workload.definition.as_str())
-                .map_err(RuntimeManagerError::JsonError)?;
+                .map_err(RuntimeError::ParsingError)?;
 
         Ok(Box::new(FunctionRuntime {
             function_config: FnConfiguration::load(),
             file_path: self.create_fs(&workload_definition)?,
-            network: FunctionRuntimeNetwork::new(&workload)
-                .map_err(RuntimeManagerError::Network)?,
+            network: FunctionRuntimeNetwork::new(&workload).map_err(RuntimeError::NetworkError)?,
             workload_definition,
         }))
     }

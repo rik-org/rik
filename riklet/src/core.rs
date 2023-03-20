@@ -1,26 +1,18 @@
 use crate::cli::config::{Configuration, ConfigurationError};
 use crate::emitters::metrics_emitter::MetricsEmitter;
-use crate::iptables::rule::Rule;
-use crate::iptables::{Chain, Iptables, MutateIptables, Table};
-use crate::network::net::{Net, NetworkInterfaceConfig};
-use crate::runtime::{DynamicRuntimeManager, Runtime, RuntimeConfigurator, RuntimeManagerError};
-use crate::structs::{Container, WorkloadDefinition};
+use crate::runtime::{DynamicRuntimeManager, Runtime, RuntimeConfigurator, RuntimeError};
+use crate::structs::WorkloadDefinition;
 use crate::traits::EventEmitter;
 use crate::utils::banner;
-use proto::common::{InstanceMetric, WorkerRegistration, WorkerStatus};
+use proto::common::WorkerRegistration;
 use proto::worker::worker_client::WorkerClient;
 use proto::worker::InstanceScheduling;
-use proto::InstanceStatus;
+use proto::{InstanceStatus, WorkerStatus, WorkloadAction};
 use std::collections::HashMap;
-use std::net::Ipv4Addr;
-use std::path::{Path, PathBuf};
 
-use std::ops::Deref;
-use std::time::Duration;
-use std::{fs, io, thread};
 use thiserror::Error;
 use tonic::{transport::Channel, Request, Streaming};
-use tracing::{debug, event, Level};
+use tracing::{event, Level};
 
 const METRICS_UPDATER_INTERVAL: u64 = 15 * 1000;
 
@@ -39,49 +31,9 @@ pub enum RikletError {
     ConnectionError(tonic::transport::Error),
 
     #[error("Runtime error: {0}")]
-    RuntimeManagerError(RuntimeManagerError),
+    RuntimeManagerError(RuntimeError),
 }
 type Result<T> = std::result::Result<T, RikletError>;
-
-enum WorkloadAction {
-    CREATE,
-    DELETE,
-}
-
-struct RikletWorkerStatus(WorkerStatus);
-impl RikletWorkerStatus {
-    fn new(identifier: String, instance_id: String, status: InstanceStatus) -> Self {
-        Self(WorkerStatus {
-            identifier,
-            host_address: None,
-            status: Some(proto::common::worker_status::Status::Instance(
-                InstanceMetric {
-                    instance_id,
-                    status: status.into(),
-                    metrics: "".to_string(),
-                },
-            )),
-        })
-    }
-}
-
-impl Deref for RikletWorkerStatus {
-    type Target = WorkerStatus;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Into<WorkloadAction> for i32 {
-    fn into(self) -> WorkloadAction {
-        match self {
-            0 => WorkloadAction::CREATE,
-            1 => WorkloadAction::DELETE,
-            _ => panic!("Unknown workload action"),
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct Riklet {
@@ -89,8 +41,9 @@ pub struct Riklet {
     hostname: String,
     client: WorkerClient<Channel>,
     stream: Streaming<InstanceScheduling>,
+    // Can be pod or function runtimes
+    // The key is the instance id
     runtimes: HashMap<String, Box<dyn Runtime>>,
-    // function_config: FnConfiguration,
 }
 
 impl Riklet {
@@ -105,7 +58,7 @@ impl Riklet {
 
         println!("workload action: {}", &workload.action);
 
-        Ok(match &workload.action.into() {
+        match &workload.action.into() {
             WorkloadAction::CREATE => {
                 self.create_workload(workload, dynamic_runtime_manager)
                     .await?
@@ -114,7 +67,9 @@ impl Riklet {
                 self.delete_workload(workload, dynamic_runtime_manager)
                     .await?
             }
-        })
+        };
+
+        Ok(())
     }
 
     async fn create_workload(
@@ -143,8 +98,6 @@ impl Riklet {
     ) -> Result<()> {
         event!(Level::DEBUG, "Destroying workload");
         let instance_id: &String = &workload.instance_id;
-        // Destroy the runtime
-        // TODO
 
         self.runtimes.remove(instance_id);
 
@@ -158,8 +111,7 @@ impl Riklet {
     async fn send_status(&self, status: InstanceStatus, instance_id: &str) -> Result<()> {
         event!(Level::DEBUG, "Sending status : {}", status);
 
-        let status =
-            RikletWorkerStatus::new(self.hostname.clone(), instance_id.to_string(), status);
+        let status = WorkerStatus::new(self.hostname.clone(), instance_id.to_string(), status);
 
         MetricsEmitter::emit_event(self.client.clone(), vec![status.0])
             .await
@@ -201,7 +153,6 @@ impl Riklet {
         let hostname = gethostname::gethostname().into_string().unwrap();
 
         let config = Configuration::load().map_err(RikletError::ConfigurationError)?;
-        // let function_config = FnConfiguration::load();
 
         let mut client = WorkerClient::connect(config.master_ip.clone())
             .await
@@ -213,8 +164,6 @@ impl Riklet {
             hostname: hostname.clone(),
         });
         let stream = client.register(request).await.unwrap().into_inner();
-
-        // TODO Network
 
         Ok(Self {
             hostname,

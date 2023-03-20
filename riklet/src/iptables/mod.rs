@@ -145,7 +145,7 @@ impl Iptables {
         iptables::new(false)
             .map(|iptables| Iptables {
                 inner: iptables,
-                cleanup: cleanup,
+                cleanup,
                 rules: vec![],
             })
             .map_err(|e| IptablesError::LoadFailed(e.to_string()))
