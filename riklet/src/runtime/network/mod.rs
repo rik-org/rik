@@ -35,8 +35,8 @@ pub enum NetworkError {
 type Result<T> = std::result::Result<T, NetworkError>;
 
 #[async_trait]
-pub trait RuntimeNetwork: Send + Sync + Debug {
-    async fn init(&self) -> Result<()>;
+pub trait RuntimeNetwork: Send + Sync {
+    async fn init(&mut self) -> Result<()>;
 
     async fn destroy(&self) -> Result<()>;
 }

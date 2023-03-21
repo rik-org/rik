@@ -74,7 +74,6 @@ pub enum NetworkInterfaceError {
     #[error("Interface name is invalid, expected to be less than 15 characters")]
     InvalidInterfaceName,
 }
-
 pub enum NetworkInterface {
     TapInterface(VirtioNet),
 }

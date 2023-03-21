@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use proto::worker::InstanceScheduling;
-use std::fmt::Debug;
 use std::net::Ipv4Addr;
 use tracing::debug;
+use tracing::log::info;
 
 use crate::network::net::{Net, NetworkInterfaceConfig};
 use crate::{
@@ -13,7 +13,6 @@ use crate::{
 
 use super::{NetworkError, Result, RuntimeNetwork, IP_ALLOCATOR};
 
-#[derive(Debug, Clone)]
 pub struct FunctionRuntimeNetwork {
     pub mask_long: String,
     pub firecracker_ip: Ipv4Addr,
@@ -22,6 +21,7 @@ pub struct FunctionRuntimeNetwork {
     pub default_agent_port: u16,
     pub workload_definition: WorkloadDefinition,
     pub workload: InstanceScheduling,
+    pub tap: Option<Net>,
 }
 
 impl FunctionRuntimeNetwork {
@@ -56,28 +56,30 @@ impl FunctionRuntimeNetwork {
             default_agent_port,
             workload: workload.clone(),
             workload_definition,
+            tap: None,
         })
     }
 }
 
 #[async_trait]
 impl RuntimeNetwork for FunctionRuntimeNetwork {
-    async fn init(&self) -> Result<()> {
-        println!("Function network initialized");
+    async fn init(&mut self) -> Result<()> {
+        info!("Function network initialized");
 
         // Port forward microvm on the host
         let exposed_port = self.workload_definition.get_expected_port();
 
-        let config = NetworkInterfaceConfig::new(
+        let config = NetworkInterfaceConfig::new_with_random_name(
             self.workload.instance_id.clone(),
-            self.workload_definition.name.clone(),
             self.tap_ip,
         )
         .map_err(NetworkError::NetworkInterfaceError)?;
 
-        let _tap = Net::new_with_tap(config)
-            .await
-            .map_err(NetworkError::NetworkInterfaceError)?;
+        self.tap = Some(
+            Net::new_with_tap(config)
+                .await
+                .map_err(NetworkError::NetworkInterfaceError)?,
+        );
         debug!("Waiting for the microvm to start");
 
         // Create a new IPTables object

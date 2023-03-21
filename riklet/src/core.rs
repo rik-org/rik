@@ -35,7 +35,6 @@ pub enum RikletError {
 }
 type Result<T> = std::result::Result<T, RikletError>;
 
-#[derive(Debug)]
 pub struct Riklet {
     config: Configuration,
     hostname: String,

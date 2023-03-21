@@ -13,7 +13,7 @@ use crate::core::Riklet;
 use crate::utils::init_logger;
 use anyhow::Result;
 
-use tracing::{event, Level};
+use tracing::error;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -23,16 +23,16 @@ async fn main() -> Result<()> {
     // test_instrument();
     // If the process doesn't have root privileges, exit and display error.
     if !nix::unistd::Uid::effective().is_root() {
-        event!(Level::ERROR, "Riklet must run with root privileges.");
+        error!("Riklet must run with root privileges.");
         std::process::exit(1);
     }
 
     Riklet::new()
         .await
-        .unwrap_or_else(|_| {
-            event!(
-                Level::ERROR,
-                "An error occured during the bootstraping process of the Riklet."
+        .unwrap_or_else(|e| {
+            error!(
+                "An error occured during the bootstraping process of the Riklet. {}",
+                e
             );
             std::process::exit(2);
         })

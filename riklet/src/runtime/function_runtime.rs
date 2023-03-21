@@ -22,7 +22,6 @@ use tracing::{event, Level};
 
 use super::{network::function_network::FunctionRuntimeNetwork, Runtime, RuntimeManager};
 
-#[derive(Debug)]
 struct FunctionRuntime {
     function_config: FnConfiguration,
     file_path: String,

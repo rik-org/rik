@@ -40,7 +40,7 @@ pub enum RuntimeError {
 type Result<T> = std::result::Result<T, RuntimeError>;
 
 #[async_trait]
-pub trait Runtime: Send + Sync + Debug {
+pub trait Runtime: Send + Sync {
     async fn run(&mut self) -> Result<()>;
 }
 

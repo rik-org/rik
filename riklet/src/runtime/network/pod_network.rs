@@ -14,7 +14,7 @@ impl PodRuntimeNetwork {
 
 #[async_trait]
 impl RuntimeNetwork for PodRuntimeNetwork {
-    async fn init(&self) -> Result<()> {
+    async fn init(&mut self) -> Result<()> {
         todo!()
     }
 
