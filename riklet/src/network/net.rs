@@ -142,6 +142,12 @@ impl Net {
 
         Ok(())
     }
+
+    pub fn iface_name(&self) -> String {
+        match &self.interface {
+            NetworkInterface::TapInterface(virtio) => virtio.iface_name(),
+        }
+    }
 }
 
 #[cfg(test)]

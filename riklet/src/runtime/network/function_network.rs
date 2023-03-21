@@ -59,6 +59,15 @@ impl FunctionRuntimeNetwork {
             tap: None,
         })
     }
+
+    pub fn tap_name(&self) -> Result<String> {
+        self.tap
+            .as_ref()
+            .map(|v| v.iface_name())
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| NetworkError::Error("Tap interface name not found".to_string()))
+    }
 }
 
 #[async_trait]
@@ -76,7 +85,7 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
         .map_err(NetworkError::NetworkInterfaceError)?;
 
         self.tap = Some(
-            Net::new_with_tap(config)
+            Net::new_with_tap(config.clone())
                 .await
                 .map_err(NetworkError::NetworkInterfaceError)?,
         );
@@ -113,10 +122,12 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
             table: Table::Filter,
         };
         ipt.create(&rule).map_err(NetworkError::IptablesError)?;
+
         let rule = Rule {
             rule: format!(
-                "-i rik-{}-tap -o {} -j ACCEPT",
-                self.workload_definition.name, self.function_config.ifnet
+                "-i {} -o {} -j ACCEPT",
+                self.tap_name()?,
+                self.function_config.ifnet
             ),
             chain: Chain::Forward,
             table: Table::Filter,

@@ -66,7 +66,7 @@ impl Runtime for FunctionRuntime {
             network_interfaces: vec![NetworkInterface {
                 iface_id: "eth0".to_string(),
                 guest_mac: Some("AA:FC:00:00:00:01".to_string()),
-                host_dev_name: format!("rik-{}-tap", self.workload_definition.name),
+                host_dev_name: self.network.tap_name().map_err(RuntimeError::NetworkError)?,
             }],
         });
 
