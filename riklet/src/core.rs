@@ -1,5 +1,6 @@
 use crate::cli::config::{Configuration, ConfigurationError};
 use crate::emitters::metrics_emitter::MetricsEmitter;
+use crate::runtime::network::{GlobalRuntimeNetwork, NetworkError, RuntimeNetwork};
 use crate::runtime::{DynamicRuntimeManager, Runtime, RuntimeConfigurator, RuntimeError};
 use crate::structs::WorkloadDefinition;
 use crate::traits::EventEmitter;
@@ -12,7 +13,7 @@ use std::collections::HashMap;
 
 use thiserror::Error;
 use tonic::{transport::Channel, Request, Streaming};
-use tracing::{event, Level};
+use tracing::{error, event, Level};
 
 const METRICS_UPDATER_INTERVAL: u64 = 15 * 1000;
 
@@ -32,6 +33,9 @@ pub enum RikletError {
 
     #[error("Runtime error: {0}")]
     RuntimeManagerError(RuntimeError),
+
+    #[error("Network error: {0}")]
+    NetworkError(NetworkError),
 }
 type Result<T> = std::result::Result<T, RikletError>;
 
@@ -128,7 +132,9 @@ impl Riklet {
             .await
             .map_err(RikletError::MessageStatusError)?
         {
-            self.handle_workload(&workload).await?;
+            self.handle_workload(&workload).await.unwrap_or_else(|e| {
+                error!("Error while handling workload: {}", e);
+            })
         }
         Ok(())
     }
@@ -163,6 +169,12 @@ impl Riklet {
             hostname: hostname.clone(),
         });
         let stream = client.register(request).await.unwrap().into_inner();
+
+        let mut global_runtime_network = GlobalRuntimeNetwork::new();
+        global_runtime_network
+            .init()
+            .await
+            .map_err(RikletError::NetworkError)?;
 
         Ok(Self {
             hostname,

@@ -107,22 +107,6 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
         };
         ipt.create(&rule).map_err(NetworkError::IptablesError)?;
 
-        // Allow NAT on the interface connected to the internet.
-        let rule = Rule {
-            rule: format!("-o {} -j MASQUERADE", self.function_config.ifnet),
-            chain: Chain::PostRouting,
-            table: Table::Nat,
-        };
-        ipt.create(&rule).map_err(NetworkError::IptablesError)?;
-
-        // Add the FORWARD rules to the filter table
-        let rule = Rule {
-            rule: "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".to_string(),
-            chain: Chain::Forward,
-            table: Table::Filter,
-        };
-        ipt.create(&rule).map_err(NetworkError::IptablesError)?;
-
         let rule = Rule {
             rule: format!(
                 "-i {} -o {} -j ACCEPT",

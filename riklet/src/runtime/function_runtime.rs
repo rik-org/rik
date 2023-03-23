@@ -18,7 +18,7 @@ use std::{
     path::{Path, PathBuf},
     thread,
 };
-use tracing::{event, Level};
+use tracing::{error, event, Level};
 
 use super::{network::function_network::FunctionRuntimeNetwork, Runtime, RuntimeManager};
 
@@ -36,8 +36,6 @@ impl Runtime for FunctionRuntime {
             .init()
             .await
             .map_err(RuntimeError::NetworkError)?;
-
-        event!(Level::INFO, "Function workload detected");
 
         event!(Level::INFO, "Define network");
 
@@ -71,28 +69,14 @@ impl Runtime for FunctionRuntime {
         });
 
         event!(Level::DEBUG, "Starting the MicroVM");
-        thread::spawn(move || -> super::Result<()> {
-            event!(Level::INFO, "Function started");
-            firecracker
-                .start(&vm)
-                .map_err(RuntimeError::FirecrackerError)?;
-            Ok(())
-        });
-
-        /*
-        let boot_args= format!("console=ttyS0 reboot=k nomodules random.trust_cpu=on panic=1 pci=off tsc=reliable i8042.nokbd i8042.noaux ipv6.disable=1 quiet loglevel=0 ip={firecracker_ip}::{tap_ip}:{MASK_LONG}::eth0:off");
-        let firepilot = Firepilot::new(
-            workload_definition,
-            self.function_config,
-            fs_definition.file_path,
-        )
-        .with_bootargs(boot_args.as_str())
-        .with_guest_mac("AA:FC:00:00:00:01");
         thread::spawn(move || {
             event!(Level::INFO, "Function started");
-            firepilot.start();
+            let _stdout = firecracker.start(&vm).unwrap_or_else(|e| {
+                error!("Error starting function: {}", e);
+                String::from(format!("Error starting function: {}", e))
+            });
         });
-        */
+
         Ok(())
     }
 }

@@ -8,7 +8,9 @@ use std::fmt::Debug;
 use std::sync::Mutex;
 use thiserror::Error;
 
-use crate::iptables::IptablesError;
+use crate::cli::function_config::FnConfiguration;
+use crate::iptables::rule::Rule;
+use crate::iptables::{Chain, Iptables, IptablesError, MutateIptables, Table};
 use crate::network::net::NetworkInterfaceError;
 
 // Initialize Singleton for IpAllocator
@@ -39,4 +41,45 @@ pub trait RuntimeNetwork: Send + Sync {
     async fn init(&mut self) -> Result<()>;
 
     async fn destroy(&self) -> Result<()>;
+}
+
+pub struct GlobalRuntimeNetwork {
+    function_config: FnConfiguration,
+}
+
+impl GlobalRuntimeNetwork {
+    pub fn new() -> Self {
+        GlobalRuntimeNetwork {
+            function_config: FnConfiguration::load(),
+        }
+    }
+}
+
+#[async_trait]
+impl RuntimeNetwork for GlobalRuntimeNetwork {
+    async fn init(&mut self) -> Result<()> {
+        let mut ipt = Iptables::new(false).map_err(NetworkError::IptablesError)?;
+
+        // Allow NAT on the interface connected to the internet.
+        let rule = Rule {
+            rule: format!("-o {} -j MASQUERADE", self.function_config.ifnet),
+            chain: Chain::PostRouting,
+            table: Table::Nat,
+        };
+        ipt.create(&rule).map_err(NetworkError::IptablesError)?;
+
+        // Add the FORWARD rules to the filter table
+        let rule = Rule {
+            rule: "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".to_string(),
+            chain: Chain::Forward,
+            table: Table::Filter,
+        };
+        ipt.create(&rule).map_err(NetworkError::IptablesError)?;
+
+        Ok(())
+    }
+
+    async fn destroy(&self) -> Result<()> {
+        Ok(())
+    }
 }
