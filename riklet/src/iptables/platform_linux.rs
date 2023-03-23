@@ -1,3 +1,5 @@
+use tracing::{error, info, trace};
+
 use crate::iptables::rule::Rule;
 use crate::iptables::Result;
 use crate::iptables::{Iptables, IptablesError, MutateIptables};
@@ -20,10 +22,13 @@ impl MutateIptables for Iptables {
     /// assert!(result.is_ok());
     /// ```
     fn create(&mut self, rule: &Rule) -> Result<()> {
+        trace!("Tries to create iptables rule {}", rule);
         self.validate_combo_table_chain(rule.table.clone(), rule.chain.clone())?;
         if self.exists(rule)? {
+            trace!("Could not create rule {}", rule);
             return Err(IptablesError::AlreadyExist(rule.clone()));
         }
+
         self.inner
             .append(&rule.table.to_string(), &rule.chain.to_string(), &rule.rule)
             .map_err(|e| IptablesError::LoadFailed(e.to_string()))

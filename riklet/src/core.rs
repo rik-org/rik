@@ -29,7 +29,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{fs, io, thread};
 use tonic::{transport::Channel, Request, Streaming};
-use tracing::{debug, event, Level};
+use tracing::{debug, error, event, info, trace, Level};
 
 // const TAP_SCRIPT_DEFAULT_LOCATION: &str = "/app/setup-host-tap.sh";
 const MASK_LONG: &str = "255.255.255.252";
@@ -96,7 +96,8 @@ impl Riklet {
         let network = Ipv4Network::new(Ipv4Addr::new(192, 168, 1, 0), 24).unwrap();
         let ip_allocator = IpAllocator::new(network);
 
-        Ok(Self {
+        // initialize riklet
+        let riklet = Self {
             hostname,
             container_runtime,
             image_manager,
@@ -105,7 +106,28 @@ impl Riklet {
             workloads: HashMap::<String, Vec<Container>>::new(),
             ip_allocator,
             function_config,
-        })
+        };
+
+        // Create a new IPTables object
+        let mut ipt = Iptables::new(false)?;
+
+        // Allow NAT on the interface connected to the internet.
+        let rule = Rule {
+            rule: format!("-o {} -j MASQUERADE", riklet.function_config.ifnet),
+            chain: Chain::PostRouting,
+            table: Table::Nat,
+        };
+        ipt.create(&rule)?;
+
+        // Add the FORWARD rules to the filter table
+        let rule = Rule {
+            rule: "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".to_string(),
+            chain: Chain::Forward,
+            table: Table::Filter,
+        };
+        ipt.create(&rule)?;
+
+        Ok(riklet)
     }
 
     /// Handle a workload (eg CREATE, UPDATE, DELETE, READ)
@@ -201,18 +223,12 @@ impl Riklet {
 
             let file_pathbuf = Path::new(&file_path);
             if !file_pathbuf.exists() {
-                let lz4_path = format!("{}.lz4", &file_path);
+                debug!("Rootfs doesn't exist locally, downloading");
+                trace!("rootfs_url: {}", &rootfs_url);
                 fs::create_dir(&download_directory)?;
 
-                Self::download_image(&rootfs_url, &lz4_path).map_err(|e| {
+                Self::download_image(&rootfs_url, &file_path).map_err(|e| {
                     event!(Level::ERROR, "Error while downloading image: {}", e);
-                    fs::remove_dir_all(&download_directory)
-                        .expect("Error while removing directory");
-                    e
-                })?;
-
-                Self::decompress(Path::new(&lz4_path), file_pathbuf).map_err(|e| {
-                    event!(Level::ERROR, "Error while decompressing image: {}", e);
                     fs::remove_dir_all(&download_directory)
                         .expect("Error while removing directory");
                     e
@@ -237,13 +253,20 @@ impl Riklet {
             let tap_ip = subnet.nth(1).ok_or("Fail get tap ip")?;
             let firecracker_ip = subnet.nth(2).ok_or("Fail to get firecracker ip")?;
 
+            trace!(
+                "tap_ip: {}, guest_ip: {}",
+                tap_ip.to_string(),
+                firecracker_ip.to_string()
+            );
+
             let config =
                 NetworkInterfaceConfig::new_with_random_name(workload.instance_id.clone(), tap_ip)?;
-            let _tap = Net::new_with_tap(config).await?;
-            debug!("Waiting for the microvm to start");
+            let tap = Net::new_with_tap(config).await?;
+
+            debug!("Create IPTables rules");
 
             // Create a new IPTables object
-            let mut ipt = Iptables::new(true)?;
+            let mut ipt = Iptables::new(false)?;
 
             // Port forward microvm on the host
             let rule = Rule {
@@ -256,25 +279,11 @@ impl Riklet {
             };
             ipt.create(&rule)?;
 
-            // Allow NAT on the interface connected to the internet.
-            let rule = Rule {
-                rule: format!("-o {} -j MASQUERADE", self.function_config.ifnet),
-                chain: Chain::PostRouting,
-                table: Table::Nat,
-            };
-            ipt.create(&rule)?;
-
-            // Add the FORWARD rules to the filter table
-            let rule = Rule {
-                rule: "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".to_string(),
-                chain: Chain::Forward,
-                table: Table::Filter,
-            };
-            ipt.create(&rule)?;
             let rule = Rule {
                 rule: format!(
-                    "-i rik-{}-tap -o {} -j ACCEPT",
-                    workload_definition.name, self.function_config.ifnet
+                    "-i {} -o {} -j ACCEPT",
+                    tap.iface_name(),
+                    self.function_config.ifnet
                 ),
                 chain: Chain::Forward,
                 table: Table::Filter,
@@ -305,13 +314,16 @@ impl Riklet {
                 network_interfaces: vec![NetworkInterface {
                     iface_id: "eth0".to_string(),
                     guest_mac: Some("AA:FC:00:00:00:01".to_string()),
-                    host_dev_name: format!("rik-{}-tap", workload_definition.name),
+                    host_dev_name: tap.iface_name(),
                 }],
             });
 
-            event!(Level::DEBUG, "Starting the MicroVM");
             thread::spawn(move || {
-                firecracker.start(&vm).unwrap();
+                debug!("microVM {} is starting", vm.id);
+                if let Err(e) = firecracker.start(&vm) {
+                    error!("Failed to start microVM {}: {}", vm.id, e.to_string());
+                }
+                debug!("microVM {} ended", vm.id);
             });
 
             event!(

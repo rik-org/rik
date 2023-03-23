@@ -1,6 +1,8 @@
 use devices::virtio::Net as VirtioNet;
 use rand::Rng;
 use rate_limiter::RateLimiter;
+use std::process::Command;
+use tracing::{debug, trace};
 use utils::net::mac::MacAddr;
 
 use super::net::{NetworkInterfaceConfig, NetworkInterfaceError};
@@ -28,6 +30,53 @@ pub fn open_tap(config: &NetworkInterfaceConfig) -> Result<VirtioNet, NetworkInt
     .map_err(NetworkInterfaceError::CreateNetworkDevice)
 }
 
+/// FIXME: Find a better way to handle tap generation (using firecracker itself)
+/// This function creates a tap using legacy commands, it's not secure but it fixes a current issue with TAPs
+pub fn open_tap_shell(config: &NetworkInterfaceConfig) -> Result<String, NetworkInterfaceError> {
+    let mac_addr = generate_mac_addr();
+    if config.iface_name.len() > MAX_IFACE_NAME_LEN {
+        return Err(NetworkInterfaceError::InvalidInterfaceName);
+    }
+
+    let tap_output = Command::new("ip")
+        .args(["tuntap", "add", &config.iface_name, "mode", "tap"])
+        .output()
+        .map_err(|e| NetworkInterfaceError::ManageTap(e.to_string()))?;
+
+    if !tap_output.status.success() {
+        return Err(NetworkInterfaceError::ManageTap(format!(
+            "Tap creation failed, code {}, stderr: {}",
+            tap_output.status.code().unwrap(),
+            String::from_utf8(tap_output.stderr).unwrap()
+        )));
+    }
+
+    trace!("Shell tap create output: {:#?}", tap_output);
+    return Ok(config.iface_name.clone());
+}
+
+pub fn close_tap_shell(iface_name: &str) -> Result<(), NetworkInterfaceError> {
+    if iface_name.len() > MAX_IFACE_NAME_LEN {
+        return Err(NetworkInterfaceError::InvalidInterfaceName);
+    }
+
+    let tap_output = Command::new("ip")
+        .args(["tuntap", "del", iface_name, "mode", "tap"])
+        .output()
+        .map_err(|e| NetworkInterfaceError::ManageTap(e.to_string()))?;
+
+    if !tap_output.status.success() {
+        return Err(NetworkInterfaceError::ManageTap(format!(
+            "Tap creation failed, code {}, stderr: {}",
+            tap_output.status.code().unwrap(),
+            String::from_utf8(tap_output.stderr).unwrap()
+        )));
+    }
+
+    trace!("Shell tap delete output: {:#?}", tap_output);
+    return Ok(());
+}
+
 /// Create a brand new MAC addr, it is fully random and might not be binded to a known
 /// vendor.
 fn generate_mac_addr() -> MacAddr {
@@ -49,12 +98,39 @@ fn create_rate_limiters() -> (RateLimiter, RateLimiter) {
 
 #[cfg(test)]
 mod tests {
+    use crate::network::tap::NetworkInterfaceConfig;
     use futures_util::TryStreamExt;
     use pretty_assertions::assert_eq;
     use rtnetlink::new_connection;
     use std::net::Ipv4Addr;
 
     use super::*;
+
+    fn get_tap_config(iface_name: &str) -> NetworkInterfaceConfig {
+        NetworkInterfaceConfig::new(
+            iface_name.to_string(),
+            iface_name.to_string(),
+            Ipv4Addr::new(127, 0, 0, 1),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_tap_shell_manage() {
+        let tap_config = get_tap_config("tap007");
+        open_tap_shell(&tap_config).unwrap();
+        close_tap_shell(&tap_config.iface_name).unwrap();
+    }
+
+    #[test]
+    fn test_tap_shell_duplicate() {
+        let tap_config = get_tap_config("tap008");
+        open_tap_shell(&tap_config).unwrap();
+        let output = open_tap_shell(&tap_config);
+
+        assert!(output.is_err());
+        close_tap_shell(&tap_config.iface_name).unwrap();
+    }
 
     #[test]
     fn create_tap_named() {
