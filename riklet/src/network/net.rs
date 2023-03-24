@@ -1,13 +1,10 @@
 use std::net::{IpAddr, Ipv4Addr};
 
 use crate::network::tap::{self, open_tap_shell};
-use devices::virtio::Net as VirtioNet;
 use futures_util::TryStreamExt;
 use rtnetlink::new_connection;
 
-use tracing::{debug, error};
-
-use super::tap::close_tap_shell;
+use tracing::{debug, error, trace};
 
 type Result<T> = std::result::Result<T, NetworkInterfaceError>;
 
@@ -143,6 +140,31 @@ impl Net {
         }
 
         Ok(())
+    }
+
+    pub async fn set_link_up(&self) -> Result<()> {
+        let iface = self.iface_name();
+        trace!("link {} up", &iface);
+        let (connection, handle, _) = new_connection().unwrap();
+        tokio::spawn(connection);
+
+        let mut links = handle.link().get().match_name(iface.clone()).execute();
+        if let Some(link) = links.try_next().await? {
+            handle
+                .link()
+                .set(link.header.index)
+                .up()
+                .execute()
+                .await
+                .map_err(NetworkInterfaceError::IpAllocation)?;
+
+            return Ok(());
+        }
+
+        return Err(NetworkInterfaceError::ManageTap(format!(
+            "Could not get the interface {}",
+            iface
+        )));
     }
 
     pub fn iface_name(&self) -> String {

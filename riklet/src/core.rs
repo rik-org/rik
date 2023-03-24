@@ -26,7 +26,7 @@ use std::io::Write;
 use std::net::Ipv4Addr;
 use std::path::{Path, PathBuf};
 
-use std::time::Duration;
+use std::time::{self, Duration};
 use std::{fs, io, thread};
 use tonic::{transport::Channel, Request, Streaming};
 use tracing::{debug, error, event, info, trace, Level};
@@ -317,14 +317,21 @@ impl Riklet {
                     host_dev_name: tap.iface_name(),
                 }],
             });
-
             thread::spawn(move || {
                 debug!("microVM {} is starting", vm.id);
+
                 if let Err(e) = firecracker.start(&vm) {
                     error!("Failed to start microVM {}: {}", vm.id, e.to_string());
                 }
                 debug!("microVM {} ended", vm.id);
             });
+
+            // small race condition between VM up & interface created
+            let ten_millis = time::Duration::from_millis(10);
+            thread::sleep(ten_millis);
+            if let Err(e) = tap.set_link_up().await {
+                error!("Could not bring iface {} up: {}", tap.iface_name(), e);
+            }
 
             event!(
                 Level::INFO,
