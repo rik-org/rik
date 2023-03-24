@@ -4,7 +4,7 @@ use crate::network::tap::{self, open_tap_shell};
 use futures_util::TryStreamExt;
 use rtnetlink::new_connection;
 
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 
 type Result<T> = std::result::Result<T, NetworkInterfaceError>;
 
@@ -75,6 +75,7 @@ pub enum NetworkInterfaceError {
     #[error("Failed to create TAP: {0}")]
     ManageTap(String),
 }
+
 pub enum NetworkInterface {
     TapInterface(String),
 }
@@ -113,7 +114,7 @@ impl Net {
             interface,
         };
 
-        net.configure_ipv4_address(config.ipv4_addr, 24).await?;
+        net.configure_ipv4_address(config.ipv4_addr, 30).await?;
         Ok(net)
     }
 
@@ -122,6 +123,7 @@ impl Net {
         debug!("Give IP address to netid: {} -> {}", ipv4_addr, self.id);
         let (connection, handle, _) = new_connection().map_err(NetworkInterfaceError::IpSocket)?;
         tokio::spawn(connection);
+
         let mut links = handle.link().get().match_name(self.iface_name()).execute();
 
         if let Some(link) = links
@@ -166,12 +168,11 @@ impl Net {
     }
 
     pub fn iface_name(&self) -> String {
-        match &self.interface {
+        match self.interface {
             NetworkInterface::TapInterface(ref iface) => iface.clone(),
         }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;

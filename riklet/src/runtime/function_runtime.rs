@@ -1,5 +1,6 @@
 use crate::{
     cli::{config::Configuration, function_config::FnConfiguration},
+    network::tap::generate_mac_addr,
     runtime::{network::RuntimeNetwork, RuntimeError},
     structs::WorkloadDefinition,
 };
@@ -64,7 +65,7 @@ impl Runtime for FunctionRuntime {
             }],
             network_interfaces: vec![NetworkInterface {
                 iface_id: "eth0".to_string(),
-                guest_mac: Some("AA:FC:00:00:00:01".to_string()),
+                guest_mac: Some(generate_mac_addr().to_string()),
                 host_dev_name: self.network.tap_name().map_err(RuntimeError::NetworkError)?,
             }],
         });
@@ -149,22 +150,22 @@ impl FunctionRuntimeManager {
         let file_pathbuf = Path::new(&file_path);
 
         if !file_pathbuf.exists() {
-            let lz4_path = format!("{}.lz4", &file_path);
+            // let lz4_path = format!("{}.lz4", &file_path);
             fs::create_dir(&download_directory).map_err(RuntimeError::IoError)?;
 
-            self.download_image(&rootfs_url, &lz4_path).map_err(|e| {
+            self.download_image(&rootfs_url, &file_path).map_err(|e| {
                 event!(Level::ERROR, "Error while downloading image: {}", e);
                 fs::remove_dir_all(&download_directory).expect("Error while removing directory");
                 e
             })?;
 
-            self.decompress(Path::new(&lz4_path), file_pathbuf)
-                .map_err(|e| {
-                    event!(Level::ERROR, "Error while decompressing image: {}", e);
-                    fs::remove_dir_all(&download_directory)
-                        .expect("Error while removing directory");
-                    e
-                })?;
+            // self.decompress(Path::new(&lz4_path), file_pathbuf)
+            //     .map_err(|e| {
+            //         event!(Level::ERROR, "Error while decompressing image: {}", e);
+            //         fs::remove_dir_all(&download_directory)
+            //             .expect("Error while removing directory");
+            //         e
+            //     })?;
         }
         Ok(file_path)
     }

@@ -80,7 +80,7 @@ pub fn close_tap_shell(iface_name: &str) -> Result<(), NetworkInterfaceError> {
 
 /// Create a brand new MAC addr, it is fully random and might not be binded to a known
 /// vendor.
-fn generate_mac_addr() -> MacAddr {
+pub fn generate_mac_addr() -> MacAddr {
     let mut rng = rand::thread_rng();
     let mut mac = [0u8; 6];
     rng.fill(&mut mac[..]);
