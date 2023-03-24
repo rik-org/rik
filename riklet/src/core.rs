@@ -26,7 +26,7 @@ use std::io::Write;
 use std::net::Ipv4Addr;
 use std::path::{Path, PathBuf};
 
-use std::time::{self, Duration};
+use std::time::{Duration, self};
 use std::{fs, io, thread};
 use tonic::{transport::Channel, Request, Streaming};
 use tracing::{debug, error, event, info, trace, Level};
@@ -93,7 +93,7 @@ impl Riklet {
         let image_manager = ImageManager::new(config.manager.clone())?;
 
         // Initialize the ip allocator
-        let network = Ipv4Network::new(Ipv4Addr::new(192, 168, 1, 0), 24).unwrap();
+        let network = Ipv4Network::new(Ipv4Addr::new(192, 168, 1, 0), 28).unwrap();
         let ip_allocator = IpAllocator::new(network);
 
         // initialize riklet
@@ -245,10 +245,14 @@ impl Riklet {
                 .unwrap();
 
             // Alocate ip range for tap interface and firecracker micro VM
-            let subnet = self
-                .ip_allocator
-                .allocate_subnet()
-                .ok_or("No more internal ip available")?;
+            let subnet = match self.ip_allocator.allocate_subnet() {
+                Some(ip) => Ok(ip),
+                None => {
+                    error!("IP Allocator failed to reserve IP");
+                    let error = Box::new(std::io::Error::new(std::io::ErrorKind::Other, "failed to allocate ip"));
+                    Err(error)
+                }
+            }?;
 
             let tap_ip = subnet.nth(1).ok_or("Fail get tap ip")?;
             let firecracker_ip = subnet.nth(2).ok_or("Fail to get firecracker ip")?;
