@@ -1,6 +1,6 @@
 use crate::iptables::rule::Rule;
 use crate::iptables::Result;
-use crate::iptables::{Iptables, IptablesError, MutateIptables};
+use crate::iptables::{trace, Iptables, IptablesError, MutateIptables};
 
 impl MutateIptables for Iptables {
     /// Tries to create a rule, in case it already exists it will throw [IptablesError::AlreadyExist]
@@ -20,8 +20,10 @@ impl MutateIptables for Iptables {
     /// assert!(result.is_ok());
     /// ```
     fn create(&mut self, rule: &Rule) -> Result<()> {
+        trace!("Tries to create iptables rule {}", rule);
         self.validate_combo_table_chain(rule.table.clone(), rule.chain.clone())?;
         if self.exists(rule)? {
+            trace!("Could not create rule {}", rule);
             return Err(IptablesError::AlreadyExist(rule.clone()));
         }
         self.inner

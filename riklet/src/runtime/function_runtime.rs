@@ -4,6 +4,7 @@ use crate::{
     structs::WorkloadDefinition,
 };
 use async_trait::async_trait;
+use core::time;
 use curl::easy::Easy;
 use firepilot::{
     microvm::{BootSource, Config, Drive, MicroVM, NetworkInterface},
@@ -76,6 +77,14 @@ impl Runtime for FunctionRuntime {
                 String::from(format!("Error starting function: {}", e))
             });
         });
+
+        let tap = self.network.tap.as_ref().unwrap();
+        // small race condition between VM up & interface created
+        let ten_millis = time::Duration::from_millis(10);
+        thread::sleep(ten_millis);
+        if let Err(e) = tap.set_link_up().await {
+            error!("Could not bring iface {} up: {}", tap.iface_name(), e);
+        }
 
         Ok(())
     }

@@ -1,11 +1,10 @@
 use std::net::{IpAddr, Ipv4Addr};
 
-use crate::network::tap;
-use devices::virtio::Net as VirtioNet;
+use crate::network::tap::{self, open_tap_shell};
 use futures_util::TryStreamExt;
 use rtnetlink::new_connection;
 
-use tracing::debug;
+use tracing::{debug, trace};
 
 type Result<T> = std::result::Result<T, NetworkInterfaceError>;
 
@@ -73,9 +72,11 @@ pub enum NetworkInterfaceError {
     IpAllocation(#[from] rtnetlink::Error),
     #[error("Interface name is invalid, expected to be less than 15 characters")]
     InvalidInterfaceName,
+    #[error("Failed to create TAP: {0}")]
+    ManageTap(String),
 }
 pub enum NetworkInterface {
-    TapInterface(VirtioNet),
+    TapInterface(String),
 }
 
 /// An instance of a network implementation, it can be either a tap interface or a just a veth
@@ -105,7 +106,8 @@ impl Net {
     /// interface depending on the input configuration
     pub async fn new_with_tap(config: NetworkInterfaceConfig) -> Result<Self> {
         debug!("New net tap interface with name: {}", config.iface_name);
-        let interface = NetworkInterface::TapInterface(tap::open_tap(&config)?);
+        let tap = open_tap_shell(&config)?;
+        let interface = NetworkInterface::TapInterface(tap);
         let net = Net {
             id: config.id.clone(),
             interface,
@@ -120,12 +122,7 @@ impl Net {
         debug!("Give IP address to netid: {} -> {}", ipv4_addr, self.id);
         let (connection, handle, _) = new_connection().map_err(NetworkInterfaceError::IpSocket)?;
         tokio::spawn(connection);
-
-        let iface = match self.interface {
-            NetworkInterface::TapInterface(ref iface) => iface.iface_name(),
-        };
-
-        let mut links = handle.link().get().match_name(iface.to_string()).execute();
+        let mut links = handle.link().get().match_name(self.iface_name()).execute();
 
         if let Some(link) = links
             .try_next()
@@ -143,9 +140,34 @@ impl Net {
         Ok(())
     }
 
+    pub async fn set_link_up(&self) -> Result<()> {
+        let iface = self.iface_name();
+        trace!("link {} up", &iface);
+        let (connection, handle, _) = new_connection().unwrap();
+        tokio::spawn(connection);
+
+        let mut links = handle.link().get().match_name(iface.clone()).execute();
+        if let Some(link) = links.try_next().await? {
+            handle
+                .link()
+                .set(link.header.index)
+                .up()
+                .execute()
+                .await
+                .map_err(NetworkInterfaceError::IpAllocation)?;
+
+            return Ok(());
+        }
+
+        return Err(NetworkInterfaceError::ManageTap(format!(
+            "Could not get the interface {}",
+            iface
+        )));
+    }
+
     pub fn iface_name(&self) -> String {
         match &self.interface {
-            NetworkInterface::TapInterface(virtio) => virtio.iface_name(),
+            NetworkInterface::TapInterface(ref iface) => iface.clone(),
         }
     }
 }
@@ -153,10 +175,7 @@ impl Net {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use netlink_packet_route::{
-        constants::{AF_BRIDGE, RTEXT_FILTER_BRVLAN},
-        link::nlas::Nla,
-    };
+    use netlink_packet_route::link::nlas::Nla;
     use pretty_assertions::assert_eq;
 
     #[tokio::test]
@@ -167,12 +186,7 @@ mod tests {
             ipv4_addr: Ipv4Addr::new(172, 0, 0, 17),
         };
         let net = Net::new_with_tap(config).await.unwrap();
-        match net.interface {
-            NetworkInterface::TapInterface(ref iface) => {
-                assert_eq!(iface.iface_name(), "rust0nettest")
-            }
-            _ => panic!("Wrong interface type"),
-        }
+        assert_eq!(net.iface_name(), "rust0nettest");
     }
 
     #[tokio::test]
@@ -186,11 +200,9 @@ mod tests {
         let _net = Net::new_with_tap(config.clone()).await.unwrap();
         let net = Net::new_with_tap(config).await;
         assert!(net.is_err());
-        assert!(net
-            .err()
-            .unwrap()
-            .to_string()
-            .contains("Invalid TUN/TAP Backend provided by rust1nettest"));
+        let error = net.err().unwrap().to_string();
+        let expected_error = "Failed to create TAP: Tap creation failed, code 1, stderr: ioctl(TUNSETIFF): Device or resource busy\n";
+        assert_eq!(error, expected_error);
     }
 
     #[tokio::test]
