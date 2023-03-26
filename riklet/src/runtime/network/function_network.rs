@@ -76,7 +76,10 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
         info!("Function network initialized");
 
         // Port forward microvm on the host
-        let exposed_port = self.workload_definition.get_expected_port();
+        let exposed_port = self
+            .workload_definition
+            .get_expected_port()
+            .ok_or_else(|| NetworkError::Error("Exposed port not found".to_string()))?;
 
         let config = NetworkInterfaceConfig::new_with_random_name(
             self.workload.instance_id.clone(),

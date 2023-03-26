@@ -38,51 +38,49 @@ impl Runtime for PodRuntime {
         let containers = self.workload_definition.get_containers(&self.instance_id);
 
         for container in containers {
-            let id = container.id.unwrap(); // TODO Some / None
-
-            let image = &self
-                .image_manager
-                .pull(&container.image[..])
-                .await
-                .map_err(RuntimeError::OciError)?;
-
-            // New console socket for the container
-            let socket_path = PathBuf::from(format!("/tmp/{}", &id));
-            let console_socket =
-                ConsoleSocket::new(&socket_path).map_err(RuntimeError::CriError)?;
-
-            tokio::spawn(async move {
-                match console_socket
-                    .get_listener()
-                    .as_ref()
-                    .unwrap() // TODO Some / None
-                    .accept()
+            if let Some(id) = container.id {
+                let image = &self
+                    .image_manager
+                    .pull(&container.image[..])
                     .await
-                {
-                    Ok((stream, _socket_addr)) => {
-                        Box::leak(Box::new(stream));
-                    }
-                    Err(err) => {
-                        event!(Level::ERROR, "Receive PTY master error : {:?}", err)
-                    }
-                }
-            });
-            self.container_runtime
-                .run(
-                    &id[..],
-                    image.bundle.as_ref().unwrap(), // TODO Some / None
-                    Some(&CreateArgs {
-                        pid_file: None,
-                        console_socket: Some(socket_path),
-                        no_pivot: false,
-                        no_new_keyring: false,
-                        detach: true,
-                    }),
-                )
-                .await
-                .unwrap();
+                    .map_err(RuntimeError::OciError)?;
 
-            event!(Level::INFO, "Started container {}", id);
+                // New console socket for the container
+                let socket_path = PathBuf::from(format!("/tmp/{}", &id));
+                let console_socket =
+                    ConsoleSocket::new(&socket_path).map_err(RuntimeError::CriError)?;
+
+                tokio::spawn(async move {
+                    if let Some(unix_listener) = console_socket.get_listener().as_ref() {
+                        match unix_listener.accept().await {
+                            Ok((stream, _socket_addr)) => {
+                                Box::leak(Box::new(stream));
+                            }
+                            Err(err) => {
+                                event!(Level::ERROR, "Receive PTY master error : {:?}", err)
+                            }
+                        }
+                    }
+                });
+                self.container_runtime
+                    .run(
+                        &id[..],
+                        image.bundle.as_ref().ok_or_else(|| {
+                            RuntimeError::Error("Image bundle not found".to_string())
+                        })?,
+                        Some(&CreateArgs {
+                            pid_file: None,
+                            console_socket: Some(socket_path),
+                            no_pivot: false,
+                            no_new_keyring: false,
+                            detach: true,
+                        }),
+                    )
+                    .await
+                    .map_err(RuntimeError::CriError)?;
+
+                event!(Level::INFO, "Started container {}", id);
+            }
         }
         Ok(())
     }
@@ -97,7 +95,8 @@ impl RuntimeManager for PodRuntimeManager {
         config: Configuration,
     ) -> super::Result<Box<dyn Runtime>> {
         let workload_definition: WorkloadDefinition =
-            serde_json::from_str(workload.definition.as_str()).unwrap(); // TODO Some / None
+            serde_json::from_str(workload.definition.as_str())
+                .map_err(RuntimeError::ParsingError)?;
         let instance_id: String = workload.instance_id;
 
         Ok(Box::new(PodRuntime {

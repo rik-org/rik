@@ -15,6 +15,9 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {
+    #[error("Runtime error: {0}")]
+    Error(String),
+
     #[error("Network error: {0}")]
     NetworkError(NetworkError),
 

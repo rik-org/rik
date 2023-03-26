@@ -106,21 +106,17 @@ impl WorkloadDefinition {
         containers
     }
 
-    pub fn get_rootfs_url(&self) -> String {
+    pub fn get_rootfs_url(&self) -> Option<String> {
         self.spec
             .function
             .as_ref()
-            .unwrap() // TODO unwrap
-            .execution
-            .rootfs
-            .to_string()
+            .map(|v| v.execution.rootfs.to_string())
     }
 
-    pub fn get_expected_port(&self) -> u16 {
+    pub fn get_expected_port(&self) -> Option<u16> {
         self.spec
             .function
             .as_ref()
             .and_then(|f| f.exposure.as_ref().map(|e| e.port))
-            .unwrap() // TODO unwrap
     }
 }

@@ -143,7 +143,9 @@ impl FunctionRuntimeManager {
     }
 
     fn create_fs(&self, workload_definition: &WorkloadDefinition) -> super::Result<String> {
-        let rootfs_url = workload_definition.get_rootfs_url();
+        let rootfs_url = workload_definition
+            .get_rootfs_url()
+            .ok_or_else(|| RuntimeError::Error("Rootfs url not found".to_string()))?;
 
         let download_directory = format!("/tmp/{}", &workload_definition.name);
         let file_path = format!("{}/rootfs.ext4", &download_directory);
