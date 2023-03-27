@@ -79,7 +79,7 @@ jobs:
     name: Publish mdbook
     runs-on: ubuntu-latest
     needs: [test, lint]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.repository_owner == 'rik-org'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
