@@ -1,6 +1,7 @@
 use anyhow::{Context, Error, Result};
 use config::{Config, Environment, File};
 use serde::{Deserialize, Serialize};
+use tracing::{debug, instrument};
 
 /// `Configuration` hold the configuration of the tool
 /// in order to be able to interact with the remote cluster.
@@ -20,7 +21,9 @@ pub struct Cluster {
 }
 
 impl Configuration {
+    #[instrument(name = "Configuration::load")]
     pub fn load() -> Result<Self> {
+        debug!("Loading configuration");
         let default_config_path = match dirs::home_dir().and_then(|p| p.to_str().map(String::from))
         {
             Some(path) => Ok(path),

@@ -1,14 +1,16 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Args;
-use prettytable::row;
+use prettytable::{row, Row};
 use std::path::PathBuf;
+use tracing::{debug, trace};
 
 use crate::cli::Handler;
-use crate::core::client::{Client, WorkloadClient};
+use crate::core::client::{Client, ResponseEntity, WorkloadClient};
 use crate::core::config::Configuration;
-use crate::core::get_display_table;
 use crate::core::workload::Workload;
+
+use super::DisplayResource;
 
 #[derive(Debug, Args)]
 pub struct CreateWorkload {
@@ -45,25 +47,72 @@ pub struct GetMultipleWorkload {}
 
 #[async_trait]
 impl Handler for GetMultipleWorkload {
+    #[tracing::instrument(name = "GetMultipleWorkload::handler", skip(self))]
     async fn handler(&self) -> Result<()> {
         let config = Configuration::load()?;
         let workloads = Client::init(config.cluster).get_workloads().await?;
 
-        let mut table = get_display_table();
-        table.set_titles(row!["ID", "API VERSION", "NAME", "CONTAINERS"]);
-        if workloads.is_empty() {
+        let table = workloads.into_table();
+        table.printstd();
+        Ok(())
+    }
+}
+
+impl DisplayResource for Vec<ResponseEntity<Workload>> {
+    #[tracing::instrument(name = "DisplayResource::workload::into_table", skip(self))]
+    fn into_table(&self) -> prettytable::Table {
+        let mut table = Self::new_table();
+        table.set_titles(row!["ID", "NAME", "KIND", "CONTAINERS"]);
+        if self.is_empty() {
             table.add_row(row!["", "", "", ""]);
         }
-        for workload in workloads {
+        for workload in self {
             table.add_row(row![
                 workload.id,
-                workload.value.api_version,
                 workload.name,
+                workload.value.kind,
                 workload.value.spec.containers.len()
             ]);
         }
+        table
+    }
+}
 
-        table.printstd();
-        Ok(())
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::workload::Spec;
+    use pretty_assertions::assert_eq;
+
+    fn create_workload(name: &str) -> Workload {
+        Workload {
+            kind: "Workload".to_string(),
+            api_version: "v1".to_string(),
+            name: name.to_string(),
+            spec: Spec { containers: vec![] },
+        }
+    }
+
+    #[test]
+    fn display_workloads_table() {
+        let workloads = vec![
+            ResponseEntity {
+                id: "abde".to_string(),
+                name: "workload-1".to_string(),
+                value: create_workload("workload-1"),
+            },
+            ResponseEntity {
+                id: "abcd".to_string(),
+                name: "workload-2".to_string(),
+                value: create_workload("workload-2"),
+            },
+        ];
+
+        let table = workloads.into_table();
+        let expected_output = r#" ID    NAME        KIND      CONTAINERS 
+ abde  workload-1  Workload  0 
+ abcd  workload-2  Workload  0 
+"#;
+        assert_eq!(table.to_string(), expected_output);
     }
 }
