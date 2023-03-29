@@ -24,14 +24,16 @@ pub trait Handler {
 /// CommandName(CommandHandler)
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Request to create a resource on the cluster
     Create(CreateCommand),
+    /// Fetch a resource from a cluster
     Get(GetMultipleCommand),
 }
 
+/// Command line interface to interact with a RIK Cluster
 #[derive(Parser, Debug)]
-#[clap(version, author)]
+#[clap(version, author, about, long_about = None)]
 pub struct CommandLineInterface {
-    /// The subcommand to apply
     #[clap(subcommand)]
     pub command: Command,
 }

@@ -2,7 +2,7 @@
 name = "rikctl"
 version = "0.1.0"
 edition = "2021"
-authors = ["Thomas Gouveia <gouveia.thomas@outlook.fr>"]
+authors = []
 
 [dependencies]
 config = { version = "0.13.3", features = ["yaml"] }
@@ -17,3 +17,7 @@ reqwest = "0.11.14"
 prettytable-rs = "0.9.0"
 anyhow = "1.0.66"
 dirs = "4.0.0"
+
+[dev-dependencies]
+tempfile = "3.4.0"
+serial_test = "1.0.0"

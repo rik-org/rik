@@ -12,13 +12,12 @@ pub struct CreateCommand {
 impl CreateCommand {
     pub fn command(self) -> Box<dyn Handler> {
         match self.resource {
-            CreateResource::Workload(handler) => Box::new(handler),
+            CreateResource::Workloads(handler) => Box::new(handler),
             CreateResource::Instance(handler) => Box::new(handler),
         }
     }
 }
 
-/// List resources on the cluster.
 #[derive(Debug, Args)]
 pub struct GetMultipleCommand {
     #[clap(subcommand)]
@@ -29,7 +28,7 @@ impl GetMultipleCommand {
     pub fn command(self) -> Box<dyn Handler> {
         match self.resource {
             GetMultipleResource::Instances(handler) => Box::new(handler),
-            GetMultipleResource::Workload(handler) => Box::new(handler),
+            GetMultipleResource::Workloads(handler) => Box::new(handler),
         }
     }
 }
