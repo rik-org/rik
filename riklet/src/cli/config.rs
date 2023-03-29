@@ -26,7 +26,7 @@ pub enum ConfigurationError {
     ConfigFileCreation(std::io::Error),
     #[error("An error occured when trying to write the configuration. Error {0}")]
     ConfigFileWrite(std::io::Error),
-    #[error("An error occured when trying to create the {0} directory. Error {1}")]
+    #[error("An error occured when trying to create the {1} directory. Error {0}")]
     CreateDirectory(std::io::Error, PathBuf),
 }
 

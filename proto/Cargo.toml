@@ -10,5 +10,9 @@ prost.workspace = true
 tonic.workspace = true
 protobuf.workspace = true
 
+[dependencies.definition]
+path = "../crates/definition"
+
 [build-dependencies]
 tonic-build.workspace = true
+

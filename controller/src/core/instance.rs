@@ -1,7 +1,7 @@
 use crate::api::ApiChannel;
 use definition::workload::{Spec, WorkloadKind};
+use definition::InstanceStatus;
 use names::{Generator, Name};
-use proto::InstanceStatus;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]

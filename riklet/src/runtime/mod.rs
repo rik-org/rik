@@ -49,7 +49,6 @@ pub trait Runtime: Send + Sync {
 
 #[async_trait]
 pub trait RuntimeManager: Send + Sync {
-    // fn create_network(&self, workload: InstanceScheduling) -> Result<Box<dyn Network>>;
     fn create_runtime(
         &self,
         workload: InstanceScheduling,

@@ -5,10 +5,11 @@ use crate::runtime::{DynamicRuntimeManager, Runtime, RuntimeConfigurator, Runtim
 use crate::structs::WorkloadDefinition;
 use crate::traits::EventEmitter;
 use crate::utils::banner;
+use definition::InstanceStatus;
 use proto::common::WorkerRegistration;
 use proto::worker::worker_client::WorkerClient;
 use proto::worker::InstanceScheduling;
-use proto::{InstanceStatus, WorkerStatus, WorkloadAction};
+use proto::{WorkerStatus, WorkloadAction};
 use std::collections::HashMap;
 
 use thiserror::Error;

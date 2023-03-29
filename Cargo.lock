@@ -2438,6 +2438,7 @@ dependencies = [
 name = "proto"
 version = "0.2.1"
 dependencies = [
+ "definition",
  "prost",
  "protobuf",
  "serde",
@@ -2687,6 +2688,7 @@ dependencies = [
  "cri",
  "curl",
  "daemonize",
+ "definition",
  "derive_more",
  "devices",
  "firepilot",

@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 use proto::worker::InstanceScheduling;
 use std::net::Ipv4Addr;
-use tracing::debug;
-use tracing::log::info;
+use tracing::{debug, info};
 
 use crate::network::net::{Net, NetworkInterfaceConfig};
 use crate::{

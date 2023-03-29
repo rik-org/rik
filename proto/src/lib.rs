@@ -1,7 +1,5 @@
-use std::fmt::Display;
-
 use common::{worker_status::Status, InstanceMetric, ResourceStatus, WorkloadRequestKind};
-use serde::{Deserialize, Serialize};
+use definition::InstanceStatus;
 use std::ops::Deref;
 pub mod common {
     tonic::include_proto!("common");
@@ -38,31 +36,6 @@ impl From<i32> for ResourceStatus {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub enum InstanceStatus {
-    Unknown(String),
-    Pending,
-    Running,
-    Failed,
-    Terminated,
-    Creating,
-    Destroying,
-}
-
-impl Display for InstanceStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            InstanceStatus::Unknown(_) => write!(f, "Unknown"),
-            InstanceStatus::Pending => write!(f, "Pending"),
-            InstanceStatus::Running => write!(f, "Running"),
-            InstanceStatus::Failed => write!(f, "Failed"),
-            InstanceStatus::Terminated => write!(f, "Terminated"),
-            InstanceStatus::Creating => write!(f, "Creating"),
-            InstanceStatus::Destroying => write!(f, "Destroying"),
-        }
-    }
-}
-
 impl From<ResourceStatus> for InstanceStatus {
     fn from(value: ResourceStatus) -> Self {
         match value {
@@ -73,35 +46,6 @@ impl From<ResourceStatus> for InstanceStatus {
             ResourceStatus::Terminated => InstanceStatus::Terminated,
             ResourceStatus::Creating => InstanceStatus::Creating,
             ResourceStatus::Destroying => InstanceStatus::Destroying,
-        }
-    }
-}
-
-impl From<InstanceStatus> for i32 {
-    fn from(value: InstanceStatus) -> Self {
-        match value {
-            InstanceStatus::Unknown(_) => 0,
-            InstanceStatus::Pending => 1,
-            InstanceStatus::Running => 2,
-            InstanceStatus::Failed => 3,
-            InstanceStatus::Terminated => 4,
-            InstanceStatus::Creating => 5,
-            InstanceStatus::Destroying => 6,
-        }
-    }
-}
-
-impl From<i32> for InstanceStatus {
-    fn from(value: i32) -> Self {
-        match value {
-            0 => InstanceStatus::Unknown(String::from("")),
-            1 => InstanceStatus::Pending,
-            2 => InstanceStatus::Running,
-            3 => InstanceStatus::Failed,
-            4 => InstanceStatus::Terminated,
-            5 => InstanceStatus::Creating,
-            6 => InstanceStatus::Destroying,
-            _ => InstanceStatus::Unknown(String::from("")),
         }
     }
 }

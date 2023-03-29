@@ -11,12 +11,11 @@ use firepilot::{
     microvm::{BootSource, Config, Drive, MicroVM, NetworkInterface},
     Firecracker,
 };
-use lz4::Decoder;
 use proto::worker::InstanceScheduling;
 use std::{
     fs,
     fs::File,
-    io::{self, Write},
+    io::Write,
     path::{Path, PathBuf},
     thread,
 };
@@ -28,7 +27,6 @@ struct FunctionRuntime {
     function_config: FnConfiguration,
     file_path: String,
     network: FunctionRuntimeNetwork,
-    workload_definition: WorkloadDefinition,
 }
 
 #[async_trait]
@@ -39,7 +37,7 @@ impl Runtime for FunctionRuntime {
             .await
             .map_err(RuntimeError::NetworkError)?;
 
-        event!(Level::INFO, "Define network");
+        event!(Level::DEBUG, "Define network");
 
         let firecracker = Firecracker::new(firepilot::FirecrackerOptions {
             command: Some(self.function_config.firecracker_location.clone()),
@@ -121,7 +119,10 @@ impl FunctionRuntimeManager {
 
         let response_code = easy.response_code().map_err(RuntimeError::FetchingError)?;
         if response_code != 200 {
-            // return Err(format!("Response code from registry: {}", response_code).into());
+            return Err(RuntimeError::Error(format!(
+                "Response code from registry: {}",
+                response_code
+            )));
         }
 
         {
@@ -134,13 +135,14 @@ impl FunctionRuntimeManager {
         Ok(())
     }
 
-    fn decompress(&self, source: &Path, destination: &Path) -> super::Result<()> {
-        let input_file = File::open(source).map_err(RuntimeError::IoError)?;
-        let mut decoder = Decoder::new(input_file).map_err(RuntimeError::IoError)?;
-        let mut output_file = File::create(destination).map_err(RuntimeError::IoError)?;
-        io::copy(&mut decoder, &mut output_file).map_err(RuntimeError::IoError)?;
-        Ok(())
-    }
+    // FIXME Commented because of a bug with the decompression - need to be fixed
+    // fn decompress(&self, source: &Path, destination: &Path) -> super::Result<()> {
+    //     let input_file = File::open(source).map_err(RuntimeError::IoError)?;
+    //     let mut decoder = Decoder::new(input_file).map_err(RuntimeError::IoError)?;
+    //     let mut output_file = File::create(destination).map_err(RuntimeError::IoError)?;
+    //     io::copy(&mut decoder, &mut output_file).map_err(RuntimeError::IoError)?;
+    //     Ok(())
+    // }
 
     fn create_fs(&self, workload_definition: &WorkloadDefinition) -> super::Result<String> {
         let rootfs_url = workload_definition
@@ -152,6 +154,7 @@ impl FunctionRuntimeManager {
         let file_pathbuf = Path::new(&file_path);
 
         if !file_pathbuf.exists() {
+            // FIXME Commented because of a bug with the decompression - need to be fixed
             // let lz4_path = format!("{}.lz4", &file_path);
             fs::create_dir(&download_directory).map_err(RuntimeError::IoError)?;
 
@@ -160,7 +163,7 @@ impl FunctionRuntimeManager {
                 fs::remove_dir_all(&download_directory).expect("Error while removing directory");
                 e
             })?;
-
+            // FIXME Commented because of a bug with the decompression - need to be fixed
             // self.decompress(Path::new(&lz4_path), file_pathbuf)
             //     .map_err(|e| {
             //         event!(Level::ERROR, "Error while decompressing image: {}", e);
@@ -179,7 +182,7 @@ impl RuntimeManager for FunctionRuntimeManager {
         workload: InstanceScheduling,
         _config: Configuration,
     ) -> super::Result<Box<dyn Runtime>> {
-        event!(Level::INFO, "Function workload detected");
+        event!(Level::DEBUG, "Function workload detected");
         let workload_definition: WorkloadDefinition =
             serde_json::from_str(workload.definition.as_str())
                 .map_err(RuntimeError::ParsingError)?;
@@ -188,7 +191,6 @@ impl RuntimeManager for FunctionRuntimeManager {
             function_config: FnConfiguration::load(),
             file_path: self.create_fs(&workload_definition)?,
             network: FunctionRuntimeNetwork::new(&workload).map_err(RuntimeError::NetworkError)?,
-            workload_definition,
         }))
     }
 }

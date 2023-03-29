@@ -57,18 +57,6 @@ pub struct FunctionPort {
     pub port_type: NetworkPortExposureType,
 }
 
-impl FunctionPort {
-    /// Create a FunctionPort and bind it to the default port 3000
-    /// All our runtimes only use this port
-    pub fn new(port: u16) -> Self {
-        Self {
-            port,
-            target_port: DEFAULT_FUNCTION_RUNTIME_PORT,
-            port_type: NetworkPortExposureType::NodePort,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Function {
     pub execution: FunctionExecution,

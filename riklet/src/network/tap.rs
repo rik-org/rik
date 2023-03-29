@@ -2,7 +2,7 @@ use devices::virtio::Net as VirtioNet;
 use rand::Rng;
 use rate_limiter::RateLimiter;
 use std::process::Command;
-use tracing::{debug, trace};
+use tracing::trace;
 use utils::net::mac::MacAddr;
 
 use super::net::{NetworkInterfaceConfig, NetworkInterfaceError};

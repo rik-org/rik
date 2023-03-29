@@ -10,7 +10,6 @@ pub struct Rule {
     pub rule: String,
 }
 
-#[allow(dead_code)]
 impl Rule {
     pub fn new(chain: Chain, table: Table, rule: String) -> Self {
         Rule { chain, table, rule }
