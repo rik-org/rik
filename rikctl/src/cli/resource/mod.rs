@@ -9,17 +9,15 @@ use prettytable::{format, Table};
 #[derive(Debug, Subcommand)]
 pub enum CreateResource {
     /// Create a workload
-    Workload(CreateWorkload),
+    Workloads(CreateWorkload),
     /// Create an instance
     Instance(CreateInstance),
 }
 
 #[derive(Debug, Subcommand)]
 pub enum GetMultipleResource {
-    /// List instances
     Instances(GetMultipleInstance),
-    /// List workloads,
-    Workload(GetMultipleWorkload),
+    Workloads(GetMultipleWorkload),
 }
 
 /// Trait which defines how resources should be displayed
