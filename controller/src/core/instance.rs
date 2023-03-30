@@ -1,34 +1,8 @@
 use crate::api::ApiChannel;
 use definition::workload::{Spec, WorkloadKind};
+use definition::InstanceStatus;
 use names::{Generator, Name};
-use proto::common::ResourceStatus;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
-
-#[derive(Serialize, Deserialize, Clone)]
-pub enum InstanceStatus {
-    Unknown(String),
-    Pending,
-    Running,
-    Failed,
-    Terminated,
-    Creating,
-    Destroying,
-}
-
-impl Display for InstanceStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            InstanceStatus::Unknown(_) => write!(f, "Unknown"),
-            InstanceStatus::Pending => write!(f, "Pending"),
-            InstanceStatus::Running => write!(f, "Running"),
-            InstanceStatus::Failed => write!(f, "Failed"),
-            InstanceStatus::Terminated => write!(f, "Terminated"),
-            InstanceStatus::Creating => write!(f, "Creating"),
-            InstanceStatus::Destroying => write!(f, "Destroying"),
-        }
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Instance {
@@ -45,35 +19,6 @@ pub struct Instance {
     pub status: InstanceStatus,
 
     pub spec: Spec,
-}
-
-impl From<ResourceStatus> for InstanceStatus {
-    fn from(value: ResourceStatus) -> Self {
-        match value {
-            ResourceStatus::Unknown => InstanceStatus::Unknown(String::from("")),
-            ResourceStatus::Pending => InstanceStatus::Pending,
-            ResourceStatus::Running => InstanceStatus::Running,
-            ResourceStatus::Failed => InstanceStatus::Failed,
-            ResourceStatus::Terminated => InstanceStatus::Terminated,
-            ResourceStatus::Creating => InstanceStatus::Creating,
-            ResourceStatus::Destroying => InstanceStatus::Destroying,
-        }
-    }
-}
-
-impl From<i32> for InstanceStatus {
-    fn from(value: i32) -> Self {
-        match value {
-            0 => InstanceStatus::Unknown(String::from("")),
-            1 => InstanceStatus::Pending,
-            2 => InstanceStatus::Running,
-            3 => InstanceStatus::Failed,
-            4 => InstanceStatus::Terminated,
-            5 => InstanceStatus::Creating,
-            6 => InstanceStatus::Destroying,
-            _ => InstanceStatus::Unknown(String::from("")),
-        }
-    }
 }
 
 impl From<ApiChannel> for Instance {

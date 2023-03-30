@@ -8,37 +8,31 @@ use shared::utils::{create_directory_if_not_exists, create_file_with_parent_fold
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use thiserror::Error;
 
 use super::CliConfiguration;
 use crate::constants::DEFAULT_COMMAND_TIMEOUT;
-use snafu::Snafu;
 use tracing::{event, Level};
 
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Unable to load the configuration file. Error {}", source))]
-    Load { source: std::io::Error },
-    #[snafu(display("Unable to parse the configuration file. Error {}", source))]
-    Parse { source: toml::de::Error },
-    #[snafu(display("Unable to encode the configuration in TOML format. Error {}", source))]
-    TomlEncode { source: toml::ser::Error },
-    #[snafu(display("Unable to create the configuration. Error {}", source))]
-    ConfigFileCreation { source: std::io::Error },
-    #[snafu(display(
-        "An error occured when trying to write the configuration. Error {}",
-        source
-    ))]
-    ConfigFileWrite { source: std::io::Error },
-    #[snafu(display("An error occured when trying to create the {} directory. Error {}", path.display(), source))]
-    CreateDirectory {
-        source: std::io::Error,
-        path: PathBuf,
-    },
-    #[snafu(display("Unable to parse the IP. Error {}", source))]
-    InvalidIp { source: std::net::AddrParseError },
+#[derive(Debug, Error)]
+pub enum ConfigurationError {
+    #[error("Unable to load the configuration file. Error {0}")]
+    Load(std::io::Error),
+    #[error("Unable to parse the configuration file. Error {0}")]
+    Parse(toml::de::Error),
+    #[error("Unable to encode the configuration in TOML format. Error {0}")]
+    TomlEncode(toml::ser::Error),
+    #[error("Unable to create the configuration. Error {0}")]
+    ConfigFileCreation(std::io::Error),
+    #[error("An error occured when trying to write the configuration. Error {0}")]
+    ConfigFileWrite(std::io::Error),
+    #[error("An error occured when trying to create the {1} directory. Error {0}")]
+    CreateDirectory(std::io::Error, PathBuf),
 }
 
-#[derive(Deserialize, Debug, Serialize, PartialEq, Clone)]
+type Result<T> = std::result::Result<T, ConfigurationError>;
+
+#[derive(Deserialize, Debug, Serialize, PartialEq, Eq, Clone)]
 pub struct Configuration {
     pub master_ip: String,
     pub log_level: String,
@@ -52,37 +46,34 @@ impl Configuration {
     }
 
     /// Create the configuration file and store the default config into it
-    fn create(
-        path: &Path,
-        configuration: &Configuration,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn create(path: &Path, configuration: &Configuration) -> Result<()> {
         event!(Level::INFO, "No configuration file found at {}. Creating a new configuration file with the default configuration.", path.display());
-        let toml = toml::to_string(configuration).map_err(|source| Error::TomlEncode { source })?;
+        let toml = toml::to_string(configuration).map_err(ConfigurationError::TomlEncode)?;
 
         let mut file = create_file_with_parent_folders(path)
-            .map_err(|source| Error::ConfigFileCreation { source })?;
+            .map_err(ConfigurationError::ConfigFileCreation)?;
 
         file.write_all(&toml.into_bytes())
-            .map_err(|source| Error::ConfigFileWrite { source })?;
+            .map_err(ConfigurationError::ConfigFileWrite)?;
 
         Ok(())
     }
 
     /// Read the configuration file from the path provided.
-    fn read(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+    fn read(path: &Path) -> Result<Self> {
         event!(
             Level::DEBUG,
             "Reading configuration from file {}",
             path.display()
         );
-        let contents = std::fs::read(path).map_err(|source| Error::Load { source })?;
+        let contents = std::fs::read(path).map_err(ConfigurationError::Load)?;
 
-        Ok(toml::from_slice(&contents).map_err(|source| Error::Parse { source })?)
+        toml::from_slice(&contents).map_err(ConfigurationError::Parse)
     }
 
     /// Load the configuration file
     /// If not exists, create it and return the default configuration
-    pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn load() -> Result<Self> {
         event!(Level::DEBUG, "Loading configuration");
         let opts = Configuration::get_cli_args();
 
@@ -119,7 +110,7 @@ impl Configuration {
     }
 
     /// Create all directories and files used by Riklet to work properly
-    pub fn bootstrap(&self) -> Result<(), Error> {
+    pub fn bootstrap(&self) -> Result<()> {
         event!(
             Level::DEBUG,
             "Create all directories and files used by Riklet to work properly"
@@ -127,15 +118,11 @@ impl Configuration {
         let bundles_dir = self.manager.oci_manager.bundles_directory.clone();
         let images_dir = self.manager.image_puller.images_directory.clone();
 
-        create_directory_if_not_exists(&bundles_dir).map_err(|source| Error::CreateDirectory {
-            source,
-            path: bundles_dir.unwrap(),
-        })?;
+        create_directory_if_not_exists(&bundles_dir)
+            .map_err(|source| ConfigurationError::CreateDirectory(source, bundles_dir.unwrap()))?;
 
-        create_directory_if_not_exists(&images_dir).map_err(|source| Error::CreateDirectory {
-            source,
-            path: images_dir.unwrap(),
-        })?;
+        create_directory_if_not_exists(&images_dir)
+            .map_err(|source| ConfigurationError::CreateDirectory(source, images_dir.unwrap()))?;
 
         Ok(())
     }

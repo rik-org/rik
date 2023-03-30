@@ -9,7 +9,7 @@ use iptables::IPTables as LibIptables;
 use std::convert::TryFrom;
 use std::fmt::Display;
 use thiserror::Error;
-use tracing::error;
+use tracing::{error, trace};
 
 /// A wrapper around original iptables crates in order to better match
 /// rust usages. You can use this crate directly or use the wrapper
@@ -129,6 +129,7 @@ impl Drop for Iptables {
         if self.cleanup {
             let rules = self.rules.clone();
             for rule in rules.iter() {
+                trace!("Drop iptables rule {}", rule);
                 self.delete(rule).unwrap_or_else(|e| {
                     error!("Could not delete rule '{:?}', reason: {}", rule, e);
                 });
@@ -145,7 +146,7 @@ impl Iptables {
         iptables::new(false)
             .map(|iptables| Iptables {
                 inner: iptables,
-                cleanup: cleanup,
+                cleanup,
                 rules: vec![],
             })
             .map_err(|e| IptablesError::LoadFailed(e.to_string()))

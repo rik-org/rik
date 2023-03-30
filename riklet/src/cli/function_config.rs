@@ -3,7 +3,7 @@ use std::{net::Ipv4Addr, path::PathBuf};
 use super::CliConfiguration;
 use clap::Parser;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FnConfiguration {
     pub firecracker_location: PathBuf,
     pub kernel_location: PathBuf,

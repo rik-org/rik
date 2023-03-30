@@ -5,9 +5,14 @@ authors = ["Alexandre Burgoni <alexandre.burgoni@etu.umontpellier.fr>"]
 edition = "2021"
 
 [dependencies]
+serde = { version = "1.0.126", features = ["derive"] }
 prost.workspace = true
 tonic.workspace = true
 protobuf.workspace = true
 
+[dependencies.definition]
+path = "../crates/definition"
+
 [build-dependencies]
 tonic-build.workspace = true
+

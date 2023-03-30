@@ -1,6 +1,5 @@
 use crate::metrics::Metrics;
 use sysinfo::{System, SystemExt};
-
 /// Struct managing node metrics
 #[derive(Debug, Default)]
 pub struct MetricsManager {

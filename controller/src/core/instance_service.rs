@@ -1,10 +1,11 @@
 use crate::api::{Crud, RikError};
 use crate::core::core::CoreInternalEvent;
-use crate::core::instance::{Instance, InstanceStatus};
+use crate::core::instance::Instance;
 use crate::core::instance_repository::InstanceRepositoryImpl;
 use crate::core::{with_backoff, InstanceRepository, InstanceService, Listener};
 use async_trait::async_trait;
 use definition::workload::{WorkloadDefinition, WorkloadKind};
+use definition::InstanceStatus;
 use dotenv::dotenv;
 use proto::common::worker_status::Status;
 use proto::common::InstanceMetric;

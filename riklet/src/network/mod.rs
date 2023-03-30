@@ -1,2 +1,2 @@
 pub mod net;
-mod tap;
+pub mod tap;

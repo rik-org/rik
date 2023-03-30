@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use shared::utils::get_random_hash;
 use tracing::{event, Level};
 
+#[allow(dead_code)]
 const DEFAULT_FUNCTION_RUNTIME_PORT: u16 = 3000;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -56,31 +57,19 @@ pub struct FunctionPort {
     pub port_type: NetworkPortExposureType,
 }
 
-impl FunctionPort {
-    /// Create a FunctionPort and bind it to the default port 3000
-    /// All our runtimes only use this port
-    pub fn new(port: u16) -> Self {
-        Self {
-            port,
-            target_port: DEFAULT_FUNCTION_RUNTIME_PORT,
-            port_type: NetworkPortExposureType::NodePort,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Function {
     pub execution: FunctionExecution,
     pub exposure: Option<FunctionPort>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Spec {
     pub containers: Vec<Container>,
     pub function: Option<Function>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WorkloadDefinition {
     #[serde(rename = "apiVersion")]
     pub api_version: String,
@@ -103,5 +92,19 @@ impl WorkloadDefinition {
             containers.push(container);
         }
         containers
+    }
+
+    pub fn get_rootfs_url(&self) -> Option<String> {
+        self.spec
+            .function
+            .as_ref()
+            .map(|v| v.execution.rootfs.to_string())
+    }
+
+    pub fn get_expected_port(&self) -> Option<u16> {
+        self.spec
+            .function
+            .as_ref()
+            .and_then(|f| f.exposure.as_ref().map(|e| e.port))
     }
 }
