@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use anyhow::{Error, Result};
 use config::{Config, ConfigError, Environment, File};
 use serde::{Deserialize, Serialize};
+use tracing::{debug, instrument};
 
 const CONFIG_LOCATION_KEY: &str = "RIKCONFIG";
 const CONFIG_FILE_NAME: &str = "config.yaml";

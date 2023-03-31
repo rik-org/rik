@@ -5,6 +5,7 @@ use std::path::PathBuf;
 /// `Workload` hold all workload attributes.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Workload {
+    #[serde(rename = "apiVersion")]
     pub api_version: String,
     pub kind: String,
     pub name: String,
