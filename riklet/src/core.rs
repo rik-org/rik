@@ -14,7 +14,7 @@ use std::collections::HashMap;
 
 use thiserror::Error;
 use tonic::{transport::Channel, Request, Streaming};
-use tracing::{error, event, Level};
+use tracing::{debug, error, event, Level};
 
 const METRICS_UPDATER_INTERVAL: u64 = 15 * 1000;
 
@@ -81,17 +81,29 @@ impl Riklet {
         workload: &InstanceScheduling,
         dynamic_runtime_manager: DynamicRuntimeManager<'_>,
     ) -> Result<()> {
-        event!(Level::DEBUG, "Creating workload");
         let instance_id: &String = &workload.instance_id;
-        let runtime = dynamic_runtime_manager
+        self.send_status(InstanceStatus::Creating, instance_id)
+            .await?;
+
+        match dynamic_runtime_manager
             .run(workload, self.config.clone())
             .await
-            .map_err(RikletError::RuntimeManagerError)?;
+        {
+            Err(e) => {
+                self.send_status(InstanceStatus::Failed, instance_id)
+                    .await
+                    .unwrap_or_else(|e| {
+                        error!("Error while sending status: {}", e);
+                    });
+                return Err(RikletError::RuntimeManagerError(e));
+            }
+            Ok(runtime) => {
+                self.runtimes.insert(instance_id.clone(), runtime);
 
-        self.runtimes.insert(instance_id.clone(), runtime);
-
-        self.send_status(InstanceStatus::Running, instance_id)
-            .await?;
+                self.send_status(InstanceStatus::Running, instance_id)
+                    .await?;
+            }
+        }
         Ok(())
     }
 
@@ -100,8 +112,9 @@ impl Riklet {
         workload: &InstanceScheduling,
         runtime: DynamicRuntimeManager<'_>,
     ) -> Result<()> {
-        event!(Level::DEBUG, "Destroying workload");
         let instance_id: &String = &workload.instance_id;
+        self.send_status(InstanceStatus::Destroying, instance_id)
+            .await?;
 
         self.runtimes.remove(instance_id);
 
@@ -112,8 +125,9 @@ impl Riklet {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self), fields(instance_id = %instance_id, status = %status))]
     async fn send_status(&self, status: InstanceStatus, instance_id: &str) -> Result<()> {
-        event!(Level::DEBUG, "Sending status : {}", status);
+        debug!("Update instance status");
 
         let status = WorkerStatus::new(self.hostname.clone(), instance_id.to_string(), status);
 

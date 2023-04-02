@@ -1,3 +1,4 @@
+use crate::runtime::Result;
 use crate::{
     cli::{config::Configuration, function_config::FnConfiguration},
     network::tap::generate_mac_addr,
@@ -23,15 +24,52 @@ use tracing::{error, event, Level};
 
 use super::{network::function_network::FunctionRuntimeNetwork, Runtime, RuntimeManager};
 
+const BOOT_ARGS_STATIC: &str = "console=ttyS0 reboot=k nomodules random.trust_cpu=on panic=1 pci=off tsc=reliable i8042.nokbd i8042.noaux ipv6.disable=1 quiet loglevel=0";
+
 struct FunctionRuntime {
     function_config: FnConfiguration,
     file_path: String,
     network: FunctionRuntimeNetwork,
 }
 
+impl FunctionRuntime {
+    fn generate_microvm_config(&self) -> Result<MicroVM> {
+        let config = MicroVM::from(Config {
+            boot_source: BootSource {
+                kernel_image_path: self.function_config.kernel_location.clone(),
+                boot_args: Some(format!(
+                    "{} ip={}::{}:{}::eth0:off",
+                    BOOT_ARGS_STATIC,
+                    self.network.host_ip,
+                    self.network.guest_ip,
+                    self.network.mask_long
+                )),
+                initrd_path: None,
+            },
+            drives: vec![Drive {
+                drive_id: "rootfs".to_string(),
+                path_on_host: PathBuf::from(self.file_path.clone()),
+                is_read_only: false,
+                is_root_device: true,
+            }],
+            network_interfaces: vec![NetworkInterface {
+                iface_id: "eth0".to_string(),
+                guest_mac: Some(generate_mac_addr().to_string()),
+                host_dev_name: self
+                    .network
+                    .tap_name()
+                    .map_err(RuntimeError::NetworkError)?,
+            }],
+        });
+
+        Ok(config)
+    }
+}
+
 #[async_trait]
 impl Runtime for FunctionRuntime {
-    async fn run(&mut self) -> super::Result<()> {
+    #[tracing::instrument(skip(self), fields(host_iface = %self.network.tap_name().unwrap()))]
+    async fn run(&mut self) -> Result<()> {
         self.network
             .init()
             .await
@@ -45,36 +83,15 @@ impl Runtime for FunctionRuntime {
         })
         .map_err(RuntimeError::FirecrackerError)?;
 
-        event!(Level::DEBUG, "Creating a new MicroVM");
-        let vm = MicroVM::from(Config {
-            boot_source: BootSource {
-                kernel_image_path: self.function_config.kernel_location.clone(),
-                boot_args: Some(format!(
-                    "console=ttyS0 reboot=k nomodules random.trust_cpu=on panic=1 pci=off tsc=reliable i8042.nokbd i8042.noaux ipv6.disable=1 quiet loglevel=0 ip={}::{}:{}::eth0:off",
-                    self.network.firecracker_ip, self.network.tap_ip, self.network.mask_long)
-                ),
-                initrd_path: None,
-            },
-            drives: vec![Drive {
-                drive_id: "rootfs".to_string(),
-                path_on_host: PathBuf::from(self.file_path.clone()),
-                is_read_only: false,
-                is_root_device: true,
-            }],
-            network_interfaces: vec![NetworkInterface {
-                iface_id: "eth0".to_string(),
-                guest_mac: Some(generate_mac_addr().to_string()),
-                host_dev_name: self.network.tap_name().map_err(RuntimeError::NetworkError)?,
-            }],
-        });
+        event!(Level::DEBUG, "Generate configuration for MicroVM");
+        let vm_config = self.generate_microvm_config()?;
 
-        event!(Level::DEBUG, "Starting the MicroVM");
+        event!(Level::DEBUG, "Run microVM in a thread");
         thread::spawn(move || {
-            event!(Level::INFO, "Function started");
-            let _stdout = firecracker.start(&vm).unwrap_or_else(|e| {
+            // Thread is alive while the VM is running
+            if let Err(e) = firecracker.start(&vm_config) {
                 error!("Error starting function: {}", e);
-                String::from(format!("Error starting function: {}", e))
-            });
+            }
         });
 
         let tap = self.network.tap.as_ref().unwrap();
@@ -144,6 +161,7 @@ impl FunctionRuntimeManager {
     //     Ok(())
     // }
 
+    /// Download the rootfs image on the system if it does not exist
     fn create_fs(&self, workload_definition: &WorkloadDefinition) -> super::Result<String> {
         let rootfs_url = workload_definition
             .get_rootfs_url()

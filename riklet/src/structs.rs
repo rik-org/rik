@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 use shared::utils::get_random_hash;
-use tracing::{event, Level};
-
-#[allow(dead_code)]
-const DEFAULT_FUNCTION_RUNTIME_PORT: u16 = 3000;
+use tracing::{event, warn, Level};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EnvConfig {
@@ -101,10 +98,74 @@ impl WorkloadDefinition {
             .map(|v| v.execution.rootfs.to_string())
     }
 
-    pub fn get_expected_port(&self) -> Option<u16> {
-        self.spec
+    /// Give expected ports exposed by the workload.
+    /// Returns a tuple of (host_port, target_port)
+    #[tracing::instrument(skip(self), fields(self.name))]
+    pub fn get_port_mapping(&self) -> Vec<(u16, u16)> {
+        let mut port_mapping = Vec::<(u16, u16)>::new();
+        let function_exposure = self
+            .spec
             .function
             .as_ref()
-            .and_then(|f| f.exposure.as_ref().map(|e| e.port))
+            .and_then(|f| f.exposure.as_ref().map(|e| (e.port, e.target_port)));
+
+        if let Some((host_port, target_port)) = function_exposure {
+            // FIXME: This is a domain violation, as we want to get away from binding to this "FUNCTION_RUNTIME" things
+            // which refers to a specific implementation of a VM
+            port_mapping.push((host_port, target_port));
+        } else {
+            warn!("No port mapping found for workload {}", self.name);
+        }
+        port_mapping
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_workload_function_port_mapping() {
+        let workload = WorkloadDefinition {
+            api_version: "v1".to_string(),
+            kind: "WorkloadDefinition".to_string(),
+            name: "test".to_string(),
+            spec: Spec {
+                containers: vec![],
+                function: Some(Function {
+                    execution: FunctionExecution {
+                        rootfs: url::Url::parse("http://localhost:8080").unwrap(),
+                    },
+                    exposure: Some(FunctionPort {
+                        port: 8080,
+                        target_port: 8081,
+                        port_type: NetworkPortExposureType::NodePort,
+                    }),
+                }),
+            },
+        };
+
+        let port_mapping = workload.get_port_mapping();
+        assert_eq!(port_mapping.len(), 1);
+        // host port
+        assert_eq!(port_mapping[0].0, 8080);
+        // internal port
+        assert_eq!(port_mapping[0].1, 8081);
+    }
+
+    #[test]
+    fn test_workload_no_function_port_mapping() {
+        let workload = WorkloadDefinition {
+            api_version: "v1".to_string(),
+            kind: "WorkloadDefinition".to_string(),
+            name: "test".to_string(),
+            spec: Spec {
+                containers: vec![],
+                function: None,
+            },
+        };
+
+        let port_mapping = workload.get_port_mapping();
+        assert_eq!(port_mapping.len(), 0);
     }
 }

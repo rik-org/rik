@@ -33,8 +33,6 @@ pub fn open_tap(config: &NetworkInterfaceConfig) -> Result<VirtioNet, NetworkInt
 /// FIXME: Find a better way to handle tap generation (using firecracker itself)
 /// This function creates a tap using legacy commands, it's not secure but it fixes a current issue with TAPs
 pub fn open_tap_shell(config: &NetworkInterfaceConfig) -> Result<String, NetworkInterfaceError> {
-    let mac_addr = generate_mac_addr();
-
     if config.iface_name.len() > MAX_IFACE_NAME_LEN {
         return Err(NetworkInterfaceError::InvalidInterfaceName);
     }

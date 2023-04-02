@@ -46,8 +46,10 @@ impl MutateIptables for Iptables {
     /// assert!(result.is_err());
     /// ```
     fn delete(&mut self, rule: &Rule) -> Result<()> {
+        trace!("Tries to delete iptables rule {}", rule);
         self.validate_combo_table_chain(rule.table.clone(), rule.chain.clone())?;
         if !self.exists(rule)? {
+            trace!("Could not delete rule {}", rule);
             return Err(IptablesError::AlreadyDeleted(rule.clone()));
         }
         self.inner
