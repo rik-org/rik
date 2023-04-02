@@ -8,3 +8,5 @@ updates:
     commit-message:
       prefix: "chore(update)"
     open-pull-requests-limit: 3
+    reviewers:
+      - "rik-org/dependabot"
