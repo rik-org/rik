@@ -1,8 +1,6 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
 use shared::utils::find_binary;
-use snafu::ensure;
-use snafu::{OptionExt, ResultExt};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
@@ -45,7 +43,7 @@ impl Skopeo {
         let command = config
             .command
             .or_else(|| find_binary("skopeo"))
-            .context(SkopeoNotFoundError {})?;
+            .ok_or_else(|| Error::SkopeoNotFoundError)?;
 
         let timeout = config
             .timeout
@@ -56,7 +54,7 @@ impl Skopeo {
             .images_directory
             .unwrap()
             .canonicalize()
-            .context(InvalidPathError {})?;
+            .map_err(Error::InvalidPathError)?;
 
         event!(Level::DEBUG, "Skopeo initialized.");
 
@@ -132,13 +130,13 @@ impl Args for Skopeo {
         }
 
         if let Some(registries) = self.registries.clone() {
-            let registries = registries.canonicalize().context(InvalidPathError {})?;
+            let registries = registries.canonicalize().map_err(Error::InvalidPathError)?;
             args.push(String::from("--registries.d"));
             args.push(String::from(registries.to_str().unwrap()));
         }
 
         if let Some(tmp_dir) = self.tmp_dir.clone() {
-            let tmp_dir = tmp_dir.canonicalize().context(InvalidPathError {})?;
+            let tmp_dir = tmp_dir.canonicalize().map_err(Error::InvalidPathError)?;
             args.push(String::from("--tmpdir"));
             args.push(String::from(tmp_dir.to_str().unwrap()));
         }
@@ -157,7 +155,7 @@ impl Executable for Skopeo {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .context(ProcessSpawnError {})?;
+            .map_err(Error::ProcessSpawnError)?;
 
         event!(
             Level::DEBUG,
@@ -168,8 +166,8 @@ impl Executable for Skopeo {
 
         let result = tokio::time::timeout(self.timeout, process.wait_with_output())
             .await
-            .context(SkopeoCommandTimeoutError {})?
-            .context(SkopeoCommandError {})?;
+            .map_err(Error::SkopeoCommandTimeoutError)?
+            .map_err(Error::SkopeoCommandError)?;
 
         let stdout = String::from_utf8(result.stdout.clone()).unwrap();
         let stderr = String::from_utf8(result.stderr.clone()).unwrap();
@@ -178,10 +176,9 @@ impl Executable for Skopeo {
             event!(Level::ERROR, "Skopeo error : {}", stderr);
         }
 
-        ensure!(
-            result.status.success(),
-            SkopeoCommandFailedError { stdout, stderr }
-        );
+        if !result.status.success() {
+            return Err(Error::SkopeoCommandFailedError(stdout, stderr));
+        }
 
         Ok(stdout)
     }
@@ -196,7 +193,7 @@ impl Args for CopyArgs {
         let mut args: Vec<String> = Vec::new();
 
         if let Some(auth_file) = self.auth_file.clone() {
-            let auth_file = auth_file.canonicalize().context(InvalidPathError {})?;
+            let auth_file = auth_file.canonicalize().map_err(Error::InvalidPathError)?;
             args.push(String::from("--authfile"));
             args.push(String::from(auth_file.to_str().unwrap()))
         }

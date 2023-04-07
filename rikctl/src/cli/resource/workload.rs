@@ -1,9 +1,8 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Args;
-use prettytable::{row, Row};
+use prettytable::row;
 use std::path::PathBuf;
-use tracing::{debug, trace};
 
 use crate::cli::Handler;
 use crate::core::client::{Client, ResponseEntity, WorkloadClient};

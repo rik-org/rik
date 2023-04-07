@@ -1,7 +1,6 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
 use shared::utils::find_binary;
-use snafu::{ensure, OptionExt, ResultExt};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
@@ -35,7 +34,7 @@ impl Umoci {
         let command = config
             .command
             .or_else(|| find_binary("umoci"))
-            .context(UmociNotFoundError {})?;
+            .ok_or_else(|| Error::UmociNotFoundError)?;
 
         let timeout = config
             .timeout
@@ -46,7 +45,7 @@ impl Umoci {
             .bundles_directory
             .unwrap()
             .canonicalize()
-            .context(InvalidPathError {})?;
+            .map_err(Error::InvalidPathError)?;
 
         event!(Level::DEBUG, "Umoci initialized.");
 
@@ -105,7 +104,7 @@ impl Executable for Umoci {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .context(ProcessSpawnError {})?;
+            .map_err(Error::ProcessSpawnError)?;
 
         event!(
             Level::DEBUG,
@@ -116,22 +115,19 @@ impl Executable for Umoci {
 
         let result = tokio::time::timeout(self.timeout, process.wait_with_output())
             .await
-            .context(UmociCommandTimeoutError {})?
-            .context(UmociCommandError {})?;
+            .map_err(Error::UmociCommandTimeoutError)?
+            .map_err(Error::UmociCommandError)?;
 
         let stdout = String::from_utf8(result.stdout.clone()).unwrap();
         let stderr = String::from_utf8(result.stderr.clone()).unwrap();
 
-        if !stderr.is_empty() {
-            if stderr.contains("config.json already exists") {
-                event!(Level::WARN, "A config.json already exists for this image.");
-            } else {
-                event!(Level::ERROR, "Umoci error : {}", stderr);
-                ensure!(
-                    result.status.success(),
-                    UmociCommandFailedError { stdout, stderr }
-                );
-            }
+        if stderr.is_empty() {
+            return Ok(stdout);
+        }
+        if stderr.contains("config.json already exists") {
+            event!(Level::WARN, "A config.json already exists for this image.");
+        } else if !result.status.success() {
+            return Err(Error::UmociCommandFailedError(stdout, stderr));
         }
 
         Ok(stdout)

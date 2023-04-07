@@ -1,40 +1,35 @@
 use async_trait::async_trait;
-use snafu::Snafu;
 
 pub mod image;
 pub mod image_manager;
 pub mod skopeo;
 pub mod umoci;
+use thiserror::Error;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, Snafu)]
-#[snafu(visibility(pub(crate)))]
+#[derive(Debug, Error)]
 pub enum Error {
-    #[snafu(display("Unable to locate the umoci binary"))]
-    UmociNotFoundError {},
-    #[snafu(display("Unable to locate the skopeo binary"))]
-    SkopeoNotFoundError {},
-    #[snafu(display("An error occured during the following spawn process: {}", source))]
-    ProcessSpawnError { source: std::io::Error },
-    #[snafu(display("Umoci command timeout {}", source))]
-    UmociCommandTimeoutError { source: tokio::time::error::Elapsed },
-    #[snafu(display("Skopeo command timeout {}", source))]
-    SkopeoCommandTimeoutError { source: tokio::time::error::Elapsed },
-    #[snafu(display("Umoci command failed, stdout: \"{}\", stderr: \"{}\"", stdout, stderr))]
-    UmociCommandFailedError { stdout: String, stderr: String },
-    #[snafu(display(
-        "Skopeo command failed, stdout: \"{}\", stderr: \"{}\"",
-        stdout,
-        stderr
-    ))]
-    SkopeoCommandFailedError { stdout: String, stderr: String },
-    #[snafu(display("Umoci command error: {}", source))]
-    UmociCommandError { source: std::io::Error },
-    #[snafu(display("Skopeo command error: {}", source))]
-    SkopeoCommandError { source: std::io::Error },
-    #[snafu(display("Invalid path: {}", source))]
-    InvalidPathError { source: std::io::Error },
+    #[error("Unable to locate the umoci binary")]
+    UmociNotFoundError,
+    #[error("Unable to locate the skopeo binary")]
+    SkopeoNotFoundError,
+    #[error("An error occured during the following spawn process: {0}")]
+    ProcessSpawnError(std::io::Error),
+    #[error("Umoci command timeout {0}")]
+    UmociCommandTimeoutError(tokio::time::error::Elapsed),
+    #[error("Skopeo command timeout {0}")]
+    SkopeoCommandTimeoutError(tokio::time::error::Elapsed),
+    #[error("Umoci command failed, stdout: \"{0}\", stderr: \"{1}\"")]
+    UmociCommandFailedError(String, String),
+    #[error("Skopeo command failed, stdout: \"{0}\", stderr: \"{1}\"")]
+    SkopeoCommandFailedError(String, String),
+    #[error("Umoci command error: {0}")]
+    UmociCommandError(std::io::Error),
+    #[error("Skopeo command error: {0}")]
+    SkopeoCommandError(std::io::Error),
+    #[error("Invalid path: {0}")]
+    InvalidPathError(std::io::Error),
 }
 
 trait Args {
