@@ -1,7 +1,6 @@
 use crate::*;
 use serde::{Deserialize, Serialize};
 use shared::utils::find_binary;
-use snafu::ensure;
 use std::path::Path;
 use std::process::Stdio;
 use std::time::Duration;
@@ -38,7 +37,7 @@ impl Runc {
         let command = config
             .command
             .or_else(|| find_binary("runc"))
-            .context(RuncNotFoundError {})?;
+            .ok_or(Error::RuncNotFoundError)?;
 
         let timeout = config
             .timeout
@@ -87,7 +86,7 @@ impl Runc {
 
         let bundle: String = bundle
             .canonicalize()
-            .context(InvalidPathError {})?
+            .map_err(Error::InvalidPathError)?
             .to_string_lossy()
             .parse()
             .unwrap();
@@ -102,7 +101,7 @@ impl Runc {
     pub async fn state(&self, id: &str) -> Result<Container> {
         let args = vec![String::from("state"), String::from(id)];
         let output = self.exec(&args).await?;
-        serde_json::from_str(&output).context(JsonDeserializationError {})
+        serde_json::from_str(&output).map_err(Error::JsonDeserializationError)
     }
 
     /// Delete a container
@@ -124,7 +123,7 @@ impl Args for Runc {
             args.push(String::from("--root"));
             args.push(
                 root.canonicalize()
-                    .context(InvalidPathError {})?
+                    .map_err(Error::InvalidPathError)?
                     .to_string_lossy()
                     .parse()
                     .unwrap(),
@@ -153,7 +152,7 @@ impl Executable for Runc {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .context(ProcessSpawnError {})?;
+            .map_err(Error::ProcessSpawnError)?;
 
         event!(
             Level::DEBUG,
@@ -164,8 +163,8 @@ impl Executable for Runc {
 
         let result = tokio::time::timeout(self.timeout, process.wait_with_output())
             .await
-            .context(RuncCommandTimeoutError {})?
-            .context(RuncCommandError {})?;
+            .map_err(Error::RuncCommandTimeoutError)?
+            .map_err(Error::RuncCommandError)?;
 
         let stdout = String::from_utf8(result.stdout.clone()).unwrap();
         let stderr = String::from_utf8(result.stderr.clone()).unwrap();
@@ -174,10 +173,9 @@ impl Executable for Runc {
             event!(Level::ERROR, "Runc error : {}", stderr);
         }
 
-        ensure!(
-            result.status.success(),
-            RuncCommandFailedError { stdout, stderr }
-        );
+        if !result.status.success() {
+            return Err(Error::RuncCommandFailedError(stdout, stderr));
+        }
 
         Ok(stdout)
     }
@@ -207,7 +205,7 @@ impl Args for CreateArgs {
             args.push(
                 console_socket
                     .canonicalize()
-                    .context(InvalidPathError {})?
+                    .map_err(Error::InvalidPathError)?
                     .to_string_lossy()
                     .parse()
                     .unwrap(),

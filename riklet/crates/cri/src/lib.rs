@@ -1,35 +1,34 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use snafu::{OptionExt, ResultExt, Snafu};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::{event, Level};
 
 pub mod console;
 pub mod container;
+use thiserror::Error;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, Snafu)]
-#[snafu(visibility(pub(crate)))]
+#[derive(Debug, Error)]
 pub enum Error {
-    #[snafu(display("Unable to locate the runc binary"))]
-    RuncNotFoundError {},
-    #[snafu(display("An error occured during the following spawn process: {}", source))]
-    ProcessSpawnError { source: std::io::Error },
-    #[snafu(display("Runc command timeout {}", source))]
-    RuncCommandTimeoutError { source: tokio::time::error::Elapsed },
-    #[snafu(display("Runc command failed, stdout: \"{}\", stderr: \"{}\"", stdout, stderr))]
-    RuncCommandFailedError { stdout: String, stderr: String },
-    #[snafu(display("Runc command error: {}", source))]
-    RuncCommandError { source: std::io::Error },
-    #[snafu(display("Invalid path: {}", source))]
-    InvalidPathError { source: std::io::Error },
-    #[snafu(display("Unable to bind to unix socket: {}", source))]
-    UnixSocketOpenError { source: std::io::Error },
-    #[snafu(display("Json deserialization error: {}", source))]
-    JsonDeserializationError { source: serde_json::error::Error },
+    #[error("Unable to locate the runc binary")]
+    RuncNotFoundError,
+    #[error("An error occured during the following spawn process: {0}")]
+    ProcessSpawnError(std::io::Error),
+    #[error("Runc command timeout {0}")]
+    RuncCommandTimeoutError(tokio::time::error::Elapsed),
+    #[error("Runc command failed, stdout: \"{0}\", stderr: \"{1}\"")]
+    RuncCommandFailedError(String, String),
+    #[error("Runc command error: {0}")]
+    RuncCommandError(std::io::Error),
+    #[error("Invalid path: {0}")]
+    InvalidPathError(std::io::Error),
+    #[error("Unable to bind to unix socket: {0}")]
+    UnixSocketOpenError(std::io::Error),
+    #[error("Json deserialization error: {0}")]
+    JsonDeserializationError(serde_json::error::Error),
 }
 
 trait Args {
