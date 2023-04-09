@@ -68,7 +68,7 @@ impl FunctionRuntime {
 
 #[async_trait]
 impl Runtime for FunctionRuntime {
-    #[tracing::instrument(skip(self), fields(host_iface = %self.network.tap_name().unwrap()))]
+    #[tracing::instrument(skip(self))]
     async fn run(&mut self) -> Result<()> {
         self.network
             .init()
