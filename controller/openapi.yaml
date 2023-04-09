@@ -170,12 +170,10 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  instances:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/InstanceCreationInformation'
+                description: A list of all instance ID's created
+                type: array
+                items:
+                  type: string
   /api/v0/instances.delete:
     post:
       tags:
