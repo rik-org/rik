@@ -27,6 +27,10 @@ unzip protoc-3.21.12-linux-x86_64 -d $HOME/.local
 export PATH="$PATH:$HOME/.local/bin"
 ```
 
+### Tooling
+
+Directory `scripts` contains a CLI that can help you to get a setup (e.g kernel).
+
 ### Launch a rik cluster
 
 #### Configuration
