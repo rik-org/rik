@@ -11,6 +11,7 @@ use crate::api::external::services::instance::send_create_instance;
 use crate::api::types::element::OnlyId;
 use crate::api::types::instance::InstanceDefinition;
 use crate::api::{ApiChannel, Crud};
+use crate::core::instance::Instance;
 use crate::database::RikRepository;
 
 pub fn get(
@@ -83,16 +84,22 @@ pub fn create(
         }
     }
 
+    let mut instance_names: Vec<String> = vec![];
+
     for _ in 0..instance.get_replicas() {
+        let instance_name = instance.name.clone().unwrap_or(Instance::generate_name());
+        instance_names.push(instance_name.clone());
         send_create_instance(
             connection,
             internal_sender,
             instance.workload_id.clone(),
-            &instance.name,
+            &Some(instance_name),
         );
     }
 
-    Ok(tiny_http::Response::from_string("").with_status_code(tiny_http::StatusCode::from(201)))
+    Ok(tiny_http::Response::from_string(serde_json::to_string(&instance_names).unwrap())
+        .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
+        .with_status_code(tiny_http::StatusCode::from(201)))
 }
 
 pub fn delete(
