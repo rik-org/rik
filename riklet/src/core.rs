@@ -11,6 +11,7 @@ use proto::worker::worker_client::WorkerClient;
 use proto::worker::InstanceScheduling;
 use proto::{WorkerStatus, WorkloadAction};
 use std::collections::HashMap;
+use tracing_subscriber::field::debug;
 
 use thiserror::Error;
 use tonic::{transport::Channel, Request, Streaming};
@@ -37,6 +38,9 @@ pub enum RikletError {
 
     #[error("Network error: {0}")]
     NetworkError(NetworkError),
+
+    #[error("Invalid input given: {0}")]
+    InvalidInput(String),
 }
 type Result<T> = std::result::Result<T, RikletError>;
 
@@ -67,10 +71,7 @@ impl Riklet {
                 self.create_workload(workload, dynamic_runtime_manager)
                     .await?
             }
-            WorkloadAction::DELETE => {
-                self.delete_workload(workload, dynamic_runtime_manager)
-                    .await?
-            }
+            WorkloadAction::DELETE => self.delete_workload(workload).await?,
         };
 
         Ok(())
@@ -86,7 +87,7 @@ impl Riklet {
             .await?;
 
         match dynamic_runtime_manager
-            .run(workload, self.config.clone())
+            .run_instance(workload, self.config.clone())
             .await
         {
             Err(e) => {
@@ -107,21 +108,30 @@ impl Riklet {
         Ok(())
     }
 
-    async fn delete_workload(
-        &mut self,
-        workload: &InstanceScheduling,
-        runtime: DynamicRuntimeManager<'_>,
-    ) -> Result<()> {
+    /// Deletes an instance and its runtime
+    ///
+    /// Expected lifecycle is:
+    /// Receive delete request -> Send destroying status
+    /// -> Destroy instance & Unregister runtime -> Send terminated status
+    #[tracing::instrument(skip_all, fields(instance_id = %workload.instance_id))]
+    async fn delete_workload(&mut self, workload: &InstanceScheduling) -> Result<()> {
+        debug!("Delete workload");
         let instance_id: &String = &workload.instance_id;
-        self.send_status(InstanceStatus::Destroying, instance_id)
-            .await?;
 
-        self.runtimes.remove(instance_id);
+        let instance = self
+            .runtimes
+            .get(instance_id)
+            .ok_or_else(|| RikletError::InvalidInput(instance_id.clone()))?;
+
+        instance
+            .down()
+            .await
+            .map_err(RikletError::RuntimeManagerError)?;
 
         self.send_status(InstanceStatus::Terminated, instance_id)
             .await?;
 
-        runtime.destroy();
+        self.runtimes.remove(instance_id);
         Ok(())
     }
 

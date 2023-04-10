@@ -118,13 +118,24 @@ pub fn delete(
     if let Ok(instance) = RikRepository::find_one(connection, &delete_id, "/instance") {
         let instance_def: InstanceDefinition =
             serde_json::from_value(instance.value.clone()).unwrap();
-        let workload_def: WorkloadDefinition = {
-            // Safe as if instance exists, it must have a workload
-            let workload =
-                RikRepository::find_one(connection, &instance_def.workload_id, "/workload")
-                    .unwrap();
-            serde_json::from_value(workload.value).unwrap()
-        };
+
+        let workload_def_rs =
+            RikRepository::find_one(connection, &instance_def.workload_id, "/workload");
+        if let Err(e) = workload_def_rs {
+            event!(
+                Level::ERROR,
+                "Could not find workload id {} while should have been able to, error: {}",
+                instance_def.workload_id,
+                e
+            );
+            return Ok(tiny_http::Response::from_string(format!(
+                "Workload {} matching the instance ID is not found",
+                instance_def.workload_id
+            ))
+            .with_status_code(tiny_http::StatusCode::from(404)));
+        }
+        let workload_def: WorkloadDefinition =
+            serde_json::from_value(workload_def_rs.unwrap().value).unwrap();
         internal_sender
             .send(ApiChannel {
                 action: Crud::Delete,

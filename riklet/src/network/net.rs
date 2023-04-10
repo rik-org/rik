@@ -72,7 +72,7 @@ pub enum NetworkInterfaceError {
     IpAllocation(#[from] rtnetlink::Error),
     #[error("Interface name is invalid, expected to be less than 15 characters")]
     InvalidInterfaceName,
-    #[error("Failed to create TAP: {0}")]
+    #[error("Failed to update TAP: {0}")]
     ManageTap(String),
 }
 
@@ -202,7 +202,7 @@ mod tests {
         let net = Net::new_with_tap(config).await;
         assert!(net.is_err());
         let error = net.err().unwrap().to_string();
-        let expected_error = "Failed to create TAP: Tap creation failed, code 1, stderr: ioctl(TUNSETIFF): Device or resource busy\n";
+        let expected_error = "Failed to update TAP: Tap creation failed, code 1, stderr: ioctl(TUNSETIFF): Device or resource busy\n";
         assert_eq!(error, expected_error);
     }
 

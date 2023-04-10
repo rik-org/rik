@@ -13,6 +13,7 @@ use firepilot::{
     Firecracker,
 };
 use proto::worker::InstanceScheduling;
+use std::sync::Arc;
 use std::{
     fs,
     fs::File,
@@ -20,7 +21,7 @@ use std::{
     path::{Path, PathBuf},
     thread,
 };
-use tracing::{error, event, Level};
+use tracing::{debug, error, event, Level};
 
 use super::{network::function_network::FunctionRuntimeNetwork, Runtime, RuntimeManager};
 
@@ -28,8 +29,11 @@ const BOOT_ARGS_STATIC: &str = "console=ttyS0 reboot=k nomodules random.trust_cp
 
 struct FunctionRuntime {
     function_config: FnConfiguration,
+    /// Rootfs path on host
     file_path: String,
     network: FunctionRuntimeNetwork,
+    /// Configuration of the running vm
+    vm_config: Option<MicroVM>,
 }
 
 impl FunctionRuntime {
@@ -69,7 +73,7 @@ impl FunctionRuntime {
 #[async_trait]
 impl Runtime for FunctionRuntime {
     #[tracing::instrument(skip(self))]
-    async fn run(&mut self) -> Result<()> {
+    async fn up(&mut self) -> Result<()> {
         self.network
             .init()
             .await
@@ -85,6 +89,7 @@ impl Runtime for FunctionRuntime {
 
         event!(Level::DEBUG, "Generate configuration for MicroVM");
         let vm_config = self.generate_microvm_config()?;
+        self.vm_config = Some(vm_config.clone());
 
         event!(Level::DEBUG, "Run microVM in a thread");
         thread::spawn(move || {
@@ -103,6 +108,27 @@ impl Runtime for FunctionRuntime {
         }
 
         Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn down(&self) -> Result<()> {
+        debug!("Destroying function runtime vm");
+        if let Some(vm_config) = &self.vm_config {
+            let firecracker = Firecracker::new(firepilot::FirecrackerOptions {
+                command: Some(self.function_config.firecracker_location.clone()),
+                ..Default::default()
+            })
+            .map_err(RuntimeError::FirecrackerError)?;
+            firecracker
+                .stop(vm_config)
+                .await
+                .map_err(RuntimeError::FirecrackerError)?;
+        }
+        debug!("Destroying function runtime network");
+        self.network
+            .destroy()
+            .await
+            .map_err(RuntimeError::NetworkError)
     }
 }
 
@@ -209,6 +235,7 @@ impl RuntimeManager for FunctionRuntimeManager {
             function_config: FnConfiguration::load(),
             file_path: self.create_fs(&workload_definition)?,
             network: FunctionRuntimeNetwork::new(&workload).map_err(RuntimeError::NetworkError)?,
+            vm_config: None,
         }))
     }
 }
