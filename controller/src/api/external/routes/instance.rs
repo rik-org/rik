@@ -1,9 +1,10 @@
+use definition::workload::WorkloadDefinition;
 use route_recognizer;
 use rusqlite::Connection;
 use std::io;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
-use tracing::{event, Level};
+use tracing::{event, info, Level};
 
 use crate::api;
 use crate::api::external::services::element::elements_set_right_name;
@@ -97,9 +98,11 @@ pub fn create(
         );
     }
 
-    Ok(tiny_http::Response::from_string(serde_json::to_string(&instance_names).unwrap())
-        .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
-        .with_status_code(tiny_http::StatusCode::from(201)))
+    Ok(
+        tiny_http::Response::from_string(serde_json::to_string(&instance_names).unwrap())
+            .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
+            .with_status_code(tiny_http::StatusCode::from(201)),
+    )
 }
 
 pub fn delete(
@@ -113,15 +116,23 @@ pub fn delete(
     let OnlyId { id: delete_id } = serde_json::from_str(&content)?;
 
     if let Ok(instance) = RikRepository::find_one(connection, &delete_id, "/instance") {
+        let instance_def: InstanceDefinition =
+            serde_json::from_value(instance.value.clone()).unwrap();
+        let workload_def: WorkloadDefinition = {
+            // Safe as if instance exists, it must have a workload
+            let workload =
+                RikRepository::find_one(connection, &instance_def.workload_id, "/workload")
+                    .unwrap();
+            serde_json::from_value(workload.value).unwrap()
+        };
         internal_sender
             .send(ApiChannel {
                 action: Crud::Delete,
-                workload_id: None,
-                workload_definition: None,
+                workload_id: Some(instance_def.workload_id),
+                workload_definition: Some(workload_def),
                 instance_id: Some(delete_id),
             })
             .unwrap();
-        RikRepository::delete(connection, &instance.id).unwrap();
 
         event!(
             Level::INFO,

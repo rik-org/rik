@@ -77,6 +77,8 @@ pub enum SchedulerError {
     /// In case we are ordering something but the workload doesn't exist in the
     /// memory
     WorkloadNotExisting(String),
+    /// An invalid instance ID has been provided
+    InstanceNotExisting(String),
 }
 
 impl fmt::Display for SchedulerError {

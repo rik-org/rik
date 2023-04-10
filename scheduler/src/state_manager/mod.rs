@@ -218,6 +218,50 @@ impl StateManager {
                     ))
                     .await;
             }
+
+            let deleting_instances: Vec<&mut WorkloadInstance> = workload
+                .instances
+                .iter_mut()
+                .filter_map(|(_, instance)| match instance.is_destroying() {
+                    true => Some(instance),
+                    false => None,
+                })
+                .collect();
+
+            for instance in deleting_instances {
+                let worker = workers.next().unwrap();
+
+                instance.set_worker(Some(worker.clone()));
+                // For now we don't check whether the instance is properly deleted, we assume it is
+                // as if we keep the destroying state, it will loop here and spam riklet of events
+                instance.set_status(ResourceStatus::Terminated);
+
+                info!("Deleting instance {}", instance.id.clone());
+
+                let _ = self
+                    .manager_channel
+                    .send(Event::Schedule(
+                        worker.clone(),
+                        InstanceScheduling {
+                            instance_id: instance.id.clone(),
+                            action: WorkloadRequestKind::Destroy as i32,
+                            definition: serde_json::to_string(&instance.definition.clone())
+                                .unwrap(),
+                        },
+                    ))
+                    .await;
+                let _ = self
+                    .manager_channel
+                    .send(Event::InstanceMetric(
+                        "scheduler".to_string(),
+                        InstanceMetric {
+                            status: ResourceStatus::Terminated.into(),
+                            metrics: format!("\"workload_id\": \"{}\"", workload.id.clone()),
+                            instance_id: instance.id.clone(),
+                        },
+                    ))
+                    .await;
+            }
         }
 
         let mut to_be_deleted = Vec::new();
@@ -342,15 +386,30 @@ impl StateManager {
 
         info!(
             "[process_schedule_request] Received destroy request for {}, with {:#?} replicas",
-            workload.id, workload.definition.replicas
+            workload.id, def_replicas
         );
+
+        let instance = workload.instances.get_mut(&request.instance_id);
+
+        if instance.is_none() {
+            error!(
+                "Requested instance {} for workload {} hasn't any instance available",
+                request.instance_id, request.workload_id
+            );
+            return Err(SchedulerError::InstanceNotExisting(request.instance_id));
+        }
+
+        let instance = instance.unwrap();
+        instance.set_status(ResourceStatus::Destroying);
 
         if workload.replicas > *def_replicas {
             self.action_minus_replicas(&request.workload_id, def_replicas)?;
         } else {
             info!("Workload {} is getting unscheduled", workload.id);
             workload.status = ResourceStatus::Destroying;
-            workload.replicas = 0;
+            // Keep workload replicas a 1 as we are going to 0 it will be deleted automatically
+            // by the state manager
+            workload.replicas = 1;
         }
         Ok(())
     }
@@ -423,17 +482,12 @@ impl WorkloadInstance {
         self.worker_id = worker;
     }
 
-    #[allow(dead_code)]
-    /// Determine whether the instance is running somewhere and has been properly running
-    pub fn is_deployed(&self) -> bool {
-        matches!(
-            self.status,
-            ResourceStatus::Running | ResourceStatus::Creating | ResourceStatus::Destroying
-        )
-    }
-
     pub fn is_pending(&self) -> bool {
         self.status == ResourceStatus::Pending
+    }
+
+    pub fn is_destroying(&self) -> bool {
+        self.status == ResourceStatus::Destroying
     }
 
     pub fn set_status(&mut self, status: ResourceStatus) {
