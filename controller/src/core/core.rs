@@ -13,7 +13,7 @@ use std::net::SocketAddr;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
-use tracing::{event, Level};
+use tracing::{error, event, Level};
 
 pub enum CoreInternalEvent {
     InstanceStatusUpdate(InstanceMetric),
@@ -73,7 +73,19 @@ impl Core {
 
     /// Handle messages that are from Legacy events
     /// Waiting to be removed when legacy code is removed
+    #[tracing::instrument(
+        skip(self, notification),
+        fields(
+            workload_id = %notification.workload_id.as_ref().unwrap_or(&String::from("None")), 
+            instance_id = %notification.instance_id.as_ref().unwrap_or(&String::from("None"))
+        )
+    )]
     pub async fn handle_legacy_notification(&mut self, notification: ApiChannel) {
+        if notification.workload_definition.is_none() {
+            error!("Could not proceed legacy notification, no workload definition found");
+            return;
+        }
+
         let definition = notification.workload_definition.as_ref().unwrap().clone();
         match notification.action {
             Crud::Create => {
