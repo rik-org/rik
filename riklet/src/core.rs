@@ -15,7 +15,7 @@ use tracing_subscriber::field::debug;
 
 use thiserror::Error;
 use tonic::{transport::Channel, Request, Streaming};
-use tracing::{debug, error, event, Level};
+use tracing::{debug, error, event, info, Level};
 
 const METRICS_UPDATER_INTERVAL: u64 = 15 * 1000;
 
@@ -148,8 +148,8 @@ impl Riklet {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        event!(Level::INFO, "Riklet is running.");
         self.start_metrics_updater();
+        info!("Riklet is running");
 
         while let Some(workload) = self
             .stream

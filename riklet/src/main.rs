@@ -17,10 +17,8 @@ use tracing::error;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    init_logger(Some("debug".to_string()))?;
+    init_logger()?;
 
-    // run a function to test #[instrument] macro
-    // test_instrument();
     // If the process doesn't have root privileges, exit and display error.
     if !nix::unistd::Uid::effective().is_root() {
         error!("Riklet must run with root privileges.");
