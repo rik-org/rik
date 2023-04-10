@@ -12,7 +12,7 @@ use cri::{
 use oci::image_manager::ImageManager;
 use proto::worker::InstanceScheduling;
 use std::path::PathBuf;
-use tracing::{event, Level};
+use tracing::{error, event, Level};
 
 use super::{network::pod_network::PodRuntimeNetwork, Runtime, RuntimeManager};
 
@@ -27,7 +27,7 @@ struct PodRuntime {
 
 #[async_trait]
 impl Runtime for PodRuntime {
-    async fn run(&mut self) -> super::Result<()> {
+    async fn up(&mut self) -> super::Result<()> {
         self.network
             .init()
             .await
@@ -82,6 +82,12 @@ impl Runtime for PodRuntime {
                 event!(Level::INFO, "Started container {}", id);
             }
         }
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(instance_id = %self.instance_id))]
+    async fn down(&self) -> super::Result<()> {
+        error!("Down not implemented for pod runtime");
         Ok(())
     }
 }

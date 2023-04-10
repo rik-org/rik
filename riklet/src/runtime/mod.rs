@@ -12,6 +12,7 @@ use firepilot::FirecrackerError;
 use proto::worker::InstanceScheduling;
 use std::fmt::Debug;
 use thiserror::Error;
+use tracing::error;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {
@@ -44,7 +45,8 @@ type Result<T> = std::result::Result<T, RuntimeError>;
 
 #[async_trait]
 pub trait Runtime: Send + Sync {
-    async fn run(&mut self) -> Result<()>;
+    async fn up(&mut self) -> Result<()>;
+    async fn down(&self) -> Result<()>;
 }
 
 #[async_trait]
@@ -55,19 +57,16 @@ pub trait RuntimeManager: Send + Sync {
         config: Configuration,
     ) -> Result<Box<dyn Runtime>>;
 
-    async fn run(
+    /// Generate a new runtime and run it
+    async fn run_instance(
         &self,
         workload: &InstanceScheduling,
         config: Configuration,
     ) -> Result<Box<dyn Runtime>> {
         let mut runtime = self.create_runtime(workload.clone(), config.clone())?;
-        runtime.run().await?;
+        runtime.up().await?;
 
         Ok(runtime)
-    }
-
-    fn destroy(&self) {
-        println!("Destroying runtime");
     }
 }
 
