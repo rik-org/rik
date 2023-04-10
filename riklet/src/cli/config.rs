@@ -66,9 +66,9 @@ impl Configuration {
             "Reading configuration from file {}",
             path.display()
         );
-        let contents = std::fs::read(path).map_err(ConfigurationError::Load)?;
+        let content = std::fs::read_to_string(path).map_err(ConfigurationError::Load)?;
 
-        toml::from_slice(&contents).map_err(ConfigurationError::Parse)
+        toml::from_str(&content).map_err(ConfigurationError::Parse)
     }
 
     /// Load the configuration file
