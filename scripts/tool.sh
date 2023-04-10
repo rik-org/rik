@@ -50,7 +50,7 @@ sub_mkkernel() {
 # Example: `./scripts/tool.sh mkrootfs`
 sub_mkrootfs() {
     # Size of the rootfs in MB
-    local size="150"
+    local size="200"
     local origin_image="ubuntu:22.04"
     local rootfs_dir_host=/tmp/firecracker/
     local rootfs_dir_guest=/rootfs
@@ -78,7 +78,7 @@ sub_mkrootfs() {
         --env MNT_DIR="${rootfs_dir_guest}" \
         -v "${rootfs_dir_host}:/${rootfs_dir_guest}" ${origin_image} \
         bash -s <<'EOF'
-packages="udev systemd-sysv iproute2"
+packages="udev systemd-sysv iproute2 nginx"
 dirs="bin etc home lib lib64 opt root sbin usr"
 
 echo "Mount rootfs on the system"
@@ -98,6 +98,7 @@ cat <<CMD > "/etc/systemd/system/serial-getty@ttyS0.service.d/autologin.conf"
 ExecStart=
 ExecStart=-/sbin/agetty --autologin root -o '-p -- \\u' --keep-baud 115200,38400,9600 %I $TERM
 CMD
+
 passwd -d root
 
 echo "Copy rootfs into the mounted volume"
