@@ -2,7 +2,6 @@ mod lib;
 
 use crate::state_manager::lib::int_to_resource_status;
 use definition::workload::WorkloadDefinition;
-use log::{debug, error, info};
 use proto::common::{InstanceMetric, ResourceStatus, WorkerMetric, WorkloadRequestKind};
 use proto::worker::InstanceScheduling;
 use rand::seq::IteratorRandom;
@@ -12,6 +11,7 @@ use std::fmt;
 use std::sync::Arc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Mutex;
+use tracing::{debug, error, info};
 
 #[derive(Debug)]
 pub enum StateManagerEvent {
@@ -291,6 +291,10 @@ impl StateManager {
         }
     }
 
+    #[tracing::instrument(
+        skip(self),
+        fields(workload_id = %request.workload_id, instance_id = %request.instance_id),
+    )]
     fn action_create_workload(&mut self, request: WorkloadRequest) -> Result<(), SchedulerError> {
         let instance = WorkloadInstance::new(
             request.instance_id.clone(),
@@ -320,7 +324,10 @@ impl StateManager {
                 status: ResourceStatus::Pending,
             };
 
-            info!("[process_schedule_request] Received scheduling request for {}, with {:#?} replicas", workload.id, workload.definition.replicas);
+            info!(
+                "[process_schedule_request] Received scheduling request with {:#?} replicas",
+                workload.definition.replicas
+            );
 
             self.state.insert(workload.id.clone(), workload);
         }
@@ -365,14 +372,15 @@ impl StateManager {
         Ok(())
     }
 
+    #[tracing::instrument(
+        skip(self),
+        fields(workload_id = %request.workload_id, instance_id = %request.instance_id),
+    )]
     fn action_destroy_instance(&mut self, request: WorkloadRequest) -> Result<(), SchedulerError> {
         let workload = self.state.get_mut(&request.workload_id);
 
         if workload.is_none() {
-            error!(
-                "Requested workload {} hasn't any instance available",
-                request.workload_id
-            );
+            error!("Requested workload hasn't any instance available");
             return Err(SchedulerError::WorkloadNotExisting(request.workload_id));
         }
 
@@ -385,8 +393,8 @@ impl StateManager {
         let def_replicas = &workload.definition.replicas.unwrap_or(1);
 
         info!(
-            "[process_schedule_request] Received destroy request for {}, with {:#?} replicas",
-            workload.id, def_replicas
+            "[process_schedule_request] Received destroy request with {:#?} replicas",
+            workload.definition.replicas
         );
 
         let instance = workload.instances.get_mut(&request.instance_id);
@@ -405,7 +413,7 @@ impl StateManager {
         if workload.replicas > *def_replicas {
             self.action_minus_replicas(&request.workload_id, def_replicas)?;
         } else {
-            info!("Workload {} is getting unscheduled", workload.id);
+            info!("Workload is getting unscheduled");
             workload.status = ResourceStatus::Destroying;
             // Keep workload replicas a 1 as we are going to 0 it will be deleted automatically
             // by the state manager

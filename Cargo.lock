@@ -2888,6 +2888,7 @@ dependencies = [
  "env_logger",
  "log",
  "node_metrics",
+ "once_cell",
  "proto",
  "rand",
  "serde",
@@ -2895,6 +2896,10 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tonic",
+ "tracing",
+ "tracing-futures",
+ "tracing-subscriber",
+ "tracing-timing",
 ]
 
 [[package]]

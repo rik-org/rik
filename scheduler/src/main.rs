@@ -6,7 +6,6 @@ use crate::config_parser::ConfigParser;
 use crate::grpc::GRPCService;
 use crate::state_manager::{StateManager, StateManagerEvent};
 use env_logger::Env;
-use log::{debug, error, info, warn};
 use proto::common::worker_status::Status;
 use proto::common::{ResourceStatus, WorkerMetric as WorkerMetricProto, WorkerStatus};
 use proto::controller::controller_server::ControllerServer;
@@ -16,6 +15,7 @@ use scheduler::{Controller, SchedulerError, Worker, WorkerRegisterChannelType};
 use std::default::Default;
 use std::net::{SocketAddr, SocketAddrV4};
 use std::sync::Arc;
+use tracing::{debug, error, info, warn};
 
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::Mutex;
@@ -296,7 +296,9 @@ impl Manager {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = ConfigParser::new()?;
-    env_logger::Builder::from_env(Env::default().default_filter_or(&config.verbosity_level)).init();
+    let subscriber = tracing_subscriber::fmt().compact().finish();
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("Failed to initiate the logger subscriber");
     info!("Starting up...");
     let manager = Manager::run(config.workers_endpoint, config.controller_endpoint);
     manager.await?;

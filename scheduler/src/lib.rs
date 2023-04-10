@@ -1,5 +1,4 @@
 use definition::workload::WorkloadDefinition;
-use log::{error, info};
 use node_metrics::metrics::Metrics;
 use proto::common::{InstanceMetric, WorkerMetric, WorkerStatus, WorkloadRequestKind};
 use proto::controller::WorkloadScheduling;
@@ -10,6 +9,7 @@ use std::net::SocketAddr;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::Sender;
 use tonic::Status;
+use tracing::{error, info};
 
 /// Define the structure of message send through the channel between
 /// the manager and a worker
