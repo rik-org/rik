@@ -5,14 +5,14 @@ mod state_manager;
 use crate::config_parser::ConfigParser;
 use crate::grpc::GRPCService;
 use crate::state_manager::{StateManager, StateManagerEvent};
-use env_logger::Env;
+
 use proto::common::worker_status::Status;
 use proto::common::{ResourceStatus, WorkerMetric as WorkerMetricProto, WorkerStatus};
 use proto::controller::controller_server::ControllerServer;
 use proto::worker::worker_server::WorkerServer;
 use scheduler::Event;
 use scheduler::{Controller, SchedulerError, Worker, WorkerRegisterChannelType};
-use std::default::Default;
+
 use std::net::{SocketAddr, SocketAddrV4};
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
