@@ -7,3 +7,9 @@ title = "Rust In Kube"
 
 [output.html]
 git-repository-url = "https://github.com/rik-org/rik"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[preprocessor]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"

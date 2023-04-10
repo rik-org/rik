@@ -28,6 +28,7 @@ jobs:
           rustup set profile minimal
           rustup toolchain install 1.67 -c rust-docs
           rustup default 1.67
+          cargo install mdbook-mermaid
       - name: Install mdbook
         run: |
           mkdir bin
