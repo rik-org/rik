@@ -1,11 +1,11 @@
 mod controller;
 mod worker;
 
-use log::error;
 use scheduler::Event;
 use scheduler::Send;
 use tokio::sync::mpsc::Sender;
 use tonic::{Code, Status};
+use tracing::error;
 
 #[derive(Debug, Clone)]
 pub struct GRPCService {

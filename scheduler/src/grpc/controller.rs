@@ -1,5 +1,4 @@
 use crate::grpc::GRPCService;
-use log::error;
 use proto::common::WorkerStatus;
 use proto::controller::controller_server::Controller as ControllerClient;
 use proto::controller::WorkloadScheduling;
@@ -8,6 +7,7 @@ use scheduler::{Event, WorkloadRequest};
 use tokio::sync::mpsc::channel;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
+use tracing::error;
 
 #[tonic::async_trait]
 impl ControllerClient for GRPCService {

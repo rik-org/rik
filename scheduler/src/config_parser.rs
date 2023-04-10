@@ -39,12 +39,6 @@ impl ConfigParser {
                     .takes_value(true)
                     .default_value("0.0.0.0:4996"),
             )
-            .arg(
-                Arg::with_name("v")
-                    .short("v")
-                    .multiple(true)
-                    .help("Sets the level of verbosity"),
-            )
             .get_matches();
 
         let workers_ip: SocketAddrV4 = matches
