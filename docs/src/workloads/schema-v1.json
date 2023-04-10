@@ -1,0 +1,68 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://rik-org.github.io/rik/workloads/schema-v1.json",
+    "title": "Workload-v1",
+    "description": "Reference for workload in RIK with apiVersion v1",
+    "type": "object",
+    "properties": {
+        "apiVersion": {
+          "description": "The version associated to the current schema",
+          "type": "string",
+          "default": "v1"
+        },
+        "kind": {
+          "description": "The kind of the resource",
+          "type": "string",
+          "enum": [ "Pod", "Function" ]
+        },
+        "name": {
+          "description": "Unique name of the workload",
+          "type": "string"
+        },
+        "replicas": {
+          "description": "Number of replicas expected (won't be deployed)",
+          "type": "integer",
+          "minimum": 1
+        },
+        "spec": {
+          "description": "Full specification of the workload",
+          "type": "object",
+          "required": [ "containers", "function" ],
+          "properties": {
+            "containers": {
+              "description": "List of containers to be deployed",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name of the container"
+                  },
+                  "image": {
+                    "type": "string",
+                    "description": "Image to be used for the container"
+                  },
+                }
+              }
+            },
+            "function": {
+              "description": "Function to be deployed",
+              "type": "object",
+              "properties": {
+                "execution": {
+                  "type": "object",
+                  "properties": {
+                    "rootfs": {
+                      "type": "string",
+                      "description": "Rootfs to be used for the container, must a be URL that can be publicly accesed"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": [ "apiVersion", "kind", "name", "replicas", "spec" ]
+  }
