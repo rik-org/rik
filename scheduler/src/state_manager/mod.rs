@@ -234,7 +234,7 @@ impl StateManager {
                 instance.set_worker(Some(worker.clone()));
                 // For now we don't check whether the instance is properly deleted, we assume it is
                 // as if we keep the destroying state, it will loop here and spam riklet of events
-                instance.set_status(ResourceStatus::Terminated);
+                instance.is_destroying = true;
 
                 info!("Deleting instance {}", instance.id.clone());
 
@@ -255,7 +255,7 @@ impl StateManager {
                     .send(Event::InstanceMetric(
                         "scheduler".to_string(),
                         InstanceMetric {
-                            status: ResourceStatus::Terminated.into(),
+                            status: ResourceStatus::Destroying.into(),
                             metrics: format!("\"workload_id\": \"{}\"", workload.id.clone()),
                             instance_id: instance.id.clone(),
                         },
@@ -287,7 +287,7 @@ impl StateManager {
 
         match request.action {
             WorkloadRequestKind::Create => self.action_create_workload(request),
-            WorkloadRequestKind::Destroy => self.action_destroy_workload(request),
+            WorkloadRequestKind::Destroy => self.action_destroy_instance(request),
         }
     }
 
@@ -365,7 +365,7 @@ impl StateManager {
         Ok(())
     }
 
-    fn action_destroy_workload(&mut self, request: WorkloadRequest) -> Result<(), SchedulerError> {
+    fn action_destroy_instance(&mut self, request: WorkloadRequest) -> Result<(), SchedulerError> {
         let workload = self.state.get_mut(&request.workload_id);
 
         if workload.is_none() {
@@ -456,6 +456,8 @@ pub struct WorkloadInstance {
     worker_id: Option<String>,
     /// Current definition for this workload
     definition: WorkloadDefinition,
+    /// Flag to indicate that this instance is being destroyed
+    is_destroying: bool,
 }
 
 impl WorkloadInstance {
@@ -470,6 +472,7 @@ impl WorkloadInstance {
             status,
             worker_id,
             definition,
+            is_destroying: false,
         }
     }
 
@@ -487,7 +490,11 @@ impl WorkloadInstance {
     }
 
     pub fn is_destroying(&self) -> bool {
-        self.status == ResourceStatus::Destroying
+        self.status == ResourceStatus::Destroying && self.is_not_beeing_destroyed()
+    }
+
+    pub fn is_not_beeing_destroyed(&self) -> bool {
+        !self.is_destroying
     }
 
     pub fn set_status(&mut self, status: ResourceStatus) {
