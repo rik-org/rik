@@ -136,7 +136,6 @@ pub mod workload {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum InstanceStatus {
-    Unknown(String),
     Pending,
     Running,
     Failed,
@@ -148,7 +147,6 @@ pub enum InstanceStatus {
 impl Display for InstanceStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            InstanceStatus::Unknown(_) => write!(f, "Unknown"),
             InstanceStatus::Pending => write!(f, "Pending"),
             InstanceStatus::Running => write!(f, "Running"),
             InstanceStatus::Failed => write!(f, "Failed"),
@@ -162,7 +160,6 @@ impl Display for InstanceStatus {
 impl From<InstanceStatus> for i32 {
     fn from(value: InstanceStatus) -> Self {
         match value {
-            InstanceStatus::Unknown(_) => 0,
             InstanceStatus::Pending => 1,
             InstanceStatus::Running => 2,
             InstanceStatus::Failed => 3,
@@ -176,14 +173,12 @@ impl From<InstanceStatus> for i32 {
 impl From<i32> for InstanceStatus {
     fn from(value: i32) -> Self {
         match value {
-            0 => InstanceStatus::Unknown(String::from("")),
-            1 => InstanceStatus::Pending,
             2 => InstanceStatus::Running,
             3 => InstanceStatus::Failed,
             4 => InstanceStatus::Terminated,
             5 => InstanceStatus::Creating,
             6 => InstanceStatus::Destroying,
-            _ => InstanceStatus::Unknown(String::from("")),
+            _ => InstanceStatus::Pending,
         }
     }
 }

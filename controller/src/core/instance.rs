@@ -29,7 +29,7 @@ impl From<ApiChannel> for Instance {
             namespace: String::from("default"),
             kind: workload_definition.kind,
             id: value.instance_id.unwrap(),
-            status: InstanceStatus::Unknown(String::from("Generated with APIChannel event")),
+            status: InstanceStatus::Pending,
             spec: workload_definition.spec,
         }
     }
