@@ -39,7 +39,7 @@ impl From<i32> for ResourceStatus {
 impl From<ResourceStatus> for InstanceStatus {
     fn from(value: ResourceStatus) -> Self {
         match value {
-            ResourceStatus::Unknown => InstanceStatus::Unknown(String::from("")),
+            ResourceStatus::Unknown => InstanceStatus::Pending,
             ResourceStatus::Pending => InstanceStatus::Pending,
             ResourceStatus::Running => InstanceStatus::Running,
             ResourceStatus::Failed => InstanceStatus::Failed,
