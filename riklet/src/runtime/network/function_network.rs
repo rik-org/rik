@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use ipnetwork::Ipv4Network;
 use proto::worker::InstanceScheduling;
 use std::net::Ipv4Addr;
 use tracing::debug;
@@ -120,6 +121,18 @@ impl FunctionRuntimeNetwork {
         }
         Ok(())
     }
+
+    /// Release allocated IPs
+    fn release_network(&self) -> Result<()> {
+        debug!("Release subnet IPs");
+
+        let subnet = Ipv4Network::new(self.host_ip, 30)
+            .map_err(|e| NetworkError::Error(format!("Fail to get function subnet {}", e)))?;
+
+        IP_ALLOCATOR.lock().unwrap().free_subnet(subnet);
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -160,6 +173,7 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
     async fn destroy(&mut self) -> Result<()> {
         debug!("Destroy function network");
         self.down_routing()?;
+        self.release_network()?;
         Ok(())
     }
 }
