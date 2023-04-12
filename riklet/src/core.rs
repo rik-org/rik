@@ -217,4 +217,18 @@ impl Riklet {
             network: global_runtime_network,
         })
     }
+
+    pub async fn shutdown(&mut self) -> Result<()> {
+        info!("Clean Riklet state.");
+
+        // Stop and clean all runtime
+        for (_, runtime) in &mut self.runtimes {
+            runtime
+                .down()
+                .await
+                .map_err(RikletError::RuntimeManagerError)?;
+        }
+
+        Ok(())
+    }
 }

@@ -39,6 +39,7 @@ pub fn init_logger() -> Result<()> {
         .init();
     Ok(())
 }
+use tokio::signal;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -50,17 +51,20 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    Riklet::new()
-        .await
-        .unwrap_or_else(|e| {
-            error!(
-                "An error occured during the bootstraping process of the Riklet. {}",
-                e
-            );
-            std::process::exit(2);
-        })
-        .run()
-        .await?;
+    let mut riklet = Riklet::new().await.unwrap_or_else(|e| {
+        error!(
+            "An error occured during the bootstraping process of the Riklet. {}",
+            e
+        );
+        std::process::exit(2);
+    });
+
+    tokio::select! {
+        _ = riklet.run() => {},
+        _ = signal::ctrl_c() => {}
+    }
+
+    riklet.shutdown().await?;
 
     Ok(())
 }
