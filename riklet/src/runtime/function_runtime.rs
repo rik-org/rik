@@ -1,70 +1,89 @@
 use crate::runtime::Result;
 use crate::{
-    cli::{config::Configuration, function_config::FnConfiguration},
+    cli::function_config::FnConfiguration,
     network::tap::generate_mac_addr,
     runtime::{network::RuntimeNetwork, RuntimeError},
     structs::WorkloadDefinition,
 };
 use async_trait::async_trait;
-use core::time;
+use firepilot::builder::executor::FirecrackerExecutorBuilder;
+use firepilot::builder::network_interface::NetworkInterfaceBuilder;
+use firepilot::builder::{Configuration, Builder};
+use firepilot::builder::drive::DriveBuilder;
+use firepilot::builder::kernel::KernelBuilder;
+use firepilot::machine::Machine;
+use crate::cli::config::{Configuration as CliConfiguration};
 use curl::easy::Easy;
-use firepilot::{
-    microvm::{BootSource, Config, Drive, MicroVM, NetworkInterface},
-    Firecracker,
-};
 use proto::worker::InstanceScheduling;
-use std::sync::Arc;
 use std::{
     fs,
     fs::File,
     io::Write,
     path::{Path, PathBuf},
-    thread,
 };
-use tracing::{debug, error, event, Level};
+use tracing::{debug, event, Level};
 
 use super::{network::function_network::FunctionRuntimeNetwork, Runtime, RuntimeManager};
 
 const BOOT_ARGS_STATIC: &str = "console=ttyS0 reboot=k nomodules random.trust_cpu=on panic=1 pci=off tsc=reliable i8042.nokbd i8042.noaux ipv6.disable=1 quiet loglevel=0";
 
 struct FunctionRuntime {
+    id: String,
+    /// Firecracker configuration
     function_config: FnConfiguration,
     /// Rootfs path on host
     file_path: String,
     network: FunctionRuntimeNetwork,
-    /// Configuration of the running vm
-    vm_config: Option<MicroVM>,
+    /// microVM instance, expected to be None when nothing is running, and expected to
+    /// to be fullfilled when the microVM is running
+    machine: Option<Machine>
 }
 
 impl FunctionRuntime {
-    fn generate_microvm_config(&self) -> Result<MicroVM> {
-        let config = MicroVM::from(Config {
-            boot_source: BootSource {
-                kernel_image_path: self.function_config.kernel_location.clone(),
-                boot_args: Some(format!(
-                    "{} ip={}::{}:{}::eth0:off",
-                    BOOT_ARGS_STATIC,
-                    self.network.host_ip,
-                    self.network.guest_ip,
-                    self.network.mask_long
-                )),
-                initrd_path: None,
-            },
-            drives: vec![Drive {
-                drive_id: "rootfs".to_string(),
-                path_on_host: PathBuf::from(self.file_path.clone()),
-                is_read_only: false,
-                is_root_device: true,
-            }],
-            network_interfaces: vec![NetworkInterface {
-                iface_id: "eth0".to_string(),
-                guest_mac: Some(generate_mac_addr().to_string()),
-                host_dev_name: self
-                    .network
-                    .tap_name()
-                    .map_err(RuntimeError::NetworkError)?,
-            }],
-        });
+    fn generate_microvm_config(&self) -> Result<Configuration> {
+        let kernel_args = format!(
+            "{} ip={}::{}:{}::eth0:off",
+            BOOT_ARGS_STATIC,
+            self.network.host_ip,
+            self.network.guest_ip,
+            self.network.mask_long
+        );
+        let kernel_location = self
+            .function_config
+            .kernel_location
+            .clone()
+            .into_os_string()
+            .into_string()
+            .unwrap();
+        let kernel = KernelBuilder::new()
+            .with_kernel_image_path(kernel_location)
+            .with_boot_args(kernel_args)
+            .try_build()
+            .map_err(RuntimeError::FirepilotConfiguration)?;   
+        let drive = DriveBuilder::new()
+            .with_drive_id("rootfs".to_string())
+            .with_path_on_host(PathBuf::from(self.file_path.clone()))
+            .as_root_device()
+            .try_build()
+            .map_err(RuntimeError::FirepilotConfiguration)?;
+        let net_iface = NetworkInterfaceBuilder::new()
+            .with_iface_id("eth0".to_string())
+            .with_guest_mac(generate_mac_addr().to_string())
+            .with_host_dev_name("riklet".to_string())
+            // .with_host_dev_name(self.network.tap_name().map_err(RuntimeError::NetworkError)?)
+            .try_build()
+            .map_err(RuntimeError::FirepilotConfiguration)?;
+        let executor = FirecrackerExecutorBuilder::new()
+            .with_chroot("./srv".to_string())
+            .with_exec_binary(self.function_config.firecracker_location.clone())
+            .try_build()
+            .map_err(RuntimeError::FirepilotConfiguration)?;
+
+        let config = Configuration::new(self.id.clone())
+            .with_kernel(kernel)
+            .with_drive(drive)
+            .with_interface(net_iface)
+            .with_executor(executor);
 
         Ok(config)
     }
@@ -74,61 +93,39 @@ impl FunctionRuntime {
 impl Runtime for FunctionRuntime {
     #[tracing::instrument(skip(self))]
     async fn up(&mut self) -> Result<()> {
-        self.network
-            .init()
-            .await
-            .map_err(RuntimeError::NetworkError)?;
 
-        event!(Level::DEBUG, "Define network");
-
-        let firecracker = Firecracker::new(firepilot::FirecrackerOptions {
-            command: Some(self.function_config.firecracker_location.clone()),
-            ..Default::default()
-        })
-        .map_err(RuntimeError::FirecrackerError)?;
-
-        event!(Level::DEBUG, "Generate configuration for MicroVM");
+        event!(Level::DEBUG, "Pre-boot configuration for microVM");
         let vm_config = self.generate_microvm_config()?;
-        self.vm_config = Some(vm_config.clone());
+        let mut machine = Machine::new();
+        // Copy files and spawn the microVM socket, but it doesn't start the microVM
+        machine.create(vm_config).await.map_err(RuntimeError::FirecrackerError)?;
 
-        event!(Level::DEBUG, "Run microVM in a thread");
-        thread::spawn(move || {
-            // Thread is alive while the VM is running
-            if let Err(e) = firecracker.start(&vm_config) {
-                error!("Error starting function: {}", e);
-            }
-        });
+        // self.network
+        //     .init()
+        //     .await
+        //     .map_err(RuntimeError::NetworkError)?;
 
-        let tap = self.network.tap.as_ref().unwrap();
-        // small race condition between VM up & interface created
-        let ten_millis = time::Duration::from_millis(10);
-        thread::sleep(ten_millis);
-        if let Err(e) = tap.set_link_up().await {
-            error!("Could not bring iface {} up: {}", tap.iface_name(), e);
-        }
-
+        // Start the microVM
+        machine.start().await.map_err(RuntimeError::FirecrackerError)?;
+        self.machine = Some(machine);
         Ok(())
     }
 
     #[tracing::instrument(skip(self))]
     async fn down(&self) -> Result<()> {
         debug!("Destroying function runtime vm");
-        if let Some(vm_config) = &self.vm_config {
-            let firecracker = Firecracker::new(firepilot::FirecrackerOptions {
-                command: Some(self.function_config.firecracker_location.clone()),
-                ..Default::default()
-            })
-            .map_err(RuntimeError::FirecrackerError)?;
-            firecracker
-                .stop(vm_config)
-                .await
-                .map_err(RuntimeError::FirecrackerError)?;
-        }
-        debug!("Destroying function runtime network");
-        self.network
-            .destroy()
+        self.machine
+            .as_ref()
+            .unwrap()
+            .stop()
             .await
-            .map_err(RuntimeError::NetworkError)
+            .map_err(RuntimeError::FirecrackerError)?;
+        debug!("Destroying function runtime network");
+        // self.network
+        //     .destroy()
+        //     .await
+        //     .map_err(RuntimeError::NetworkError)
+        Ok(())
     }
 }
 
@@ -224,7 +221,7 @@ impl RuntimeManager for FunctionRuntimeManager {
     fn create_runtime(
         &self,
         workload: InstanceScheduling,
-        _config: Configuration,
+        _config: CliConfiguration,
     ) -> super::Result<Box<dyn Runtime>> {
         event!(Level::DEBUG, "Function workload detected");
         let workload_definition: WorkloadDefinition =
@@ -235,7 +232,8 @@ impl RuntimeManager for FunctionRuntimeManager {
             function_config: FnConfiguration::load(),
             file_path: self.create_fs(&workload_definition)?,
             network: FunctionRuntimeNetwork::new(&workload).map_err(RuntimeError::NetworkError)?,
-            vm_config: None,
+            machine: None,
+            id: workload.instance_id
         }))
     }
 }
