@@ -1,4 +1,7 @@
 use anyhow::Result;
+use tracing_subscriber::{
+    fmt, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, EnvFilter,
+};
 
 pub fn banner() {
     println!(
@@ -14,8 +17,9 @@ pub fn banner() {
 }
 
 pub fn init_logger() -> Result<()> {
-    let subscriber = tracing_subscriber::fmt().compact().finish();
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to initiate the logger subscriber");
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
     Ok(())
 }

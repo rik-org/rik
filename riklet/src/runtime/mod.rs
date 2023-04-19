@@ -8,7 +8,7 @@ use self::{
 };
 use crate::{cli::config::Configuration, structs::WorkloadDefinition};
 use async_trait::async_trait;
-use firepilot::FirecrackerError;
+use firepilot::{machine::FirepilotError, builder::BuilderError};
 use proto::worker::InstanceScheduling;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -37,8 +37,11 @@ pub enum RuntimeError {
     #[error("CRI error: {0}")]
     CriError(cri::Error),
 
-    #[error("Firecracker error: {0}")]
-    FirecrackerError(FirecrackerError),
+    #[error("Firecracker error: {0:?}")]
+    FirecrackerError(FirepilotError),
+
+    #[error("Could not configure properly: {0:?}")]
+    FirepilotConfiguration(BuilderError)
 }
 
 type Result<T> = std::result::Result<T, RuntimeError>;

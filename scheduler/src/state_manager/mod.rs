@@ -36,7 +36,6 @@ pub struct StateManager {
 
 impl StateManager {
     pub fn new(manager_channel: Sender<Event>, workers: Arc<Mutex<Vec<Worker>>>) -> StateManager {
-        debug!("Creating StateManager...");
         StateManager {
             // We define a mini capacity
             state: HashMap::with_capacity(20),

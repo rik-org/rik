@@ -9,18 +9,16 @@ use std::thread;
 use crate::database::RikDataBase;
 use api::{external, ApiChannel};
 use tracing::{event, Level};
+use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, fmt, EnvFilter, util::SubscriberInitExt};
 
 use crate::core::core::Core;
 use tokio::runtime::Builder;
 
 fn logger_setup() {
-    let subscriber = tracing_subscriber::fmt()
-        .compact()
-        // .with_file(true)
-        // .with_line_number(true)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to initiate the logger subscriber");
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
 }
 
 #[tokio::main]
