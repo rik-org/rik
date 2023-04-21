@@ -230,7 +230,6 @@ impl StateManager {
             for instance in deleting_instances {
                 let worker = workers.next().unwrap();
 
-                instance.set_worker(Some(worker.clone()));
                 // For now we don't check whether the instance is properly deleted, we assume it is
                 // as if we keep the destroying state, it will loop here and spam riklet of events
                 instance.is_destroying = true;
@@ -413,7 +412,7 @@ impl StateManager {
             self.action_minus_replicas(&request.workload_id, def_replicas)?;
         } else {
             info!("Workload is getting unscheduled");
-            workload.status = ResourceStatus::Destroying;
+            // workload.status = ResourceStatus::Destroying;
             // Keep workload replicas a 1 as we are going to 0 it will be deleted automatically
             // by the state manager
             workload.replicas = 1;
