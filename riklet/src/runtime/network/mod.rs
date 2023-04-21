@@ -32,6 +32,9 @@ pub enum NetworkError {
 
     #[error("Network interface error: {0}")]
     NetworkInterfaceError(NetworkInterfaceError),
+
+    #[error("Should have been able to apply a valid IP address to the interface, but failed: {0}")]
+    InterfaceIPError(String),
 }
 
 type Result<T> = std::result::Result<T, NetworkError>;
@@ -39,6 +42,16 @@ type Result<T> = std::result::Result<T, NetworkError>;
 #[async_trait]
 pub trait RuntimeNetwork: Send + Sync {
     async fn init(&mut self) -> Result<()>;
+
+    /// Called after the workload has been created in the system but not booted
+    async fn preboot(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    /// Called after the workload has been running in the system
+    async fn postboot(&mut self) -> Result<()> {
+        Ok(())
+    }
 
     async fn destroy(&self) -> Result<()>;
 }

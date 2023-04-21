@@ -8,7 +8,7 @@ use self::{
 };
 use crate::{cli::config::Configuration, structs::WorkloadDefinition};
 use async_trait::async_trait;
-use firepilot::{machine::FirepilotError, builder::BuilderError};
+use firepilot::{builder::BuilderError, machine::FirepilotError};
 use proto::worker::InstanceScheduling;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -41,7 +41,7 @@ pub enum RuntimeError {
     FirecrackerError(FirepilotError),
 
     #[error("Could not configure properly: {0:?}")]
-    FirepilotConfiguration(BuilderError)
+    FirepilotConfiguration(BuilderError),
 }
 
 type Result<T> = std::result::Result<T, RuntimeError>;
@@ -49,7 +49,7 @@ type Result<T> = std::result::Result<T, RuntimeError>;
 #[async_trait]
 pub trait Runtime: Send + Sync {
     async fn up(&mut self) -> Result<()>;
-    async fn down(&self) -> Result<()>;
+    async fn down(&mut self) -> Result<()>;
 }
 
 #[async_trait]

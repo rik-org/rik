@@ -56,15 +56,16 @@ pub struct Riklet {
 
 impl Riklet {
     async fn handle_workload(&mut self, workload: &InstanceScheduling) -> Result<()> {
-        event!(Level::DEBUG, "Handling workload");
+        info!(
+            "Instance scheduling received for instance: {}",
+            &workload.instance_id
+        );
         let workload_definition: WorkloadDefinition =
             serde_json::from_str(workload.definition.as_str())
                 .map_err(RikletError::WorkloadParseError)?;
 
         let dynamic_runtime_manager: DynamicRuntimeManager =
             RuntimeConfigurator::create(&workload_definition);
-
-        println!("workload action: {}", &workload.action);
 
         match &workload.action.into() {
             WorkloadAction::CREATE => {
@@ -120,7 +121,7 @@ impl Riklet {
 
         let instance = self
             .runtimes
-            .get(instance_id)
+            .get_mut(instance_id)
             .ok_or_else(|| RikletError::InvalidInput(instance_id.clone()))?;
 
         instance
@@ -137,7 +138,7 @@ impl Riklet {
 
     #[tracing::instrument(skip(self), fields(instance_id = %instance_id, status = %status))]
     async fn send_status(&self, status: InstanceStatus, instance_id: &str) -> Result<()> {
-        debug!("Update instance status");
+        info!("Update instance status");
 
         let status = WorkerStatus::new(self.hostname.clone(), instance_id.to_string(), status);
 

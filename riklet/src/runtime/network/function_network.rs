@@ -1,10 +1,13 @@
 use async_trait::async_trait;
+use futures_util::TryStreamExt;
 use proto::worker::InstanceScheduling;
-use std::net::Ipv4Addr;
+use rtnetlink::new_connection;
+use std::net::{IpAddr, Ipv4Addr};
 use tracing::debug;
 
-use crate::network::net::{Net, NetworkInterfaceConfig};
-use crate::network::tap::close_tap_shell;
+use crate::constants::DEFAULT_FIRECRACKER_NETWORK_MASK;
+use crate::network::net::NetworkInterfaceConfig;
+use crate::network::netutils;
 use crate::{
     cli::function_config::FnConfiguration,
     iptables::{rule::Rule, Chain, Iptables, MutateIptables, Table},
@@ -25,7 +28,7 @@ pub struct FunctionRuntimeNetwork {
     pub host_ip: Ipv4Addr,
     pub function_config: FnConfiguration,
     pub port_mapping: Vec<(u16, u16)>,
-    pub tap: Option<Net>,
+    pub tap: Option<String>,
 }
 
 impl FunctionRuntimeNetwork {
@@ -64,8 +67,6 @@ impl FunctionRuntimeNetwork {
 
     pub fn tap_name(&self) -> Result<String> {
         self.tap
-            .as_ref()
-            .map(|v| v.iface_name())
             .as_ref()
             .cloned()
             .ok_or_else(|| NetworkError::Error("Tap interface name not found".to_string()))
@@ -146,13 +147,44 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
             NetworkInterfaceConfig::new_with_random_name(self.identifier.clone(), self.guest_ip)
                 .map_err(NetworkError::NetworkInterfaceError)?;
 
-        self.tap = Some(
-            Net::new_with_tap(config.clone())
-                .await
-                .map_err(NetworkError::NetworkInterfaceError)?,
-        );
-        self.up_routing()?;
+        self.tap = Some(config.iface_name);
 
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self), fields(identifier = %self.identifier))]
+    async fn preboot(&mut self) -> Result<()> {
+        let tap_name = self.tap_name()?;
+        let host_ipv4 = &self.host_ip;
+        debug!("Give IP address to netid: {} -> {}", self.host_ip, tap_name);
+        let (connection, handle, _) =
+            new_connection().map_err(|e| NetworkError::InterfaceIPError(e.to_string()))?;
+        tokio::spawn(connection);
+
+        let mut links = handle.link().get().match_name(tap_name.clone()).execute();
+
+        if let Some(link) = links
+            .try_next()
+            .await
+            .map_err(|e| NetworkError::InterfaceIPError(e.to_string()))?
+        {
+            handle
+                .address()
+                .add(
+                    link.header.index,
+                    IpAddr::V4(host_ipv4.clone()),
+                    DEFAULT_FIRECRACKER_NETWORK_MASK,
+                )
+                .execute()
+                .await
+                .map_err(|e| NetworkError::InterfaceIPError(e.to_string()))?;
+        }
+
+        netutils::set_link_up(tap_name.clone())
+            .await
+            .map_err(|e| NetworkError::InterfaceIPError(e.to_string()))?;
+
+        self.up_routing()?;
         Ok(())
     }
 
@@ -160,7 +192,6 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
     async fn destroy(&self) -> Result<()> {
         debug!("Destroy function network");
         self.down_routing()?;
-        close_tap_shell(&self.tap_name()?).map_err(NetworkError::NetworkInterfaceError)?;
         Ok(())
     }
 }
@@ -191,7 +222,7 @@ mod tests {
             guest_ip: Ipv4Addr::new(10, 0, 0, 1),
             function_config: fn_config,
             port_mapping: port_mapping.clone(),
-            tap: Some(Net::new_with_tap(config).await?),
+            tap: Some(tap_name.to_string()),
         })
     }
 

@@ -20,3 +20,53 @@ and routing. Depending on the workload, it will be configured to use a specific
 network implementation. For now, only `Function` workload have an implementation
 of network configuration. This implementation is based on `iptables` and
 [`rtnetlink`](https://man7.org/linux/man-pages/man7/rtnetlink.7.html).
+
+## Function network
+
+Current implementation is based on usage of `iptables`, it will apply NAT rules
+on current network configuration. Moreover, it will apply PAT (Port Address
+Translation) on the host machine to expose the workload on a specific port.
+
+```ignore
+
+┌──────────────────────────────────────────────────────────────────┐
+│                      Host Machine (riklet)                       │
+│                                                                  │
+│                                                                  │
+│  ┌─────────────────────────────┐   ┌─────────────────────────┐   │
+│  │Iptables                     │   │    Function Instance    │   │
+│  │                             │   │                         │   │
+│  │ ┌─────────────────────────┐ │   │                         │   │
+│  │ │APPLY NAT ON             │ │   │┌───────────────────────┐│   │
+│  │ │host:${port}             │ │   ││      Guest_veth       ││   │
+│  │ │                         │ │   ││                       ││   │
+│  │ │TO                       │─┼┐  │└───────────────────────┘│   │
+│  │ │host_tap:${service_port} │ ││  │            ▲            │   │
+│  │ │                         │ ││  └────────────┼────────────┘   │
+│  │ └─────────────────────────┘ ││               │                │
+│  │              ▲              ││               │                │
+│  └──────────────┼──────────────┘│   ┌───────────────────────┐    │
+│                 │               │   │       Host_tap        │    │
+│                 │               └──▶│                       │    │
+│                 │                   └───────────────────────┘    │
+│     ┌───────────────────────┐                                    │
+│     │Host Ethernet Interface│                                    │
+│     │                       │                                    │
+│     └───────────────────────┘                                    │
+│                 ▲                                                │
+└─────────────────┼────────────────────────────────────────────────┘
+                  │
+                  │
+                  │
+              .───────.
+           ,─'         '─.
+         ,'               `.
+        ;                   :
+        │                   │
+        │  World Wide Web   │
+        :                   ;
+         ╲                 ╱
+          `.             ,'
+            '─.       ,─'
+               `─────'
+```
