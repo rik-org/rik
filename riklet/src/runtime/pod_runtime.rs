@@ -86,7 +86,7 @@ impl Runtime for PodRuntime {
     }
 
     #[tracing::instrument(skip(self), fields(instance_id = %self.instance_id))]
-    async fn down(&self) -> super::Result<()> {
+    async fn down(&mut self) -> super::Result<()> {
         error!("Down not implemented for pod runtime");
         Ok(())
     }
