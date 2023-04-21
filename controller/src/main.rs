@@ -9,7 +9,9 @@ use std::thread;
 use crate::database::RikDataBase;
 use api::{external, ApiChannel};
 use tracing::{event, Level};
-use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, fmt, EnvFilter, util::SubscriberInitExt};
+use tracing_subscriber::{
+    fmt, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, EnvFilter,
+};
 
 use crate::core::core::Core;
 use tokio::runtime::Builder;
