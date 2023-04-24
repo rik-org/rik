@@ -1,5 +1,5 @@
 {
-	"api_version": "v0",
+	"apiVersion": "v1",
 	"kind": "Pod",
 	"name": "alpine",
 	"replicas": 1,
