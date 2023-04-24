@@ -40,19 +40,24 @@ impl InstanceRepository for InstanceRepositoryImpl {
 
     fn register_instance(&self, instance: Instance) -> Result<(), RikError> {
         let connection = self.get_connection()?;
-        match RikRepository::upsert(
+        RikRepository::upsert(
             &connection,
             &instance.id,
             &instance.get_full_name(),
             &serde_json::to_string(&instance).unwrap(),
             "/instance",
-        ) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(RikError::InternalCommunicationError(format!(
-                "Could not register instance: {}",
-                e
-            ))),
-        }
+        )
+        .map_err(|e| {
+            RikError::InternalCommunicationError(format!("Could not register instance: {}", e))
+        })
+        .map(|_| ())
+    }
+
+    fn delete_instance(&self, instance: Instance) -> Result<(), RikError> {
+        let connection = self.get_connection()?;
+        RikRepository::delete(&connection, &instance.id).map_err(|e| {
+            RikError::InternalCommunicationError(format!("Could not delete instance: {}", e))
+        })
     }
 }
 

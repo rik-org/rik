@@ -16,7 +16,7 @@ use std::net::SocketAddr;
 use std::ops::Range;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
-use tracing::{event, Level};
+use tracing::{error, event, info, Level};
 
 const WORKLOAD_PORTS: Range<u16> = 45000..50000;
 const DEFAULT_SCHEDULER_URL: &str = "http://localhost:4996";
@@ -130,6 +130,7 @@ impl InstanceService for InstanceServiceImpl {
                 RikError::InternalCommunicationError(format!("Could not schedule instance: {}", e))
             })
     }
+
     async fn delete_instance(
         &mut self,
         instance: Instance,
@@ -147,17 +148,25 @@ impl InstanceService for InstanceServiceImpl {
         let new_status = InstanceStatus::from(instance_metric.status);
         let mut instance = self
             .service
-            .fetch_instance(instance_metric.instance_id)
+            .fetch_instance(instance_metric.instance_id.clone())
             .unwrap();
-        event!(
-            Level::INFO,
+        info!(
             "Instance {}, status update, {} -> {}",
-            instance.id,
-            instance.status,
-            &new_status
+            instance.id, instance.status, &new_status
         );
 
         instance.status = new_status;
-        self.service.register_instance(instance).unwrap();
+
+        let repo_update_rs = match instance.status {
+            InstanceStatus::Terminated => self.service.delete_instance(instance),
+            _ => self.service.register_instance(instance),
+        };
+
+        if let Err(e) = repo_update_rs {
+            error!(
+                "Failed to update repository for instance {}: {}",
+                instance_metric.instance_id, e
+            )
+        }
     }
 }

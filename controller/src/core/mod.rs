@@ -39,6 +39,7 @@ trait InstanceService {
 trait InstanceRepository {
     fn fetch_instance(&self, instance_id: String) -> Result<Instance, RikError>;
     fn register_instance(&self, instance: Instance) -> Result<(), RikError>;
+    fn delete_instance(&self, instance: Instance) -> Result<(), RikError>;
 }
 
 trait WorkerService {
