@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "tag"
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+
+    steps:
+      - name: Set tag
+        if: ${{ github.event.release }}
+        run: echo "RELEASE_TAG=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+
+      - name: Set tag
+        if: ${{ github.event.inputs.tag }}
+        run: echo "RELEASE_TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v3
+
+      - uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          default: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --all-features
+
+      - name: Create release archive
+        run: |
+          mkdir release-${RELEASE_TAG}-assets
+
+          cp target/release/rikctl release-${RELEASE_TAG}-assets/
+          cp target/release/riklet release-${RELEASE_TAG}-assets/
+          cp target/release/scheduler release-${RELEASE_TAG}-assets/
+          cp target/release/controller release-${RELEASE_TAG}-assets/
+          cp README.md release-${RELEASE_TAG}-assets/
+          cp LICENSE release-${RELEASE_TAG}-assets/
+
+          tar -czvf rik-$RELEASE_TAG-x86_64.tar.gz \
+            -C release-${RELEASE_TAG}-assets/ \
+            rikctl \
+            riklet \
+            scheduler \
+            controller \
+            README.md \
+            LICENSE
