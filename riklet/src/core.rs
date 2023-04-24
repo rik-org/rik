@@ -34,7 +34,7 @@ pub enum RikletError {
     #[error("Runtime error: {0}")]
     RuntimeManagerError(RuntimeError),
 
-    #[error("Network error: {0}")]
+    #[error("Riket Network error: {0}")]
     NetworkError(NetworkError),
 
     #[error("Invalid input given: {0}")]

@@ -36,15 +36,15 @@ pub struct CliConfiguration {
         default_value = "vmlinux.bin"
     )]
     pub kernel_path: PathBuf,
-    /// Network interface connected to internet.
+    /// Network interface connected to internet. Default is your default network interface
     #[arg(long, value_name = "IFNET", env = "IFNET", default_value = "eth0")]
-    pub ifnet: String,
-    /// IP of the network interface
+    pub ifnet: Option<String>,
+    /// IP of the network interface. Default is your default network IP
     #[arg(
         long,
         value_name = "IFNET_IP",
         env = "IFNET_IP",
         value_parser = value_parser!(Ipv4Addr)
     )]
-    pub ifnet_ip: Ipv4Addr,
+    pub ifnet_ip: Option<Ipv4Addr>,
 }

@@ -19,7 +19,7 @@ pub enum RuntimeError {
     #[error("Runtime error: {0}")]
     Error(String),
 
-    #[error("Network error: {0}")]
+    #[error("Runtime Network error: {0}")]
     NetworkError(NetworkError),
 
     #[error("Fetching error: {0}")]
