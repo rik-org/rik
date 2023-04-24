@@ -134,7 +134,7 @@ pub mod workload {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum InstanceStatus {
     Pending,
     Running,
