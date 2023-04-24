@@ -11,7 +11,6 @@ use proto::worker::worker_client::WorkerClient;
 use proto::worker::InstanceScheduling;
 use proto::{WorkerStatus, WorkloadAction};
 use std::collections::HashMap;
-use tracing_subscriber::field::debug;
 
 use thiserror::Error;
 use tonic::{transport::Channel, Request, Streaming};

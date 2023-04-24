@@ -1,13 +1,10 @@
 use async_trait::async_trait;
-use futures_util::TryStreamExt;
 use proto::worker::InstanceScheduling;
-use rtnetlink::new_connection;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::Ipv4Addr;
 use tracing::debug;
 
 use crate::constants::DEFAULT_FIRECRACKER_NETWORK_MASK;
-use crate::network::net::NetworkInterfaceConfig;
-use crate::network::netutils;
+use crate::net_utils;
 use crate::{
     cli::function_config::FnConfiguration,
     iptables::{rule::Rule, Chain, Iptables, MutateIptables, Table},
@@ -82,7 +79,7 @@ impl FunctionRuntimeNetwork {
             let rule = Rule {
                 rule: format!(
                     "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
-                    exposed_port, self.function_config.ifnet_ip, self.host_ip, internal_port
+                    exposed_port, self.function_config.ifnet_ip, self.guest_ip, internal_port
                 ),
                 chain: Chain::Output,
                 table: Table::Nat,
@@ -114,7 +111,7 @@ impl FunctionRuntimeNetwork {
             let rule = Rule {
                 rule: format!(
                     "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
-                    exposed_port, self.function_config.ifnet_ip, self.host_ip, internal_port
+                    exposed_port, self.function_config.ifnet_ip, self.guest_ip, internal_port
                 ),
                 chain: Chain::Output,
                 table: Table::Nat,
@@ -143,11 +140,8 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
     async fn init(&mut self) -> Result<()> {
         debug!("Init function network");
 
-        let config =
-            NetworkInterfaceConfig::new_with_random_name(self.identifier.clone(), self.guest_ip)
-                .map_err(NetworkError::NetworkInterfaceError)?;
-
-        self.tap = Some(config.iface_name);
+        let iface_name = net_utils::new_tap_random_name(self.identifier.clone());
+        self.tap = Some(iface_name);
 
         Ok(())
     }
@@ -157,30 +151,16 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
         let tap_name = self.tap_name()?;
         let host_ipv4 = &self.host_ip;
         debug!("Give IP address to netid: {} -> {}", self.host_ip, tap_name);
-        let (connection, handle, _) =
-            new_connection().map_err(|e| NetworkError::InterfaceIPError(e.to_string()))?;
-        tokio::spawn(connection);
 
-        let mut links = handle.link().get().match_name(tap_name.clone()).execute();
+        net_utils::set_link_ipv4(
+            tap_name.clone(),
+            host_ipv4.clone(),
+            DEFAULT_FIRECRACKER_NETWORK_MASK,
+        )
+        .await
+        .map_err(|e| NetworkError::InterfaceIPError(e.to_string()))?;
 
-        if let Some(link) = links
-            .try_next()
-            .await
-            .map_err(|e| NetworkError::InterfaceIPError(e.to_string()))?
-        {
-            handle
-                .address()
-                .add(
-                    link.header.index,
-                    IpAddr::V4(host_ipv4.clone()),
-                    DEFAULT_FIRECRACKER_NETWORK_MASK,
-                )
-                .execute()
-                .await
-                .map_err(|e| NetworkError::InterfaceIPError(e.to_string()))?;
-        }
-
-        netutils::set_link_up(tap_name.clone())
+        net_utils::set_link_up(tap_name.clone())
             .await
             .map_err(|e| NetworkError::InterfaceIPError(e.to_string()))?;
 
@@ -198,24 +178,64 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::{net::Ipv4Addr, path::PathBuf, process::Command};
 
-    use crate::network::{net::NetworkInterfaceError, tap::close_tap_shell};
+    use tracing::trace;
 
-    use super::*;
+    use crate::{
+        cli::function_config::FnConfiguration,
+        iptables::{rule::Rule, Chain, Iptables, MutateIptables, Table},
+    };
 
-    async fn create_function_network_rt(
+    use super::FunctionRuntimeNetwork;
+
+    fn open_tap_shell(iface_name: &str) -> Result<(), String> {
+        let tap_output = Command::new("ip")
+            .args(["tuntap", "add", iface_name, "mode", "tap"])
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if !tap_output.status.success() {
+            return Err(format!(
+                "Tap creation failed, code {}, stderr: {}",
+                tap_output.status.code().unwrap(),
+                String::from_utf8(tap_output.stderr).unwrap()
+            ));
+        }
+
+        trace!("Shell tap create output: {:#?}", tap_output);
+        return Ok(());
+    }
+
+    fn close_tap_shell(iface_name: &str) -> Result<(), String> {
+        let tap_output = Command::new("ip")
+            .args(["tuntap", "del", iface_name, "mode", "tap"])
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if !tap_output.status.success() {
+            return Err(format!(
+                "Tap creation failed, code {}, stderr: {}",
+                tap_output.status.code().unwrap(),
+                String::from_utf8(tap_output.stderr).unwrap()
+            ));
+        }
+
+        trace!("Shell tap delete output: {:#?}", tap_output);
+        return Ok(());
+    }
+
+    fn create_function_network_rt(
         tap_name: &str,
         port_mapping: &Vec<(u16, u16)>,
-        config: NetworkInterfaceConfig,
-    ) -> std::result::Result<FunctionRuntimeNetwork, NetworkInterfaceError> {
+    ) -> FunctionRuntimeNetwork {
         let fn_config = FnConfiguration {
             ifnet: tap_name.to_string(),
             ifnet_ip: Ipv4Addr::new(10, 0, 0, 1),
             firecracker_location: PathBuf::new(),
             kernel_location: PathBuf::new(),
         };
-        Ok(FunctionRuntimeNetwork {
+        FunctionRuntimeNetwork {
             identifier: "test".to_string(),
             mask_long: "255.255.255.200".to_string(),
             host_ip: Ipv4Addr::new(10, 0, 0, 2),
@@ -223,19 +243,13 @@ mod tests {
             function_config: fn_config,
             port_mapping: port_mapping.clone(),
             tap: Some(tap_name.to_string()),
-        })
+        }
     }
 
     #[tokio::test]
     async fn apply_empty_network_routing() {
-        let network_tap_config = NetworkInterfaceConfig::new_with_random_name(
-            "riklet008".to_string(),
-            Ipv4Addr::new(10, 0, 0, 223),
-        )
-        .unwrap();
-        let fn_rt = create_function_network_rt("riklet008", &vec![], network_tap_config)
-            .await
-            .unwrap();
+        let fn_rt = create_function_network_rt("riklet008", &vec![]);
+        open_tap_shell(fn_rt.tap_name().unwrap().as_str()).unwrap();
         fn_rt.up_routing().unwrap();
         fn_rt.down_routing().unwrap();
         close_tap_shell(fn_rt.tap_name().unwrap().as_str()).unwrap();
@@ -243,15 +257,9 @@ mod tests {
 
     #[tokio::test]
     async fn apply_exposure_network_routing() {
-        let network_tap_config = NetworkInterfaceConfig::new_with_random_name(
-            "riklet008".to_string(),
-            Ipv4Addr::new(10, 0, 0, 223),
-        )
-        .unwrap();
         let exposed_port = vec![(8080, 8080)];
-        let fn_rt = create_function_network_rt("riklet008", &exposed_port, network_tap_config)
-            .await
-            .unwrap();
+        let fn_rt = create_function_network_rt("riklet010", &exposed_port);
+        open_tap_shell(fn_rt.tap_name().unwrap().as_str()).unwrap();
         fn_rt.up_routing().unwrap();
 
         let ipt = Iptables::new(false).unwrap();
@@ -262,7 +270,7 @@ mod tests {
             rules.push(Rule {
                 rule: format!(
                     "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
-                    exposed_port, fn_rt.function_config.ifnet_ip, fn_rt.host_ip, internal_port
+                    exposed_port, fn_rt.function_config.ifnet_ip, fn_rt.guest_ip, internal_port
                 ),
                 chain: Chain::Output,
                 table: Table::Nat,
