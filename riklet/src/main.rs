@@ -10,7 +10,9 @@ mod structs;
 use crate::core::Riklet;
 use anyhow::Result;
 
-use tracing::{error, metadata::LevelFilter};
+use tokio::signal::ctrl_c;
+use tokio::signal::unix::{signal, SignalKind};
+use tracing::{error, info, metadata::LevelFilter};
 use tracing_subscriber::{
     fmt, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
@@ -39,7 +41,6 @@ pub fn init_logger() -> Result<()> {
         .init();
     Ok(())
 }
-use tokio::signal;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -59,12 +60,22 @@ async fn main() -> Result<()> {
         std::process::exit(2);
     });
 
+    // An infinite stream of hangup signals.
+    let mut signals = signal(SignalKind::terminate())?;
+
     tokio::select! {
         _ = riklet.run() => {},
-        _ = signal::ctrl_c() => {}
+        _ = ctrl_c() => {
+            info!("Receive SIGINT signal.");
+        },
+        _ = signals.recv() => {
+            info!("Receive SIGTERM signal.");
+        }
     }
 
     riklet.shutdown().await?;
+
+    info!("Riklet stoped");
 
     Ok(())
 }
