@@ -22,7 +22,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use tracing::{debug, event, trace, Level};
+use tracing::{debug, error, event, trace, Level};
 
 use super::{network::function_network::FunctionRuntimeNetwork, Runtime, RuntimeManager};
 
@@ -97,9 +97,9 @@ impl FunctionRuntime {
 
 #[async_trait]
 impl Runtime for FunctionRuntime {
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self), fields(id = %self.id))]
     async fn up(&mut self) -> Result<()> {
-        event!(Level::DEBUG, "Pre-boot configuration for microVM");
+        debug!("Pre-boot configuration for microVM");
 
         // Define tap name
         self.network
@@ -131,10 +131,19 @@ impl Runtime for FunctionRuntime {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self), fields(id = %self.id))]
     async fn down(&mut self) -> Result<()> {
         debug!("Destroying function runtime vm");
-        let machine = self.machine.as_mut().unwrap();
+        let machine = match self.machine.as_mut() {
+            Some(machine) => Ok(machine),
+            None => {
+                error!("Trying to stop a microVM that is not running");
+                Err(RuntimeError::NotRunning(format!(
+                    "microVM {} is not running",
+                    self.id
+                )))
+            }
+        }?;
 
         machine
             .stop()

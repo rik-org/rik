@@ -6,14 +6,39 @@ mod iptables;
 mod net_utils;
 mod runtime;
 mod structs;
-mod traits;
-mod utils;
 
 use crate::core::Riklet;
-use crate::utils::init_logger;
 use anyhow::Result;
 
-use tracing::error;
+use tracing::{error, metadata::LevelFilter};
+use tracing_subscriber::{
+    fmt, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, EnvFilter,
+};
+
+pub fn banner() {
+    println!(
+        r#"
+    ______ _____ _   __ _      _____ _____
+    | ___ \_   _| | / /| |    |  ___|_   _|
+    | |_/ / | | | |/ / | |    | |__   | |
+    |    /  | | |    \ | |    |  __|  | |
+    | |\ \ _| |_| |\  \| |____| |___  | |
+    \_| \_|\___/\_| \_/\_____/\____/  \_/
+    "#
+    );
+}
+
+pub fn init_logger() -> Result<()> {
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {

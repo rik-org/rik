@@ -24,6 +24,7 @@ pub async fn set_link_up(iface_name: String) -> Result<(), rtnetlink::Error> {
 }
 
 #[tracing::instrument()]
+/// For a given iface_name, tries to apply a ipv4/mask on it
 pub async fn set_link_ipv4(
     iface_name: String,
     ipv4: Ipv4Addr,

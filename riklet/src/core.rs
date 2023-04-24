@@ -1,10 +1,9 @@
+use crate::banner;
 use crate::cli::config::{Configuration, ConfigurationError};
 use crate::emitters::metrics_emitter::MetricsEmitter;
 use crate::runtime::network::{GlobalRuntimeNetwork, NetworkError, RuntimeNetwork};
 use crate::runtime::{DynamicRuntimeManager, Runtime, RuntimeConfigurator, RuntimeError};
-use crate::structs::WorkloadDefinition;
-use crate::traits::EventEmitter;
-use crate::utils::banner;
+use crate::structs::{EventEmitter, WorkloadDefinition};
 use definition::InstanceStatus;
 use proto::common::WorkerRegistration;
 use proto::worker::worker_client::WorkerClient;

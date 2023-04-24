@@ -12,6 +12,7 @@ use proto::controller::controller_server::ControllerServer;
 use proto::worker::worker_server::WorkerServer;
 use scheduler::Event;
 use scheduler::{Controller, SchedulerError, Worker, WorkerRegisterChannelType};
+use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter};
@@ -301,7 +302,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = ConfigParser::new()?;
     tracing_subscriber::registry()
         .with(fmt::layer())
-        .with(EnvFilter::from_default_env())
+        .with(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
         .init();
     info!("Starting up...");
     let manager = Manager::run(config.workers_endpoint, config.controller_endpoint);
