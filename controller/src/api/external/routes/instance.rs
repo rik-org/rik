@@ -4,7 +4,7 @@ use rusqlite::Connection;
 use std::io;
 use std::str::FromStr;
 use std::sync::mpsc::Sender;
-use tracing::{event, info, Level};
+use tracing::{event, Level};
 
 use crate::api;
 use crate::api::external::services::element::elements_set_right_name;

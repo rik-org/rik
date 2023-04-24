@@ -1,9 +1,9 @@
 use crate::cli::config::Configuration as CliConfiguration;
 use crate::constants::DEFAULT_FIRECRACKER_WORKSPACE;
+use crate::net_utils::generate_mac_addr;
 use crate::runtime::Result;
 use crate::{
     cli::function_config::FnConfiguration,
-    network::tap::generate_mac_addr,
     runtime::{network::RuntimeNetwork, RuntimeError},
     structs::WorkloadDefinition,
 };

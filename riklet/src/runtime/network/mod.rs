@@ -11,7 +11,6 @@ use thiserror::Error;
 use crate::cli::function_config::FnConfiguration;
 use crate::iptables::rule::Rule;
 use crate::iptables::{Chain, Iptables, IptablesError, MutateIptables, Table};
-use crate::network::net::NetworkInterfaceError;
 
 // Initialize Singleton for IpAllocator
 static IP_ALLOCATOR: Lazy<Mutex<IpAllocator>> = Lazy::new(|| {
@@ -29,9 +28,6 @@ pub enum NetworkError {
 
     #[error("Parsing error: {0}")]
     ParsingError(serde_json::Error),
-
-    #[error("Network interface error: {0}")]
-    NetworkInterfaceError(NetworkInterfaceError),
 
     #[error("Should have been able to apply a valid IP address to the interface, but failed: {0}")]
     InterfaceIPError(String),

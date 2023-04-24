@@ -3,7 +3,7 @@ mod constants;
 mod core;
 mod emitters;
 mod iptables;
-mod network;
+mod net_utils;
 mod runtime;
 mod structs;
 mod traits;
