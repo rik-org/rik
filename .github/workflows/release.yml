@@ -60,3 +60,5 @@ jobs:
             controller \
             README.md \
             LICENSE
+
+          gh release upload $RELEASE_TAG rik-$RELEASE_TAG-x86_64.tar.gz
