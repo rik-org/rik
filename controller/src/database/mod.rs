@@ -1,9 +1,21 @@
 use crate::api::types::element::Element;
 
 use dotenv::dotenv;
-use rusqlite::{params, Connection, Result};
+use rusqlite::{params, Connection};
 use std::sync::Arc;
+use thiserror::Error;
 use uuid::Uuid;
+
+#[derive(Debug, Error)]
+pub enum DataBaseError {
+    #[error("Error: {0}")]
+    SqlError(rusqlite::Error),
+
+    #[error("Io error: {0}")]
+    IoError(std::io::Error),
+}
+
+type Result<T> = std::result::Result<T, DataBaseError>;
 
 #[allow(dead_code)]
 pub struct RikDataBase {
@@ -19,15 +31,17 @@ impl RikDataBase {
     pub fn init_tables(&self) -> Result<()> {
         let connection = self.open()?;
         // only work with sqlite for now
-        connection.execute_batch(
-            "CREATE TABLE IF NOT EXISTS cluster (
+        connection
+            .execute_batch(
+                "CREATE TABLE IF NOT EXISTS cluster (
                 id              TEXT PRIMARY KEY,
                 name            TEXT NOT NULL,
                 value           BLOB NOT NULL
             );
             CREATE INDEX IF NOT EXISTS cluster_name_index ON cluster (name);
             CREATE INDEX IF NOT EXISTS cluster_name_id_index ON cluster (name,id);",
-        )?;
+            )
+            .map_err(DataBaseError::SqlError)?;
         Ok(())
     }
 
@@ -37,10 +51,10 @@ impl RikDataBase {
         dotenv().ok();
         let file_path =
             std::env::var("DATABASE_LOCATION").unwrap_or("/var/lib/rik/data/".to_string());
-        std::fs::create_dir_all(&file_path).unwrap();
+        std::fs::create_dir_all(&file_path).map_err(DataBaseError::IoError)?;
 
         let database_path = format!("{}{}.db", file_path, self.name);
-        Connection::open(database_path)
+        Connection::open(database_path).map_err(DataBaseError::SqlError)
     }
 }
 
@@ -58,34 +72,36 @@ impl RikRepository {
     }
 
     pub fn delete(connection: &Connection, id: &String) -> Result<()> {
-        connection.execute("DELETE FROM cluster WHERE id = (?1)", params![id])?;
+        connection
+            .execute("DELETE FROM cluster WHERE id = (?1)", params![id])
+            .map_err(DataBaseError::SqlError)?;
         Ok(())
     }
 
     pub fn find_one(connection: &Connection, id: &String, element_type: &str) -> Result<Element> {
-        let mut stmt = connection.prepare(&format!(
-            "SELECT id, name, value FROM cluster WHERE id = '{}' AND name LIKE '{}%'",
-            id, element_type
-        ))?;
-        match stmt.query_row([], |row| {
+        let mut stmt = connection
+            .prepare(&format!(
+                "SELECT id, name, value FROM cluster WHERE id = '{}' AND name LIKE '{}%'",
+                id, element_type
+            ))
+            .map_err(DataBaseError::SqlError)?;
+        stmt.query_row([], |row| {
             Ok(Element::new(row.get(0)?, row.get(1)?, row.get(2)?))
-        }) {
-            Ok(element) => Ok(element),
-            Err(err) => Err(err),
-        }
+        })
+        .map_err(DataBaseError::SqlError)
     }
 
     pub fn check_duplicate_name(connection: &Connection, name: &str) -> Result<Element> {
-        let mut stmt = connection.prepare(&format!(
-            "SELECT id, name, value FROM cluster WHERE name LIKE '{}%'",
-            name
-        ))?;
-        match stmt.query_row([], |row| {
+        let mut stmt = connection
+            .prepare(&format!(
+                "SELECT id, name, value FROM cluster WHERE name LIKE '{}%'",
+                name
+            ))
+            .map_err(DataBaseError::SqlError)?;
+        stmt.query_row([], |row| {
             Ok(Element::new(row.get(0)?, row.get(1)?, row.get(2)?))
-        }) {
-            Ok(element) => Ok(element),
-            Err(err) => Err(err),
-        }
+        })
+        .map_err(DataBaseError::SqlError)
     }
 
     // TODO: add pagination
@@ -104,16 +120,18 @@ impl RikRepository {
 
         let mut elements: Vec<Element> = Vec::new();
         for element in elements_iter {
-            elements.push(element?);
+            elements.push(element.map_err(DataBaseError::SqlError)?);
         }
         Ok(elements)
     }
 
     pub fn update(connection: &Connection, id: &String, value: &String) -> Result<()> {
-        connection.execute(
-            "UPDATE cluster SET value=(?1) WHERE id = (?2)",
-            params![value, id],
-        )?;
+        connection
+            .execute(
+                "UPDATE cluster SET value=(?1) WHERE id = (?2)",
+                params![value, id],
+            )
+            .map_err(DataBaseError::SqlError)?;
         Ok(())
     }
 
@@ -133,7 +151,7 @@ impl RikRepository {
                     "INSERT INTO cluster (id, name, value) VALUES (?1, ?2, ?3)",
                     params![id, name, value],
                 )
-                .unwrap();
+                .map_err(DataBaseError::SqlError)?;
             Ok(id.to_string())
         }
     }
@@ -141,8 +159,10 @@ impl RikRepository {
 
 #[cfg(test)]
 mod test {
-    use crate::database::{RikDataBase, RikRepository};
-    use crate::tests::fixtures::db_connection;
+    use crate::{
+        database::{RikDataBase, RikRepository},
+        tests::fixtures::db_connection,
+    };
     use rstest::rstest;
     use uuid::Uuid;
 

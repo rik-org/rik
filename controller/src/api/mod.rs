@@ -3,6 +3,9 @@ pub mod types;
 
 use definition::workload::WorkloadDefinition;
 use std::fmt::{Debug, Display, Formatter, Result};
+use thiserror::Error;
+
+use crate::database::DataBaseError;
 
 #[derive(Debug)]
 pub enum Crud {
@@ -20,45 +23,25 @@ impl From<i32> for Crud {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum RikError {
+    #[error("IO error: {0}")]
     IoError(std::io::Error),
-    HttpRequestError(serde_json::Error),
+
+    #[error("HTTP request error: {0}")]
+    ParsingError(serde_json::Error),
+
+    #[error("Internal communication error: {0}")]
     InternalCommunicationError(String),
+
+    #[error("Invalid name: {0}")]
     InvalidName(String),
-}
-impl Display for RikError {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        match *self {
-            RikError::IoError(ref e) => write!(f, "{}", e),
-            RikError::HttpRequestError(ref e) => write!(f, "{}", e),
-            RikError::InternalCommunicationError(ref e) => write!(f, "{}", e),
-            RikError::InvalidName(ref e) => write!(f, "{}", e),
-        }
-    }
-}
 
-impl std::error::Error for RikError {
-    fn cause(&self) -> Option<&dyn std::error::Error> {
-        match *self {
-            RikError::IoError(ref e) => Some(e),
-            RikError::HttpRequestError(ref e) => Some(e),
-            // TODO: Implement other errors
-            _ => None,
-        }
-    }
-}
+    #[error("Error: {0}")]
+    Error(String),
 
-impl From<std::io::Error> for RikError {
-    fn from(e: std::io::Error) -> RikError {
-        RikError::IoError(e)
-    }
-}
-
-impl From<serde_json::Error> for RikError {
-    fn from(e: serde_json::Error) -> RikError {
-        RikError::HttpRequestError(e)
-    }
+    #[error("Database error: {0}")]
+    DataBaseError(DataBaseError),
 }
 
 pub struct ApiChannel {

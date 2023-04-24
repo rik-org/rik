@@ -3,6 +3,7 @@ use rusqlite::Connection;
 use std::io;
 use std::sync::mpsc::Sender;
 use tiny_http::Method;
+use tiny_http::Response;
 use tracing::{event, Level};
 
 use crate::api;
@@ -18,6 +19,8 @@ type Handler = fn(
     &Connection,
     &Sender<ApiChannel>,
 ) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError>;
+
+type HttpResult<T = io::Cursor<Vec<u8>>> = Result<Response<T>, api::RikError>;
 
 pub struct Router {
     routes: Vec<(tiny_http::Method, route_recognizer::Router<Handler>)>,
