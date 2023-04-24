@@ -1,4 +1,4 @@
-use crate::traits::EventEmitter;
+use crate::structs::EventEmitter;
 use futures_util::stream;
 use node_metrics::metrics_manager::MetricsManager;
 use proto::common::{WorkerMetric, WorkerStatus};

@@ -79,7 +79,7 @@ sub_mkrootfs() {
         --env MNT_DIR="${rootfs_dir_guest}" \
         -v "${rootfs_dir_host}:/${rootfs_dir_guest}" ${origin_image} \
         bash -s <<'EOF'
-packages="udev systemd-sysv iproute2 nginx"
+packages="udev systemd-sysv iproute2 nginx wget"
 dirs="bin etc home lib lib64 opt root sbin usr var/lib/nginx"
 
 echo "Mount rootfs on the system"

@@ -2,6 +2,14 @@ use serde::{Deserialize, Serialize};
 use shared::utils::get_random_hash;
 use tracing::{event, warn, Level};
 
+#[async_trait::async_trait]
+pub trait EventEmitter<U, T> {
+    async fn emit_event(
+        mut client: T,
+        event: U,
+    ) -> std::result::Result<(), Box<dyn std::error::Error>>;
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EnvConfig {
     pub name: String,

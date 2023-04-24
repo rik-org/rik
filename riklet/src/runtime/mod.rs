@@ -42,6 +42,9 @@ pub enum RuntimeError {
 
     #[error("Could not configure properly: {0:?}")]
     FirepilotConfiguration(BuilderError),
+
+    #[error("Runtime expected to be running: {0}")]
+    NotRunning(String),
 }
 
 type Result<T> = std::result::Result<T, RuntimeError>;

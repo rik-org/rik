@@ -8,7 +8,7 @@ use std::thread;
 
 use crate::database::RikDataBase;
 use api::{external, ApiChannel};
-use tracing::{event, Level};
+use tracing::{event, metadata::LevelFilter, Level};
 use tracing_subscriber::{
     fmt, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
@@ -19,7 +19,11 @@ use tokio::runtime::Builder;
 fn logger_setup() {
     tracing_subscriber::registry()
         .with(fmt::layer())
-        .with(EnvFilter::from_default_env())
+        .with(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
         .init();
 }
 

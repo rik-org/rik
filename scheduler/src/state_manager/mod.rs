@@ -412,7 +412,11 @@ impl StateManager {
             self.action_minus_replicas(&request.workload_id, def_replicas)?;
         } else {
             info!("Workload is getting unscheduled");
+            // FIXME: We currently don't support workload deletion, we previously were putting the status
+            // to Destroying when deleting any instance of a workload, we don't want this behaviour.
+            // Destroying status for workload should only be used when deleting a workload.
             // workload.status = ResourceStatus::Destroying;
+
             // Keep workload replicas a 1 as we are going to 0 it will be deleted automatically
             // by the state manager
             workload.replicas = 1;
