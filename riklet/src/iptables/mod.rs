@@ -24,6 +24,9 @@ pub struct Iptables {
     /// If true, the iptables will be flushed when the object is dropped (default: false)
     cleanup: bool,
     rules: Vec<Rule>,
+    /// When using custom chains, we want to store created chains in
+    /// order to be able to flush them
+    chains: Vec<(Table, Chain)>,
 }
 
 #[derive(Debug, Error)]
@@ -40,6 +43,8 @@ pub enum IptablesError {
     AlreadyExist(Rule),
     #[error("Rule '{0}' does not exist")]
     AlreadyDeleted(Rule),
+    #[error("Could not manage given chain '{0}'")]
+    InvalidChain(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -76,6 +81,15 @@ impl Display for Chain {
             Chain::PostRouting => write!(f, "POSTROUTING"),
             Chain::PreRouting => write!(f, "PREROUTING"),
             Chain::Custom(value) => write!(f, "{}", value),
+        }
+    }
+}
+
+impl Chain {
+    pub fn is_custom(&self) -> bool {
+        match self {
+            Chain::Custom(_) => true,
+            _ => false,
         }
     }
 }
@@ -120,7 +134,9 @@ type Result<T> = std::result::Result<T, IptablesError>;
 /// this interface makes able to develop on other platform
 pub trait MutateIptables {
     fn create(&mut self, rule: &Rule) -> Result<()>;
+    fn create_chain(&mut self, chain: &Chain, table: &Table) -> Result<()>;
     fn delete(&mut self, rule: &Rule) -> Result<()>;
+    fn delete_chain(&mut self, chain: &Chain, table: &Table) -> Result<()>;
     fn exists(&self, rule: &Rule) -> Result<bool>;
 }
 
@@ -134,20 +150,59 @@ impl Drop for Iptables {
                     error!("Could not delete rule '{:?}', reason: {}", rule, e);
                 });
             }
+
+            let chains = self.chains.clone();
+            for (table, chain) in chains.iter() {
+                trace!("Drop iptables chain {} in table {}", chain, table);
+
+                self.delete_chain(chain, table).unwrap_or_else(|e| {
+                    error!("Could not delete chain '{:?}', reason: {}", chain, e);
+                });
+            }
         }
     }
 }
 
+/// [Iptables] is used to manage iptables rules on the system, you can learn
+/// about more about it [here](https://linux.die.net/man/8/iptables)
+///
+/// We are currently using iptables to manage the traffic and expose on the
+/// system workloads so they can be accessed internally and externally.
+///
+/// See [Iptables::new] for how to implement it
 impl Iptables {
     #[cfg(target_os = "linux")]
     /// Create a new instance of Iptables manager, it will allow to manage your iptable
     /// chains and rules
+    ///
+    /// When giving argument cleanup to true, created iptables will be reverted once the object is dropped
+    ///
+    /// ```
+    /// use crate::iptables::{Iptables, Rule, Chain, Table};
+    ///
+    /// fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     // Create a iptable rule
+    ///     {
+    ///         let mut ipt = Iptables::new(true).unwrap();
+    ///         let rule = Rule {
+    ///             rule: "-A INPUT -p tcp --dport 80 -j ACCEPT".to_string(),
+    ///             chain: Chain::Forward,
+    ///             table: Table::Filter,
+    ///         };
+    ///         ipt.create(&rule).unwrap();
+    ///     }
+    ///     // Iptables will be reverted as we are out of scope
+    ///     Ok(())
+    ///
+    /// }
+    /// ```
     pub fn new(cleanup: bool) -> Result<Self> {
         iptables::new(false)
             .map(|iptables| Iptables {
                 inner: iptables,
                 cleanup,
                 rules: vec![],
+                chains: vec![],
             })
             .map_err(|e| IptablesError::LoadFailed(e.to_string()))
     }
