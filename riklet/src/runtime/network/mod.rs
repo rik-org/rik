@@ -8,7 +8,6 @@ use std::fmt::Debug;
 use std::sync::Mutex;
 use thiserror::Error;
 
-use crate::cli::function_config::FnConfiguration;
 use crate::iptables::rule::Rule;
 use crate::iptables::{Chain, Iptables, IptablesError, MutateIptables, Table};
 
@@ -49,46 +48,147 @@ pub trait RuntimeNetwork: Send + Sync {
         Ok(())
     }
 
-    async fn destroy(&self) -> Result<()>;
+    async fn destroy(&mut self) -> Result<()>;
 }
 
 pub struct GlobalRuntimeNetwork {
-    function_config: FnConfiguration,
+    /// Unique instance of iptables which contain all rules and chains generated
+    /// for the global configuration of the network
+    iptables: Iptables,
 }
 
 impl GlobalRuntimeNetwork {
-    pub fn new() -> Self {
-        GlobalRuntimeNetwork {
-            function_config: FnConfiguration::load(),
-        }
+    pub fn new() -> std::result::Result<GlobalRuntimeNetwork, IptablesError> {
+        Ok(GlobalRuntimeNetwork {
+            iptables: Iptables::new(true)?,
+        })
     }
 }
 
 #[async_trait]
 impl RuntimeNetwork for GlobalRuntimeNetwork {
+    /// Global runtime network init will setup the whole network configuration
+    /// for the system to work with workloads.
+    ///
+    /// This includes:
+    /// - Create a RIKLET chain on the NAT table that will handle all port
+    ///   redirections to workloads
+    /// - Creates a rule on chain PREROUTING of table NAT that will redirect
+    ///   traffic to chain RIKLET to handle port redirections
+    /// - Create a rule on chain OUTPUT of table NAT that will redirect
+    ///  traffic to chain RIKLET to handle port redirections
+    ///
+    /// The usage of the RIKLET chain allows us to prevent the need to repeat
+    /// the rule on both PREROUTING and OUTPUT chains.
     async fn init(&mut self) -> Result<()> {
-        let mut ipt = Iptables::new(false).map_err(NetworkError::IptablesError)?;
+        let chain = Chain::Custom("RIKLET".to_string());
+        self.iptables
+            .create_chain(&chain, &Table::Nat)
+            .map_err(NetworkError::IptablesError)?;
 
-        // Allow NAT on the interface connected to the internet.
-        let rule = Rule {
-            rule: format!("-o {} -j MASQUERADE", self.function_config.ifnet),
-            chain: Chain::PostRouting,
+        let nat_prerouting_redirect = Rule {
+            chain: Chain::PreRouting,
             table: Table::Nat,
+            rule: "-m addrtype --dst-type LOCAL -j RIKLET".to_string(),
         };
-        ipt.create(&rule).map_err(NetworkError::IptablesError)?;
 
-        // Add the FORWARD rules to the filter table
-        let rule = Rule {
-            rule: "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".to_string(),
-            chain: Chain::Forward,
-            table: Table::Filter,
+        let nat_output_redirect = Rule {
+            chain: Chain::Output,
+            table: Table::Nat,
+            rule: "-m addrtype --dst-type LOCAL -j RIKLET".to_string(),
         };
-        ipt.create(&rule).map_err(NetworkError::IptablesError)?;
 
+        self.iptables
+            .create(&nat_prerouting_redirect)
+            .map_err(NetworkError::IptablesError)?;
+        self.iptables
+            .create(&nat_output_redirect)
+            .map_err(NetworkError::IptablesError)?;
         Ok(())
     }
 
-    async fn destroy(&self) -> Result<()> {
+    /// Nothing is needed to be done here, since all the iptable rules and
+    /// chains are deleted from the drop implementation of iptables
+    /// See [Iptables::drop]
+    async fn destroy(&mut self) -> Result<()> {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::runtime::network::{GlobalRuntimeNetwork, RuntimeNetwork};
+    use serial_test::serial;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_network_init_ok() {
+        let mut network = GlobalRuntimeNetwork::new().unwrap();
+        let result = network.init().await;
+        assert!(result.is_ok());
+        let result = network.destroy().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_network_init_drop() {
+        let mut network = GlobalRuntimeNetwork::new().unwrap();
+        let result = network.init().await;
+        assert!(result.is_ok());
+
+        let ipt = iptables::new(false).unwrap();
+
+        let chain = ipt.chain_exists("nat", "RIKLET").unwrap();
+        assert!(chain);
+
+        let prerouting_rule = ipt
+            .exists(
+                "nat",
+                "PREROUTING",
+                "-m addrtype --dst-type LOCAL -j RIKLET",
+            )
+            .unwrap();
+        assert!(prerouting_rule);
+
+        let output_rule = ipt
+            .exists("nat", "OUTPUT", "-m addrtype --dst-type LOCAL -j RIKLET")
+            .unwrap();
+        assert!(output_rule);
+
+        drop(network);
+        let ipt = iptables::new(false).unwrap();
+
+        let chain = ipt.chain_exists("nat", "RIKLET").unwrap();
+        assert!(!chain);
+
+        let prerouting_rule = ipt
+            .exists(
+                "nat",
+                "PREROUTING",
+                "-m addrtype --dst-type LOCAL -j RIKLET",
+            )
+            .unwrap();
+        assert!(!prerouting_rule);
+
+        let output_rule = ipt
+            .exists("nat", "OUTPUT", "-m addrtype --dst-type LOCAL -j RIKLET")
+            .unwrap();
+        assert!(!output_rule);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_multiple_global_network_fails() {
+        let mut network = GlobalRuntimeNetwork::new().unwrap();
+        let result = network.init().await;
+        assert!(result.is_ok());
+
+        let mut network2 = GlobalRuntimeNetwork::new().unwrap();
+        let result = network2.init().await;
+        assert!(result.is_err());
+
+        let result = network.destroy().await;
+        assert!(result.is_ok());
     }
 }

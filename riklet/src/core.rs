@@ -194,7 +194,8 @@ impl Riklet {
         });
         let stream = client.register(request).await.unwrap().into_inner();
 
-        let mut global_runtime_network = GlobalRuntimeNetwork::new();
+        let mut global_runtime_network = GlobalRuntimeNetwork::new()
+            .map_err(|e| RikletError::NetworkError(NetworkError::IptablesError(e)))?;
         global_runtime_network
             .init()
             .await

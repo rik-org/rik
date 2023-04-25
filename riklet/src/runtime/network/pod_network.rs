@@ -1,4 +1,3 @@
-use anyhow::Ok;
 use async_trait::async_trait;
 use std::fmt::Debug;
 
@@ -20,7 +19,7 @@ impl RuntimeNetwork for PodRuntimeNetwork {
         Result::Ok(())
     }
 
-    async fn destroy(&self) -> Result<()> {
+    async fn destroy(&mut self) -> Result<()> {
         // todo!()
         Result::Ok(())
     }

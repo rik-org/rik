@@ -6,6 +6,13 @@ use rtnetlink::new_connection;
 use tracing::{trace, warn};
 use utils::net::mac::MacAddr;
 
+use crate::iptables::Chain;
+
+/// Static chain name that is used to store port redirections
+pub fn get_iptables_riklet_chain() -> Chain {
+    Chain::Custom("RIKLET".to_string())
+}
+
 #[tracing::instrument()]
 pub async fn set_link_up(iface_name: String) -> Result<(), rtnetlink::Error> {
     trace!("link {} up", &iface_name);
