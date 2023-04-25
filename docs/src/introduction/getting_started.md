@@ -31,6 +31,156 @@ cd rik
 
 ## Start a cluster
 
+### Build from binaries
+
+#### Download binaries
+
+You can download the latest RIK binaries from the [releases page of the RIK repository](https://github.com/rik-org/rik/releases/latest). Here, we will install the version `v1.0.0` of RIK.
+
+```bash
+# Download the release artifacts
+curl -sL "https://github.com/rik-org/rik/releases/download/v1.0.0/rik-v1.0.0-x86_64.tar.gz" --output rik.tar.gz
+mkdir -p rik
+tar -xvf rik.tar.gz -C rik
+
+# Remove files that will not be useful here
+rm -rf rik.tar.gz rik/LICENSE rik/README.md rik/rikctl
+```
+
+Now, if you run `tree` in your current directory, you should have something like this into the `rik` folder:
+
+```bash
+tree
+
+-- rik
+    |-- controller
+    |-- riklet
+    |-- scheduler
+
+1 directory, 3 files
+```
+
+Move those binaries into `/usr/bin` :
+
+```bash
+sudo mv ./rik/* /usr/bin
+```
+
+### Install components
+
+Now that you have gathered all the RIK components, you need to install them on your system. To do so, we will use systemd services here to run our stack. To install our different components, we will use a `service.tpl` file to make the installation easier. Create this file in your current working directory and place the following content inside :
+
+```bash
+# service.tpl
+[Unit]
+AssertPathExists=${BIN}
+
+[Service]
+WorkingDirectory=~
+EnvironmentFile=${ENV_FILE}
+ExecStart=${BIN} ${ARGS}
+Restart=always
+NoNewPrivileges=true
+RestartSec=3
+
+[Install]
+Alias=${NAME}
+WantedBy=default.target
+```
+
+#### RIK Scheduler
+
+To install the scheduler, use the following command :
+
+```bash
+# Generate the service file based on the template
+NAME="rik-scheduler" ARGS="" BIN="/usr/bin/scheduler" envsubst < service.tpl | sudo tee /etc/systemd/system/rik-scheduler.service
+
+# Enable your service
+sudo systemctl enable rik-scheduler
+sudo systemctl start rik-scheduler
+```
+
+#### RIK Controller
+
+To install the controller, use the following command :
+
+```bash
+# Generate the service file based on the template
+NAME="rik-controller" ARGS="" BIN="/usr/bin/controller" envsubst < service.tpl | sudo tee /etc/systemd/system/rik-controller.service
+
+# Enable and start your service
+sudo systemctl enable rik-controller
+sudo systemctl start rik-controller
+```
+
+#### RIKLET
+
+<Callout type="warning" emoji="⚠️">
+  The riklet will create some `iptables` rules at boot time. We strongly
+  recommend to backup your `iptables` rules in case you need to restore them :
+
+```bash
+sudo apt install iptables
+sudo iptables-save > iptables.rules.old
+```
+
+To install the riklet, we will first need to determine the name and the IP of the network interface that is connected to internet. Run the following command to retrieve it :
+
+```bash
+export IF_NET=$(ip route get 8.8.8.8 | head -n1 | awk '{print $5}')
+export IF_NET_IP=$(ip -f inet addr show "${IF_NET}" | awk '/inet / {print $2}' | cut -d "/" -f 1)
+```
+
+If you want to be able to run microVMs on your host, you need to install `firecracker` on your system. Follow the instructions from the [Firecracker documentation](https://github.com/firecracker-microvm/firecracker) to install it. Alternatively, you can use the following command to install it :
+
+```bash
+wget -q https://github.com/firecracker-microvm/firecracker/releases/download/v1.3.1/firecracker-v1.3.1-$(uname -m).tgz
+tar -xvzf firecracker-v1.3.1-x86_64.tgz
+sudo cp release*/firecracker-* /usr/bin/firecracker
+```
+
+You also need to export the path of your `firecracker` binary on the host :
+
+```bash
+# If it is on your path, else put the path where you have installed it
+export FIRECRACKER_PATH=$(which firecracker)
+```
+
+Finally, you need to download a custom linux kernel. It is needed to run Firecracker microVMs:
+
+```bash
+sudo mkdir -p /etc/riklet/
+sudo curl -sL "https://morty-faas.github.io/morty-kernel.bin" --output /etc/riklet/morty-kernel.bin
+```
+
+Now, you can run the following command to generate the service file :
+
+```bash
+# Generate the service file based on the template
+NAME=riklet BIN=/usr/bin/riklet ARGS="--master-ip localhost:4995 --firecracker-path ${FIRECRACKER_PATH} --kernel-path /etc/riklet/morty-kernel.bin --ifnet ${IF_NET} --ifnet-ip ${IF_NET_IP}" envsubst < service.tpl | sudo tee /etc/systemd/system/riklet.service
+
+# Enable and start your service
+sudo systemctl enable riklet
+sudo systemctl start riklet
+```
+
+### Verify the installation
+
+Run the following commands to verify that all the services are running:
+
+```bash
+systemctl is-active rik-scheduler
+systemctl is-active rik-controller
+systemctl is-active riklet
+
+# You should have the following output:
+active
+active
+active
+```
+
+Now, your RIK cluster API is up and running on http://localhost:5000.
 
 ### Build from source
 
@@ -108,3 +258,5 @@ to the path of a configuration file. Here is an example of configuration:
 ```json
 {{#include ../examples/config.json}}
 ```
+
+## Create you first function in RIK
