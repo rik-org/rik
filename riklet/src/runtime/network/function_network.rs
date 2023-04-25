@@ -4,10 +4,10 @@ use std::net::Ipv4Addr;
 use tracing::debug;
 
 use crate::constants::DEFAULT_FIRECRACKER_NETWORK_MASK;
-use crate::net_utils;
+use crate::net_utils::{self, get_iptables_riklet_chain};
 use crate::{
     cli::function_config::FnConfiguration,
-    iptables::{rule::Rule, Chain, Iptables, MutateIptables, Table},
+    iptables::{rule::Rule, Iptables, MutateIptables, Table},
     structs::WorkloadDefinition,
 };
 
@@ -24,11 +24,23 @@ pub struct FunctionRuntimeNetwork {
     /// Host tap interface IP
     pub host_ip: Ipv4Addr,
     pub function_config: FnConfiguration,
+    /// A mapping of exposed port to internal port
     pub port_mapping: Vec<(u16, u16)>,
+    /// A unique name for the tap interface
     pub tap: Option<String>,
+    pub iptables: Iptables,
 }
 
 impl FunctionRuntimeNetwork {
+    /// Creates a new FunctionRuntimeNetwork, it won't create anything on the system yet
+    ///
+    /// We parse the input instance to determine a blueprint of the deployed
+    /// network, for now we only support a single machine per function / per
+    /// network, that means the network mask is kept to /30 (255.255.255.252)
+    ///
+    /// The IPv4 range given to the machine will be taken from the global
+    /// [IP_ALLOCATOR] which is a singleton that keeps track of the available
+    /// IPv4 networks
     pub fn new(workload: &InstanceScheduling) -> Result<Self> {
         let mask_long: &str = "255.255.255.252";
 
@@ -59,6 +71,7 @@ impl FunctionRuntimeNetwork {
             identifier: workload.instance_id.clone(),
             port_mapping: workload_definition.get_port_mapping(),
             tap: None,
+            iptables: Iptables::new(false).map_err(NetworkError::IptablesError)?,
         })
     }
 
@@ -69,67 +82,45 @@ impl FunctionRuntimeNetwork {
             .ok_or_else(|| NetworkError::Error("Tap interface name not found".to_string()))
     }
 
-    /// Insert new iptables rules to forward traffic from host to guest
-    #[tracing::instrument(skip(self), fields(instance_id = %self.identifier))]
-    fn up_routing(&self) -> Result<()> {
-        debug!("Create iptables rules");
-        let mut ipt = Iptables::new(false).map_err(NetworkError::IptablesError)?;
-
+    fn generate_iptables_rules(&self) -> Vec<Rule> {
+        let mut rules = Vec::new();
         for (exposed_port, internal_port) in self.port_mapping.iter() {
             let rule = Rule {
                 rule: format!(
-                    "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
-                    exposed_port, self.function_config.ifnet_ip, self.guest_ip, internal_port
+                    "-p tcp --dport {} -j DNAT --to-destination {}:{}",
+                    exposed_port, self.guest_ip, internal_port
                 ),
-                chain: Chain::Output,
+                chain: get_iptables_riklet_chain(),
                 table: Table::Nat,
             };
-            ipt.create(&rule).map_err(NetworkError::IptablesError)?;
+            rules.push(rule);
         }
+        rules
+    }
 
-        let rule = Rule {
-            rule: format!(
-                "-i {} -o {} -j ACCEPT",
-                self.tap_name()?,
-                self.function_config.ifnet
-            ),
-            chain: Chain::Forward,
-            table: Table::Filter,
-        };
-        ipt.create(&rule).map_err(NetworkError::IptablesError)?;
-
+    /// Insert new iptables rules to forward traffic from host to guest
+    #[tracing::instrument(skip(self), fields(instance_id = %self.identifier))]
+    fn up_routing(&mut self) -> Result<()> {
+        debug!("Create iptables rules");
+        let rules = self.generate_iptables_rules();
+        for rule in rules {
+            self.iptables
+                .create(&rule)
+                .map_err(NetworkError::IptablesError)?;
+        }
         Ok(())
     }
 
     /// Remove previously created iptable rules on the host
     #[tracing::instrument(skip(self), fields(instance_id = %self.identifier))]
-    fn down_routing(&self) -> Result<()> {
+    fn down_routing(&mut self) -> Result<()> {
         debug!("Delete iptables rules");
-        let mut ipt = Iptables::new(false).map_err(NetworkError::IptablesError)?;
-
-        for (exposed_port, internal_port) in self.port_mapping.iter() {
-            let rule = Rule {
-                rule: format!(
-                    "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
-                    exposed_port, self.function_config.ifnet_ip, self.guest_ip, internal_port
-                ),
-                chain: Chain::Output,
-                table: Table::Nat,
-            };
-            ipt.delete(&rule).map_err(NetworkError::IptablesError)?;
+        let rules = self.generate_iptables_rules();
+        for rule in rules {
+            self.iptables
+                .delete(&rule)
+                .map_err(NetworkError::IptablesError)?;
         }
-
-        let rule = Rule {
-            rule: format!(
-                "-i {} -o {} -j ACCEPT",
-                self.tap_name()?,
-                self.function_config.ifnet
-            ),
-            chain: Chain::Forward,
-            table: Table::Filter,
-        };
-        ipt.delete(&rule).map_err(NetworkError::IptablesError)?;
-
         Ok(())
     }
 }
@@ -169,7 +160,7 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
     }
 
     #[tracing::instrument(skip(self), fields(identifier = %self.identifier))]
-    async fn destroy(&self) -> Result<()> {
+    async fn destroy(&mut self) -> Result<()> {
         debug!("Destroy function network");
         self.down_routing()?;
         Ok(())
@@ -180,11 +171,14 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
 mod tests {
     use std::{net::Ipv4Addr, path::PathBuf, process::Command};
 
+    use serial_test::serial;
     use tracing::trace;
 
     use crate::{
         cli::function_config::FnConfiguration,
-        iptables::{rule::Rule, Chain, Iptables, MutateIptables, Table},
+        iptables::{rule::Rule, Iptables, MutateIptables, Table},
+        net_utils::get_iptables_riklet_chain,
+        runtime::network::{GlobalRuntimeNetwork, RuntimeNetwork},
     };
 
     use super::FunctionRuntimeNetwork;
@@ -243,12 +237,14 @@ mod tests {
             function_config: fn_config,
             port_mapping: port_mapping.clone(),
             tap: Some(tap_name.to_string()),
+            iptables: Iptables::new(true).unwrap(),
         }
     }
 
     #[tokio::test]
+    #[serial]
     async fn apply_empty_network_routing() {
-        let fn_rt = create_function_network_rt("riklet008", &vec![]);
+        let mut fn_rt = create_function_network_rt("riklet008", &vec![]);
         open_tap_shell(fn_rt.tap_name().unwrap().as_str()).unwrap();
         fn_rt.up_routing().unwrap();
         fn_rt.down_routing().unwrap();
@@ -256,9 +252,14 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn apply_exposure_network_routing() {
+        let mut network = GlobalRuntimeNetwork::new().unwrap();
+        let result = network.init().await;
+        assert!(result.is_ok());
+
         let exposed_port = vec![(8080, 8080)];
-        let fn_rt = create_function_network_rt("riklet010", &exposed_port);
+        let mut fn_rt = create_function_network_rt("riklet010", &exposed_port);
         open_tap_shell(fn_rt.tap_name().unwrap().as_str()).unwrap();
         fn_rt.up_routing().unwrap();
 
@@ -267,23 +268,15 @@ mod tests {
 
         // Register expected rules
         for (exposed_port, internal_port) in fn_rt.port_mapping.iter() {
-            rules.push(Rule {
+            let rule = Rule {
                 rule: format!(
-                    "-p tcp --dport {} -d {} -j DNAT --to-destination {}:{}",
-                    exposed_port, fn_rt.function_config.ifnet_ip, fn_rt.guest_ip, internal_port
+                    "-p tcp --dport {} -j DNAT --to-destination {}:{}",
+                    exposed_port, fn_rt.guest_ip, internal_port
                 ),
-                chain: Chain::Output,
+                chain: get_iptables_riklet_chain(),
                 table: Table::Nat,
-            });
-            rules.push(Rule {
-                rule: format!(
-                    "-i {} -o {} -j ACCEPT",
-                    fn_rt.tap_name().unwrap(),
-                    fn_rt.function_config.ifnet
-                ),
-                chain: Chain::Forward,
-                table: Table::Filter,
-            });
+            };
+            rules.push(rule);
         }
 
         // Assert they exists
