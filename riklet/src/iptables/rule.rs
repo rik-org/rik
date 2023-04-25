@@ -11,6 +11,7 @@ pub struct Rule {
 }
 
 impl Rule {
+    #[allow(dead_code)]
     pub fn new(chain: Chain, table: Table, rule: String) -> Self {
         Rule { chain, table, rule }
     }

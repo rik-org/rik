@@ -80,14 +80,78 @@ impl MutateIptables for Iptables {
             .exists(&rule.table.to_string(), &rule.chain.to_string(), &rule.rule)
             .map_err(|_| IptablesError::InvalidRule(rule.clone()))
     }
+
+    fn create_chain(&mut self, chain: &super::Chain, table: &super::Table) -> Result<()> {
+        if !chain.is_custom() {
+            return Ok(());
+        }
+
+        self.chains.push((table.clone(), chain.clone()));
+
+        self.inner
+            .new_chain(table.to_string().as_str(), chain.to_string().as_str())
+            .map_err(|e| IptablesError::InvalidChain(e.to_string()))
+    }
+
+    fn delete_chain(&mut self, chain: &super::Chain, table: &super::Table) -> Result<()> {
+        if !chain.is_custom() {
+            return Ok(());
+        }
+
+        self.chains.retain(|(t, c)| t != table || c != chain);
+
+        self.inner
+            .delete_chain(table.to_string().as_str(), chain.to_string().as_str())
+            .map_err(|e| IptablesError::InvalidChain(e.to_string()))
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
+
     use super::*;
     use crate::iptables::rule::Rule;
     use crate::iptables::Chain;
     use crate::iptables::Table;
+
+    #[test]
+    #[serial]
+    fn test_create_chain_default() {
+        let mut ipt = Iptables::new(true).unwrap();
+        let result = ipt.create_chain(&Chain::Input, &Table::Filter);
+        assert!(result.is_ok());
+        let result = ipt.create_chain(&Chain::Input, &Table::Filter);
+        assert!(result.is_ok());
+        let result = ipt.delete_chain(&Chain::Input, &Table::Filter);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    #[serial]
+    fn test_create_chain_custom() {
+        let mut ipt = Iptables::new(false).unwrap();
+        let result = ipt.create_chain(&Chain::Custom("test".to_string()), &Table::Filter);
+        assert!(result.is_ok());
+        let result = ipt.create_chain(&Chain::Custom("test".to_string()), &Table::Filter);
+        assert!(result.is_err());
+        let result = ipt.delete_chain(&Chain::Custom("test".to_string()), &Table::Filter);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    #[serial]
+    fn test_chain_drop() {
+        {
+            let mut ipt_dopped = Iptables::new(true).unwrap();
+            let result =
+                ipt_dopped.create_chain(&Chain::Custom("test002".to_string()), &Table::Filter);
+            assert!(result.is_ok());
+        }
+        let ipt = Iptables::new(false).unwrap();
+        let res = ipt.inner.chain_exists("test002", "filter").unwrap();
+        assert!(!res);
+    }
 
     #[test]
     fn test_create() {
