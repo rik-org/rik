@@ -50,6 +50,13 @@ pub struct Riklet {
     // Can be pod or function runtimes
     // The key is the instance id
     runtimes: HashMap<String, Box<dyn Runtime>>,
+    /// Holds the global network configuration which includes basic iptables
+    /// rules and chains used by all workloads
+    ///
+    /// WARN: Even though it is not read by the system and it raises a warning,
+    ///  it is necessary to keep ownership of this field so that the [Drop] trait
+    /// is not called too early, but only when [Riklet] is dropped
+    network: GlobalRuntimeNetwork,
 }
 
 impl Riklet {
@@ -207,6 +214,7 @@ impl Riklet {
             stream,
             runtimes: HashMap::<String, Box<dyn Runtime>>::new(),
             config,
+            network: global_runtime_network,
         })
     }
 }

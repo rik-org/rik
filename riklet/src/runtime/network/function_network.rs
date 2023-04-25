@@ -6,7 +6,6 @@ use tracing::debug;
 use crate::constants::DEFAULT_FIRECRACKER_NETWORK_MASK;
 use crate::net_utils::{self, get_iptables_riklet_chain};
 use crate::{
-    cli::function_config::FnConfiguration,
     iptables::{rule::Rule, Iptables, MutateIptables, Table},
     structs::WorkloadDefinition,
 };
@@ -23,7 +22,6 @@ pub struct FunctionRuntimeNetwork {
     pub guest_ip: Ipv4Addr,
     /// Host tap interface IP
     pub host_ip: Ipv4Addr,
-    pub function_config: FnConfiguration,
     /// A mapping of exposed port to internal port
     pub port_mapping: Vec<(u16, u16)>,
     /// A unique name for the tap interface
@@ -66,7 +64,6 @@ impl FunctionRuntimeNetwork {
         Ok(FunctionRuntimeNetwork {
             mask_long: mask_long.to_string(),
             host_ip,
-            function_config: FnConfiguration::load(),
             guest_ip,
             identifier: workload.instance_id.clone(),
             port_mapping: workload_definition.get_port_mapping(),
@@ -169,13 +166,12 @@ impl RuntimeNetwork for FunctionRuntimeNetwork {
 
 #[cfg(test)]
 mod tests {
-    use std::{net::Ipv4Addr, path::PathBuf, process::Command};
+    use std::{net::Ipv4Addr, process::Command};
 
     use serial_test::serial;
     use tracing::trace;
 
     use crate::{
-        cli::function_config::FnConfiguration,
         iptables::{rule::Rule, Iptables, MutateIptables, Table},
         net_utils::get_iptables_riklet_chain,
         runtime::network::{GlobalRuntimeNetwork, RuntimeNetwork},
@@ -223,18 +219,11 @@ mod tests {
         tap_name: &str,
         port_mapping: &Vec<(u16, u16)>,
     ) -> FunctionRuntimeNetwork {
-        let fn_config = FnConfiguration {
-            ifnet: tap_name.to_string(),
-            ifnet_ip: Ipv4Addr::new(10, 0, 0, 1),
-            firecracker_location: PathBuf::new(),
-            kernel_location: PathBuf::new(),
-        };
         FunctionRuntimeNetwork {
             identifier: "test".to_string(),
             mask_long: "255.255.255.200".to_string(),
             host_ip: Ipv4Addr::new(10, 0, 0, 2),
             guest_ip: Ipv4Addr::new(10, 0, 0, 1),
-            function_config: fn_config,
             port_mapping: port_mapping.clone(),
             tap: Some(tap_name.to_string()),
             iptables: Iptables::new(true).unwrap(),
