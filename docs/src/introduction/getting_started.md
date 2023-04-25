@@ -8,12 +8,17 @@
 * [Git](https://git-scm.com/downloads)
 * From source install: [Rust](https://www.rust-lang.org/tools/install),
   [protoc](https://grpc.io/docs/protoc-installation/)(>=3.15.0),
-* Docker install: [Docker](https://docs.docker.com/get-docker/)
 
 Install packages required to build the project:
 
-- Ubuntu: `sudo apt update && sudo apt install libssl-dev protobuf-compiler`
-- Fedora: `sudo dnf update && sudo dnf install openssl-devel protobuf-compiler protobuf-devel`
+- Ubuntu: `sudo apt update && sudo apt install curl libssl-dev protobuf-compiler git pkg-config umoci skopeo build-essential iptables`
+- Fedora: `sudo dnf update && sudo dnf install curl openssl-devel protobuf-compiler protobuf-devel git pkg-config umoci skopeo build-essential iptables`
+
+You can install Rust using [rustup](https://rustup.rs/):
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
 
 ## Clone the project
 
@@ -21,15 +26,11 @@ Start by cloning the project using Git:
 
 ```bash
 git clone https://github.com/rik-org/rik.git
+cd rik
 ```
 
 ## Start a cluster
 
-### Using Docker
-
-```bash
-docker compose up
-```
 
 ### Build from source
 
@@ -70,7 +71,7 @@ Create a workload using example in `examples/workload-1.json`:
 ```bash
 # Create an alpine container workload
 RIKCONFIG=docs/src/examples/config.json cargo run \
-  --bin rikctl -- create workload \
+  --bin rikctl --release -- create workloads \
   --file docs/src/examples/workloads/workload-1.json
 
 # The ID of the workload is returned, it will be useful next
@@ -86,7 +87,7 @@ Based on your workload ID you can now deploy an instance:
 export WORKLOAD_ID=0e4c1da4-0277-4088-9f37-8f445cbe8e46
 
 RIKCONFIG=docs/src/examples/config.json cargo run \
-  --bin rikctl -- create instance \
+  --bin rikctl --release -- create instance \
   --workload-id ${WORKLOAD_ID}
 ```
 
@@ -95,8 +96,8 @@ RIKCONFIG=docs/src/examples/config.json cargo run \
 You should now see your instance running:
 
 ```bash
-RIKCONFIG=examples/config.json cargo run \
-  --bin rikctl -- get instances
+RIKCONFIG=docs/src/examples/config.json cargo run \
+  --bin rikctl --release -- get instances
 ```
 
 ## Configuration
