@@ -129,7 +129,7 @@ sub_run-firecracker() {
     local api_socket="/tmp/rik-api.socket"
     # Network format:
     #  ip=<ip>::<gateway>:<netmask>:<hostname>:<device>:<autoconf>
-    local boot_args="console=ttyS0 reboot=k panic=1 pci=off ip=172.12.0.253::172.12.0.254:255.255.255.252::eth0:off"
+    local boot_args="console=ttyS0 reboot=k nomodules random.trust_cpu=on panic=1 pci=off tsc=reliable i8042.nokbd i8042.noaux quiet loglevel=0 ip=172.12.0.253::172.12.0.254:255.255.255.252::eth0:off"
 
     for cmd in "firecracker sudo"; do
         check_prerequisite $cmd
