@@ -20,7 +20,7 @@ pub struct CliConfiguration {
     /// If set and there is a config file, values defined by the CLI will override values of the configuration file.
     #[arg(long)]
     pub override_config: bool,
-    /// Path to the firecarcker binary.
+    /// Path to a firecracker binary on your system
     #[arg(
         long,
         value_name = "FIRECRACKER_LOCATION",
@@ -36,15 +36,19 @@ pub struct CliConfiguration {
         default_value = "vmlinux.bin"
     )]
     pub kernel_path: PathBuf,
-    /// Network interface connected to internet.
+    /// DEPRECATED: Network interface that is used to connect to internet
+    ///
+    /// It was previously used to configure iptables, it is not the case anymore
     #[arg(long, value_name = "IFNET", env = "IFNET", default_value = "eth0")]
-    pub ifnet: String,
-    /// IP of the network interface
+    pub ifnet: Option<String>,
+    /// DEPRECATED: IP of the network interface
+    ///
+    /// It was previously used to configure iptables, it is not the case anymore.
     #[arg(
         long,
         value_name = "IFNET_IP",
         env = "IFNET_IP",
         value_parser = value_parser!(Ipv4Addr)
     )]
-    pub ifnet_ip: Ipv4Addr,
+    pub ifnet_ip: Option<Ipv4Addr>,
 }

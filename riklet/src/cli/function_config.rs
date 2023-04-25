@@ -1,4 +1,4 @@
-use std::{net::Ipv4Addr, path::PathBuf};
+use std::path::PathBuf;
 
 use super::CliConfiguration;
 use clap::Parser;
@@ -7,8 +7,6 @@ use clap::Parser;
 pub struct FnConfiguration {
     pub firecracker_location: PathBuf,
     pub kernel_location: PathBuf,
-    pub ifnet: String,
-    pub ifnet_ip: Ipv4Addr,
 }
 
 impl From<CliConfiguration> for FnConfiguration {
@@ -16,8 +14,6 @@ impl From<CliConfiguration> for FnConfiguration {
         FnConfiguration {
             firecracker_location: cli.firecracker_path,
             kernel_location: cli.kernel_path,
-            ifnet: cli.ifnet,
-            ifnet_ip: cli.ifnet_ip,
         }
     }
 }
