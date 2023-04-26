@@ -9,5 +9,6 @@
 ---
 
 - [Developer Reference]()
-  - [Controller](./controller.md)
-  - [Network](./network.md)
+  - [Controller](./reference/controller.md)
+  - [Network](./reference/network.md)
+    - [Riklet](./reference/network/riklet.md)
