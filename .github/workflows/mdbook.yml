@@ -55,6 +55,7 @@ jobs:
           rustup set profile minimal
           rustup toolchain install nightly -c rust-docs
           rustup override set nightly
+          cargo install mdbook-mermaid
       - name: Install mdbook
         run: |
           mkdir bin
@@ -93,6 +94,7 @@ jobs:
           rustup set profile minimal
           rustup toolchain install nightly -c rust-docs
           rustup override set nightly
+          cargo install mdbook-mermaid
       - name: Install mdbook
         run: |
           mkdir bin
