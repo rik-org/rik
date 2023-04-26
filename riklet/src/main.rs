@@ -8,9 +8,11 @@ mod runtime;
 mod structs;
 
 use crate::core::Riklet;
-use anyhow::Result;
+use anyhow::{Context, Result};
 
-use tracing::{error, metadata::LevelFilter};
+use tokio::signal::ctrl_c;
+use tokio::signal::unix::{signal, SignalKind};
+use tracing::{error, info, metadata::LevelFilter};
 use tracing_subscriber::{
     fmt, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
@@ -40,6 +42,34 @@ pub fn init_logger() -> Result<()> {
     Ok(())
 }
 
+async fn serve() -> Result<()> {
+    let mut riklet = Riklet::new().await.unwrap_or_else(|e| {
+        error!(
+            "An error occured during the bootstraping process of the Riklet. {}",
+            e
+        );
+        std::process::exit(2);
+    });
+
+    // Stream of SIGTERM signals.
+    let mut signals = signal(SignalKind::terminate())?;
+
+    tokio::select! {
+        _ = riklet.run() => {},
+        _ = ctrl_c() => {
+            info!("Receive SIGINT signal.");
+        },
+        _ = signals.recv() => {
+            info!("Receive SIGTERM signal.");
+        }
+    }
+
+    riklet
+        .shutdown()
+        .await
+        .context("Could not graceful shutdown riklet")
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     init_logger()?;
@@ -50,17 +80,9 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    Riklet::new()
-        .await
-        .unwrap_or_else(|e| {
-            error!(
-                "An error occured during the bootstraping process of the Riklet. {}",
-                e
-            );
-            std::process::exit(2);
-        })
-        .run()
-        .await?;
+    serve().await?;
+
+    info!("Riklet stopped");
 
     Ok(())
 }
