@@ -219,7 +219,7 @@ impl Riklet {
     }
 
     pub async fn shutdown(&mut self) -> Result<()> {
-        info!("Clean Riklet state.");
+        info!("Shutting down ...");
 
         // Stop and clean all runtime
         for (_, runtime) in &mut self.runtimes {
