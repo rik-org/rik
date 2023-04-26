@@ -146,15 +146,10 @@ impl Runtime for FunctionRuntime {
         }?;
 
         machine
-            .stop()
-            .await
-            .map_err(RuntimeError::FirecrackerError)?;
-        debug!("microVM properly stopped");
-
-        machine
             .kill()
             .await
             .map_err(RuntimeError::FirecrackerError)?;
+        debug!("microVM properly stopped");
 
         debug!("Destroying function runtime network");
         self.network
