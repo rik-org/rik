@@ -8,7 +8,7 @@ mod runtime;
 mod structs;
 
 use crate::core::Riklet;
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use tokio::signal::ctrl_c;
 use tokio::signal::unix::{signal, SignalKind};
@@ -42,16 +42,7 @@ pub fn init_logger() -> Result<()> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    init_logger()?;
-
-    // If the process doesn't have root privileges, exit and display error.
-    if !nix::unistd::Uid::effective().is_root() {
-        error!("Riklet must run with root privileges.");
-        std::process::exit(1);
-    }
-
+async fn serve() -> Result<()> {
     let mut riklet = Riklet::new().await.unwrap_or_else(|e| {
         error!(
             "An error occured during the bootstraping process of the Riklet. {}",
@@ -60,7 +51,7 @@ async fn main() -> Result<()> {
         std::process::exit(2);
     });
 
-    // An infinite stream of hangup signals.
+    // Stream of SIGTERM signals.
     let mut signals = signal(SignalKind::terminate())?;
 
     tokio::select! {
@@ -73,9 +64,25 @@ async fn main() -> Result<()> {
         }
     }
 
-    riklet.shutdown().await?;
+    riklet
+        .shutdown()
+        .await
+        .context("Could not graceful shutdown riklet")
+}
 
-    info!("Riklet stoped");
+#[tokio::main]
+async fn main() -> Result<()> {
+    init_logger()?;
+
+    // If the process doesn't have root privileges, exit and display error.
+    if !nix::unistd::Uid::effective().is_root() {
+        error!("Riklet must run with root privileges.");
+        std::process::exit(1);
+    }
+
+    serve().await?;
+
+    info!("Riklet stopped");
 
     Ok(())
 }
