@@ -7,7 +7,7 @@ instance immediately, but it will be used as a definition to deploy an instance.
 
 The implementation only support JSON format, but the API is designed to be
 extensible to support other formats in the future. In case you expect to have a
-specific format, please 
+specific format, please
 [open an issue](https://github.com/rik-org/rik/issues/new/choose)
 to discuss it.
 
@@ -39,15 +39,15 @@ sequenceDiagram
     participant Secondary as RIK Secondary Node
     Bob-->>Primary: Request new instance <br/>of a workload
     note over Primary: Status: PENDING
-    Primary-->>Scheduler: Request Schedule 
+    Primary-->>Scheduler: Request Schedule
     note over Scheduler: Status: PENDING
     Scheduler-->>Secondary: Determine appropriate node and<br/> order scheduler
     note over Secondary: Status: CREATING
     Secondary-->>Secondary: Download and run <br/> necessary components
     note over Secondary: Status: RUNNING
-    Secondary-->>Scheduler: Return instance running OK 
-    Scheduler-->>Primary: Return instance running OK 
-    Primary-->>Bob: Return instance running OK 
+    Secondary-->>Scheduler: Return instance running OK
+    Scheduler-->>Primary: Return instance running OK
+    Primary-->>Bob: Return instance running OK
 
 ```
 
@@ -57,5 +57,13 @@ sequenceDiagram
 {{#include schema-v1.json}}
 ```
 
-[^1]: This workload will probably be renamed in the future, as it is not
-      strictly related to functions.
+[^1]:
+    This workload will probably be renamed in the future, as it is not
+    strictly related to functions.
+
+<style>
+    .mermaid {
+        background-color: #fff;
+        border-radius: 10px;
+    }
+</style>
