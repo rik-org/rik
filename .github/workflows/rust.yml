@@ -22,7 +22,7 @@ on:
 jobs:
   lint:
     name: Validating code
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - uses: arduino/setup-protoc@v1
@@ -30,8 +30,8 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
           toolchain: stable
+          # target: x86_64-unknown-linux-gnu
           override: true
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
@@ -50,16 +50,20 @@ jobs:
           command: check
 
   tests:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - uses: arduino/setup-protoc@v1
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: libc
+        run: |
+          sudo apt update 
+          sudo apt install -y libc6 libssl-dev protobuf-compiler
       - uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
           toolchain: stable
+          # target: x86_64-unknown-linux-gnu
           override: true
       - uses: Swatinem/rust-cache@v2
       # Some tests must be running with root user, to do that we force tests to run with sudo
@@ -77,7 +81,7 @@ jobs:
     needs:
       - lint
       - tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - uses: arduino/setup-protoc@v1
