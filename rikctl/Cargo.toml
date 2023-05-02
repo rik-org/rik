@@ -15,7 +15,7 @@ serde_yaml = "0.9.21"
 clap = { version = "4.0.18", features = ["derive"] }
 reqwest = "0.11.14"
 prettytable-rs = "0.10.0"
-anyhow = "1.0.66"
+anyhow = "1.0.71"
 dirs = "5.0.0"
 
 # Instrumentation
