@@ -28,19 +28,15 @@ pub struct CliConfiguration {
         default_value = "vmlinux.bin"
     )]
     pub kernel_path: PathBuf,
-    /// DEPRECATED: Network interface that is used to connect to internet
-    ///
-    /// It was previously used to configure iptables, it is not the case anymore
-    #[arg(long, value_name = "IFNET", env = "IFNET", default_value = "eth0")]
-    pub ifnet: Option<String>,
-    /// DEPRECATED: IP of the network interface
-    ///
-    /// It was previously used to configure iptables, it is not the case anymore.
+    /// Override the default network interface detected by the software
+    #[arg(long, value_name = "IFACE", env = "IFACE", default_value = "eth0")]
+    pub iface: Option<String>,
+    /// Override the default IP gateway used by the software, it should match the IP given to ifnet
     #[arg(
         long,
-        value_name = "IFNET_IP",
-        env = "IFNET_IP",
+        value_name = "IFACE_IP",
+        env = "IFACE_IP",
         value_parser = value_parser!(Ipv4Addr)
     )]
-    pub ifnet_ip: Option<Ipv4Addr>,
+    pub iface_ip: Option<Ipv4Addr>,
 }
