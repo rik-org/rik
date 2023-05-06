@@ -240,11 +240,13 @@ impl RuntimeManager for FunctionRuntimeManager {
             serde_json::from_str(workload.definition.as_str())
                 .map_err(RuntimeError::ParsingError)?;
 
+        let fn_config = FnConfiguration::load().map_err(|e| RuntimeError::Error(e.to_string()))?;
+
         Ok(Box::new(FunctionRuntime {
-            function_config: FnConfiguration::load()
-                .map_err(|e| RuntimeError::Error(e.to_string()))?,
+            function_config: fn_config.clone(),
             file_path: self.create_fs(&workload_definition)?,
-            network: FunctionRuntimeNetwork::new(&workload).map_err(RuntimeError::NetworkError)?,
+            network: FunctionRuntimeNetwork::new(&workload, fn_config.iface)
+                .map_err(RuntimeError::NetworkError)?,
             machine: None,
             id: workload.instance_id,
         }))
