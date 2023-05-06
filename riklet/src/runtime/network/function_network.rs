@@ -5,6 +5,7 @@ use std::net::Ipv4Addr;
 use tracing::{debug, error};
 
 use crate::constants::DEFAULT_FIRECRACKER_NETWORK_MASK;
+use crate::iptables::Chain;
 use crate::net_utils::{self, get_iptables_riklet_chain};
 use crate::{
     iptables::{rule::Rule, Iptables, MutateIptables, Table},
@@ -28,6 +29,10 @@ pub struct FunctionRuntimeNetwork {
     /// A unique name for the tap interface
     pub tap: Option<String>,
     pub iptables: Iptables,
+
+    /// Name of the interface that is detected to be the one giving externel
+    /// access to the network
+    gateway_iface: String,
 }
 
 impl FunctionRuntimeNetwork {
@@ -40,7 +45,7 @@ impl FunctionRuntimeNetwork {
     /// The IPv4 range given to the machine will be taken from the global
     /// [IP_ALLOCATOR] which is a singleton that keeps track of the available
     /// IPv4 networks
-    pub fn new(workload: &InstanceScheduling) -> Result<Self> {
+    pub fn new(workload: &InstanceScheduling, gateway_iface: String) -> Result<Self> {
         let mask_long: &str = "255.255.255.252";
 
         let workload_definition: WorkloadDefinition =
@@ -64,6 +69,7 @@ impl FunctionRuntimeNetwork {
 
         Ok(FunctionRuntimeNetwork {
             mask_long: mask_long.to_string(),
+            gateway_iface,
             host_ip,
             guest_ip,
             identifier: workload.instance_id.clone(),
@@ -80,8 +86,20 @@ impl FunctionRuntimeNetwork {
             .ok_or_else(|| NetworkError::Error("Tap interface name not found".to_string()))
     }
 
-    fn generate_iptables_rules(&self) -> Vec<Rule> {
+    fn generate_iptables_rules(&self) -> Result<Vec<Rule>> {
         let mut rules = Vec::new();
+        // nat network
+        let rule = Rule {
+            rule: format!(
+                "-i {} -o {} -j ACCEPT",
+                self.tap_name()?,
+                self.gateway_iface,
+            ),
+            table: Table::Filter,
+            chain: Chain::Forward,
+        };
+        rules.push(rule);
+        // port mapping
         for (exposed_port, internal_port) in self.port_mapping.iter() {
             let rule = Rule {
                 rule: format!(
@@ -93,14 +111,14 @@ impl FunctionRuntimeNetwork {
             };
             rules.push(rule);
         }
-        rules
+        Ok(rules)
     }
 
     /// Insert new iptables rules to forward traffic from host to guest
     #[tracing::instrument(skip(self), fields(instance_id = %self.identifier))]
     fn up_routing(&mut self) -> Result<()> {
         debug!("Create iptables rules");
-        let rules = self.generate_iptables_rules();
+        let rules = self.generate_iptables_rules()?;
         for rule in rules {
             self.iptables
                 .create(&rule)
@@ -113,7 +131,7 @@ impl FunctionRuntimeNetwork {
     #[tracing::instrument(skip(self), fields(instance_id = %self.identifier))]
     fn down_routing(&mut self) -> Result<()> {
         debug!("Delete iptables rules");
-        let rules = self.generate_iptables_rules();
+        let rules = self.generate_iptables_rules()?;
         for rule in rules {
             self.iptables
                 .delete(&rule)
@@ -190,7 +208,7 @@ mod tests {
 
     use crate::{
         iptables::{rule::Rule, Iptables, MutateIptables, Table},
-        net_utils::get_iptables_riklet_chain,
+        net_utils::{get_default_iface, get_iptables_riklet_chain},
         runtime::network::{GlobalRuntimeNetwork, RuntimeNetwork},
     };
 
@@ -240,6 +258,7 @@ mod tests {
     ) -> FunctionRuntimeNetwork {
         FunctionRuntimeNetwork {
             identifier: "test".to_string(),
+            gateway_iface: get_default_iface().unwrap(),
             mask_long: "255.255.255.200".to_string(),
             host_ip: Ipv4Addr::new(10, 0, 0, 2),
             guest_ip: Ipv4Addr::new(10, 0, 0, 1),
