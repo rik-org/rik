@@ -196,6 +196,8 @@ mod tests {
 
     use super::FunctionRuntimeNetwork;
 
+    const GATEWAY_MOCK: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 1);
+
     fn open_tap_shell(iface_name: &str) -> Result<(), String> {
         let tap_output = Command::new("ip")
             .args(["tuntap", "add", iface_name, "mode", "tap"])
@@ -260,7 +262,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn apply_exposure_network_routing() {
-        let mut network = GlobalRuntimeNetwork::new().unwrap();
+        let mut network = GlobalRuntimeNetwork::new(GATEWAY_MOCK).unwrap();
         let result = network.init().await;
         assert!(result.is_ok());
 

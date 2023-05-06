@@ -1,9 +1,9 @@
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr};
 
 use futures_util::TryStreamExt;
 use rand::Rng;
 use rtnetlink::new_connection;
-use tracing::{trace, warn};
+use tracing::{debug, trace, warn};
 use utils::net::mac::MacAddr;
 
 use crate::iptables::Chain;
@@ -87,4 +87,34 @@ pub fn generate_mac_addr() -> MacAddr {
     mac[0] &= 0xfe; /* clear multicast bit */
     mac[0] |= 0x02; /* set local assignment bit (IEEE802) */
     MacAddr::from_bytes_unchecked(&mac)
+}
+
+/// Tries to determine the iface used to access the internet
+///
+/// Under the hood, default_net will create a UDP socket and send a request to Cloudflare DNS (1.1.1.1)
+/// and determine the local IP of it which should be the local IP of the machine.
+pub fn get_default_iface() -> Result<String, anyhow::Error> {
+    let iface_config = match default_net::get_default_interface() {
+        Ok(iface) => iface,
+        Err(e) => return Err(anyhow::anyhow!("Could not get default interface: {}", e)),
+    };
+
+    debug!("Default interface: {:?}", iface_config);
+    Ok(iface_config.name)
+}
+
+pub fn get_default_gateway() -> Result<Ipv4Addr, anyhow::Error> {
+    let gateway = match default_net::get_default_gateway() {
+        Ok(gateway) => gateway,
+        Err(e) => return Err(anyhow::anyhow!("Could not get default gateway: {}", e)),
+    };
+
+    debug!("Default gateway: {:?}", gateway);
+    match gateway.ip_addr {
+        IpAddr::V4(ip) => Ok(ip),
+        IpAddr::V6(ip) => Err(anyhow::anyhow!(
+            "Default gateway is IPv6, not supported: {}",
+            ip
+        )),
+    }
 }

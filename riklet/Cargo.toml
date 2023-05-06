@@ -51,10 +51,10 @@ ipnetwork="0.20.0"
 iptables="0.5.0"
 url = { version = "2.3.1", features = ["serde"] }
 curl = "0.4.44"
-lz4 = "1.23.1"
 thiserror = "1.0.38"
 derive_more = "0.99.17"
 anyhow = "1.0.71"
+default-net = "0.14"
 
 # Instrumentation
 tracing = { workspace = true }
