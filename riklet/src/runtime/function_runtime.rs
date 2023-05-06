@@ -241,7 +241,8 @@ impl RuntimeManager for FunctionRuntimeManager {
                 .map_err(RuntimeError::ParsingError)?;
 
         Ok(Box::new(FunctionRuntime {
-            function_config: FnConfiguration::load(),
+            function_config: FnConfiguration::load()
+                .map_err(|e| RuntimeError::Error(e.to_string()))?,
             file_path: self.create_fs(&workload_definition)?,
             network: FunctionRuntimeNetwork::new(&workload).map_err(RuntimeError::NetworkError)?,
             machine: None,

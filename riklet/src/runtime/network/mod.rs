@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use once_cell::sync::Lazy;
 use shared::utils::ip_allocator::IpAllocator;
 use std::fmt::Debug;
+use std::net::Ipv4Addr;
 use std::sync::Mutex;
 use thiserror::Error;
 
@@ -55,12 +56,18 @@ pub struct GlobalRuntimeNetwork {
     /// Unique instance of iptables which contain all rules and chains generated
     /// for the global configuration of the network
     iptables: Iptables,
+
+    /// Name of the interface that will be used as the gateway for the network
+    gateway_iface: Ipv4Addr,
 }
 
 impl GlobalRuntimeNetwork {
-    pub fn new() -> std::result::Result<GlobalRuntimeNetwork, IptablesError> {
+    pub fn new(
+        gateway_iface: Ipv4Addr,
+    ) -> std::result::Result<GlobalRuntimeNetwork, IptablesError> {
         Ok(GlobalRuntimeNetwork {
             iptables: Iptables::new(true)?,
+            gateway_iface,
         })
     }
 }
@@ -77,6 +84,10 @@ impl RuntimeNetwork for GlobalRuntimeNetwork {
     ///   traffic to chain RIKLET to handle port redirections
     /// - Create a rule on chain OUTPUT of table NAT that will redirect
     ///  traffic to chain RIKLET to handle port redirections
+    /// - Enable MASQUERADE on the NAT table to allow workloads to access the
+    ///  external network
+    /// - Enable conntrack on the Filter table to allow workloads to access the
+    ///  external network
     ///
     /// The usage of the RIKLET chain allows us to prevent the need to repeat
     /// the rule on both PREROUTING and OUTPUT chains.
@@ -104,6 +115,24 @@ impl RuntimeNetwork for GlobalRuntimeNetwork {
         self.iptables
             .create(&nat_output_redirect)
             .map_err(NetworkError::IptablesError)?;
+
+        let nat_masquerade = Rule {
+            chain: Chain::PostRouting,
+            table: Table::Nat,
+            rule: format!("-o {} -j MASQUERADE", self.gateway_iface),
+        };
+
+        let filter_conntrack = Rule {
+            chain: Chain::Forward,
+            table: Table::Filter,
+            rule: "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT".to_string(),
+        };
+        self.iptables
+            .create(&nat_masquerade)
+            .map_err(NetworkError::IptablesError)?;
+        self.iptables
+            .create(&filter_conntrack)
+            .map_err(NetworkError::IptablesError)?;
         Ok(())
     }
 
@@ -117,13 +146,17 @@ impl RuntimeNetwork for GlobalRuntimeNetwork {
 
 #[cfg(test)]
 mod tests {
+    use std::net::Ipv4Addr;
+
     use crate::runtime::network::{GlobalRuntimeNetwork, RuntimeNetwork};
     use serial_test::serial;
+
+    const GATEWAY_MOCK: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 1);
 
     #[tokio::test]
     #[serial]
     async fn test_network_init_ok() {
-        let mut network = GlobalRuntimeNetwork::new().unwrap();
+        let mut network = GlobalRuntimeNetwork::new(GATEWAY_MOCK).unwrap();
         let result = network.init().await;
         assert!(result.is_ok());
         let result = network.destroy().await;
@@ -133,7 +166,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_network_init_drop() {
-        let mut network = GlobalRuntimeNetwork::new().unwrap();
+        let mut network = GlobalRuntimeNetwork::new(GATEWAY_MOCK).unwrap();
         let result = network.init().await;
         assert!(result.is_ok());
 
@@ -180,15 +213,19 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_multiple_global_network_fails() {
-        let mut network = GlobalRuntimeNetwork::new().unwrap();
+        let mut network = GlobalRuntimeNetwork::new(GATEWAY_MOCK).unwrap();
         let result = network.init().await;
         assert!(result.is_ok());
 
-        let mut network2 = GlobalRuntimeNetwork::new().unwrap();
+        let mut network2 = GlobalRuntimeNetwork::new(GATEWAY_MOCK).unwrap();
         let result = network2.init().await;
         assert!(result.is_err());
 
         let result = network.destroy().await;
         assert!(result.is_ok());
+    }
+
+    fn test_to_string_gateway() {
+        assert_eq!(GATEWAY_MOCK.to_string(), "192.168.0.1".to_string());
     }
 }

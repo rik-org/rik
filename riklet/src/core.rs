@@ -1,5 +1,6 @@
 use crate::banner;
 use crate::cli::config::{Configuration, ConfigurationError};
+use crate::cli::function_config::FnConfiguration;
 use crate::emitters::metrics_emitter::MetricsEmitter;
 use crate::runtime::network::{GlobalRuntimeNetwork, NetworkError, RuntimeNetwork};
 use crate::runtime::{DynamicRuntimeManager, Runtime, RuntimeConfigurator, RuntimeError};
@@ -201,7 +202,10 @@ impl Riklet {
         });
         let stream = client.register(request).await.unwrap().into_inner();
 
-        let mut global_runtime_network = GlobalRuntimeNetwork::new()
+        let fn_configuration =
+            FnConfiguration::load().map_err(|e| RikletError::InvalidInput(e.to_string()))?;
+
+        let mut global_runtime_network = GlobalRuntimeNetwork::new(fn_configuration.gateway_ip)
             .map_err(|e| RikletError::NetworkError(NetworkError::IptablesError(e)))?;
         global_runtime_network
             .init()
