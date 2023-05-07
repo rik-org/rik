@@ -6,7 +6,6 @@ use tiny_http::Method;
 use tiny_http::Response;
 use tracing::{event, Level};
 
-use crate::api;
 use crate::api::ApiChannel;
 
 mod instance;
@@ -18,9 +17,9 @@ type Handler = fn(
     &route_recognizer::Params,
     &Connection,
     &Sender<ApiChannel>,
-) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, api::RikError>;
+) -> Result<tiny_http::Response<io::Cursor<Vec<u8>>>, anyhow::Error>;
 
-type HttpResult<T = io::Cursor<Vec<u8>>> = Result<Response<T>, api::RikError>;
+type HttpResult<T = io::Cursor<Vec<u8>>> = Result<Response<T>, anyhow::Error>;
 
 pub enum ContentType {
     JSON,

@@ -35,6 +35,7 @@ uuid = { version = "1.3.1", features = ["serde", "v4"] }
 backoff = { version = "0.4.0", features = ["tokio"]}
 rand = "0.8.4"
 thiserror = "1.0.40"
+anyhow = "1.0.71"
 
 # Instrumentation
 tracing = { workspace = true }

@@ -9,7 +9,7 @@ use crate::api::external::routes::ContentType;
 use crate::api::external::services::element::elements_set_right_name;
 use crate::api::types::element::OnlyId;
 use crate::api::types::tenant::Tenant;
-use crate::api::{ApiChannel, RikError};
+use crate::api::ApiChannel;
 use crate::database::RikRepository;
 
 pub fn get(
@@ -20,7 +20,7 @@ pub fn get(
 ) -> HttpResult {
     if let Ok(mut tenants) = RikRepository::find_all(connection, "/tenant") {
         tenants = elements_set_right_name(tenants.clone());
-        let tenants_json = serde_json::to_string(&tenants).map_err(RikError::ParsingError)?;
+        let tenants_json = serde_json::to_string(&tenants)?;
         event!(Level::INFO, "tenants.get, tenants found");
         Ok(tiny_http::Response::from_string(tenants_json)
             .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
@@ -38,10 +38,8 @@ pub fn create(
     _: &Sender<ApiChannel>,
 ) -> HttpResult {
     let mut content = String::new();
-    req.as_reader()
-        .read_to_string(&mut content)
-        .map_err(RikError::IoError)?;
-    let tenant: Tenant = serde_json::from_str(&content).map_err(RikError::ParsingError)?;
+    req.as_reader().read_to_string(&mut content)?;
+    let tenant: Tenant = serde_json::from_str(&content)?;
 
     if RikRepository::insert(connection, &tenant.name, &tenant.value).is_ok() {
         event!(Level::INFO, "Create tenant");
@@ -62,14 +60,11 @@ pub fn delete(
     _: &Sender<ApiChannel>,
 ) -> HttpResult {
     let mut content = String::new();
-    req.as_reader()
-        .read_to_string(&mut content)
-        .map_err(RikError::IoError)?;
-    let OnlyId { id: delete_id } =
-        serde_json::from_str(&content).map_err(RikError::ParsingError)?;
+    req.as_reader().read_to_string(&mut content)?;
+    let OnlyId { id: delete_id } = serde_json::from_str(&content)?;
 
     if let Ok(tenant) = RikRepository::find_one(connection, &delete_id, "/tenant") {
-        RikRepository::delete(connection, &tenant.id).map_err(RikError::DataBaseError)?;
+        RikRepository::delete(connection, &tenant.id)?;
         event!(Level::INFO, "Delete tenant");
         Ok(tiny_http::Response::from_string("").with_status_code(tiny_http::StatusCode::from(204)))
     } else {

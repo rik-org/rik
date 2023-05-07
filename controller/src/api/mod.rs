@@ -5,8 +5,6 @@ use definition::workload::WorkloadDefinition;
 use std::fmt::{Debug, Display, Formatter, Result};
 use thiserror::Error;
 
-use crate::database::DatabaseError;
-
 #[derive(Debug)]
 pub enum Crud {
     Create = 0,
@@ -25,20 +23,11 @@ impl From<i32> for Crud {
 
 #[derive(Debug, Error)]
 pub enum RikError {
-    #[error("IO error: {0}")]
-    IoError(std::io::Error),
-
-    #[error("HTTP request error: {0}")]
-    ParsingError(serde_json::Error),
-
     #[error("Internal communication error: {0}")]
     InternalCommunicationError(String),
 
     #[error("Invalid name: {0}")]
     InvalidName(String),
-
-    #[error("Database error: {0}")]
-    DataBaseError(DatabaseError),
 }
 
 pub struct ApiChannel {

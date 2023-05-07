@@ -2,7 +2,7 @@ use super::HttpResult;
 use crate::api::external::routes::ContentType;
 use crate::api::external::services::element::elements_set_right_name;
 use crate::api::types::element::OnlyId;
-use crate::api::{ApiChannel, Crud, RikError};
+use crate::api::{ApiChannel, Crud};
 use crate::core::instance::Instance;
 use crate::database::RikRepository;
 use definition::workload::WorkloadDefinition;
@@ -21,7 +21,7 @@ pub fn get(
 ) -> HttpResult {
     if let Ok(mut workloads) = RikRepository::find_all(connection, "/workload") {
         workloads = elements_set_right_name(workloads.clone());
-        let workloads_json = serde_json::to_string(&workloads).map_err(RikError::ParsingError)?;
+        let workloads_json = serde_json::to_string(&workloads)?;
         event!(Level::INFO, "workloads.get, workloads found");
 
         Ok(tiny_http::Response::from_string(workloads_json)
@@ -81,8 +81,7 @@ pub fn create(
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
 
-    let mut workload: WorkloadDefinition =
-        serde_json::from_str(&content).map_err(RikError::ParsingError)?;
+    let mut workload: WorkloadDefinition = serde_json::from_str(&content)?;
     if workload.replicas.is_none() {
         workload.replicas = Some(1);
     }
@@ -99,21 +98,19 @@ pub fn create(
             .with_status_code(tiny_http::StatusCode::from(404)));
     }
 
-    if let Ok(inserted_id) = RikRepository::insert(
-        connection,
-        &name,
-        &serde_json::to_string(&workload).map_err(RikError::ParsingError)?,
-    ) {
+    if let Ok(inserted_id) =
+        RikRepository::insert(connection, &name, &serde_json::to_string(&workload)?)
+    {
         let workload_id: OnlyId = OnlyId { id: inserted_id };
         event!(
             Level::INFO,
             "workload.create, workload successfully created"
         );
-        Ok(tiny_http::Response::from_string(
-            serde_json::to_string(&workload_id).map_err(RikError::ParsingError)?,
+        Ok(
+            tiny_http::Response::from_string(serde_json::to_string(&workload_id)?)
+                .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
+                .with_status_code(tiny_http::StatusCode::from(200)),
         )
-        .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
-        .with_status_code(tiny_http::StatusCode::from(200)))
     } else {
         event!(Level::ERROR, "workload.create, cannot create workload");
         Ok(tiny_http::Response::from_string("Cannot create workload")
@@ -129,8 +126,7 @@ pub fn delete(
 ) -> HttpResult {
     let mut content = String::new();
     req.as_reader().read_to_string(&mut content).unwrap();
-    let OnlyId { id: delete_id } =
-        serde_json::from_str(&content).map_err(RikError::ParsingError)?;
+    let OnlyId { id: delete_id } = serde_json::from_str(&content)?;
 
     if let Ok(workload) = RikRepository::find_one(connection, &delete_id, "/workload") {
         let definition: WorkloadDefinition = serde_json::from_value(workload.value).unwrap();
