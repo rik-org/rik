@@ -22,6 +22,18 @@ type Handler = fn(
 
 type HttpResult<T = io::Cursor<Vec<u8>>> = Result<Response<T>, api::RikError>;
 
+pub enum ContentType {
+    JSON,
+}
+
+impl Into<&str> for ContentType {
+    fn into(self) -> &'static str {
+        match self {
+            ContentType::JSON => "Content-Type: application/json",
+        }
+    }
+}
+
 pub struct Router {
     routes: Vec<(tiny_http::Method, route_recognizer::Router<Handler>)>,
 }

@@ -1,4 +1,5 @@
 use super::HttpResult;
+use crate::api::external::routes::ContentType;
 use crate::api::external::services::element::elements_set_right_name;
 use crate::api::types::element::OnlyId;
 use crate::api::{ApiChannel, Crud, RikError};
@@ -24,7 +25,7 @@ pub fn get(
         event!(Level::INFO, "workloads.get, workloads found");
 
         Ok(tiny_http::Response::from_string(workloads_json)
-            .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
+            .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
             .with_status_code(tiny_http::StatusCode::from(200)))
     } else {
         Ok(tiny_http::Response::from_string("Cannot find workloads")
@@ -61,7 +62,7 @@ pub fn get_instances(
         let instances_json = json!({ "instances": instances }).to_string();
 
         return Ok(tiny_http::Response::from_string(instances_json)
-            .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
+            .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
             .with_status_code(tiny_http::StatusCode::from(200)));
     }
 
@@ -111,7 +112,7 @@ pub fn create(
         Ok(tiny_http::Response::from_string(
             serde_json::to_string(&workload_id).map_err(RikError::ParsingError)?,
         )
-        .with_header(tiny_http::Header::from_str("Content-Type: application/json").unwrap())
+        .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
         .with_status_code(tiny_http::StatusCode::from(200)))
     } else {
         event!(Level::ERROR, "workload.create, cannot create workload");

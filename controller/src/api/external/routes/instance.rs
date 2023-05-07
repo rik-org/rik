@@ -5,6 +5,7 @@ use std::str::FromStr;
 use std::sync::mpsc::Sender;
 use tracing::{event, Level};
 
+use crate::api::external::routes::ContentType;
 use crate::api::external::services::element::elements_set_right_name;
 use crate::api::external::services::instance::send_create_instance;
 use crate::api::types::element::OnlyId;
@@ -26,13 +27,8 @@ pub fn get(
         let instances_json = serde_json::to_string(&instances).map_err(RikError::ParsingError)?;
 
         event!(Level::INFO, "instances.get, instances found");
-
         Ok(tiny_http::Response::from_string(instances_json)
-            .with_header(
-                tiny_http::Header::from_str("Content-Type: application/json").map_err(|_| {
-                    RikError::Error("tiny_http::Header failed to add header".to_string())
-                })?,
-            )
+            .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
             .with_status_code(tiny_http::StatusCode::from(200)))
     } else {
         Ok(tiny_http::Response::from_string("Cannot find instances")
@@ -110,10 +106,7 @@ pub fn create(
     Ok(tiny_http::Response::from_string(
         serde_json::to_string(&instance_names).map_err(RikError::ParsingError)?,
     )
-    .with_header(
-        tiny_http::Header::from_str("Content-Type: application/json")
-            .map_err(|_| RikError::Error("tiny_http::Header failed to add header".to_string()))?,
-    )
+    .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
     .with_status_code(tiny_http::StatusCode::from(201)))
 }
 
