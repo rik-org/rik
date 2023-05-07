@@ -5,7 +5,7 @@ use definition::workload::WorkloadDefinition;
 use std::fmt::{Debug, Display, Formatter, Result};
 use thiserror::Error;
 
-use crate::database::DataBaseError;
+use crate::database::DatabaseError;
 
 #[derive(Debug)]
 pub enum Crud {
@@ -41,7 +41,7 @@ pub enum RikError {
     Error(String),
 
     #[error("Database error: {0}")]
-    DataBaseError(DataBaseError),
+    DataBaseError(DatabaseError),
 }
 
 pub struct ApiChannel {
