@@ -5,6 +5,7 @@ use std::sync::mpsc::Sender;
 use tracing::{event, Level};
 
 use super::HttpResult;
+use crate::api::external::routes::ContentType;
 use crate::api::external::services::element::elements_set_right_name;
 use crate::api::types::element::OnlyId;
 use crate::api::types::tenant::Tenant;
@@ -22,11 +23,7 @@ pub fn get(
         let tenants_json = serde_json::to_string(&tenants).map_err(RikError::ParsingError)?;
         event!(Level::INFO, "tenants.get, tenants found");
         Ok(tiny_http::Response::from_string(tenants_json)
-            .with_header(
-                tiny_http::Header::from_str("Content-Type: application/json").map_err(|_| {
-                    RikError::Error("tiny_http::Header failed to add header".to_string())
-                })?,
-            )
+            .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
             .with_status_code(tiny_http::StatusCode::from(200)))
     } else {
         Ok(tiny_http::Response::from_string("Cannot find tenant")
@@ -49,11 +46,7 @@ pub fn create(
     if RikRepository::insert(connection, &tenant.name, &tenant.value).is_ok() {
         event!(Level::INFO, "Create tenant");
         Ok(tiny_http::Response::from_string(content)
-            .with_header(
-                tiny_http::Header::from_str("Content-Type: application/json").map_err(|_| {
-                    RikError::Error("tiny_http::Header failed to add header".to_string())
-                })?,
-            )
+            .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
             .with_status_code(tiny_http::StatusCode::from(200)))
     } else {
         event!(Level::ERROR, "Cannot create tenant");
