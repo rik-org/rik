@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Error)]
 pub enum DatabaseError {
-    #[error("Error: {0}")]
+    #[error("Sql Error: {0}")]
     SqlError(rusqlite::Error),
 
     #[error("Io error: {0}")]
