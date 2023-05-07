@@ -37,9 +37,6 @@ pub enum RikError {
     #[error("Invalid name: {0}")]
     InvalidName(String),
 
-    #[error("Error: {0}")]
-    Error(String),
-
     #[error("Database error: {0}")]
     DataBaseError(DatabaseError),
 }
