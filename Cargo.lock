@@ -501,6 +501,7 @@ dependencies = [
 name = "controller"
 version = "1.0.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "backoff",
  "chrono",

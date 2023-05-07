@@ -10,7 +10,7 @@ use crate::api::external::services::element::elements_set_right_name;
 use crate::api::external::services::instance::send_create_instance;
 use crate::api::types::element::OnlyId;
 use crate::api::types::instance::InstanceDefinition;
-use crate::api::{ApiChannel, Crud, RikError};
+use crate::api::{ApiChannel, Crud};
 use crate::core::instance::Instance;
 use crate::database::RikRepository;
 
@@ -24,7 +24,7 @@ pub fn get(
 ) -> HttpResult {
     if let Ok(mut instances) = RikRepository::find_all(connection, "/instance") {
         instances = elements_set_right_name(instances.clone());
-        let instances_json = serde_json::to_string(&instances).map_err(RikError::ParsingError)?;
+        let instances_json = serde_json::to_string(&instances)?;
 
         event!(Level::INFO, "instances.get, instances found");
         Ok(tiny_http::Response::from_string(instances_json)
@@ -43,12 +43,9 @@ pub fn create(
     internal_sender: &Sender<ApiChannel>,
 ) -> HttpResult {
     let mut content = String::new();
-    req.as_reader()
-        .read_to_string(&mut content)
-        .map_err(RikError::IoError)?;
+    req.as_reader().read_to_string(&mut content)?;
 
-    let mut instance: InstanceDefinition =
-        serde_json::from_str(&content).map_err(RikError::ParsingError)?;
+    let mut instance: InstanceDefinition = serde_json::from_str(&content)?;
 
     //Workload not found
     if RikRepository::find_one(connection, &instance.workload_id, "/workload").is_err() {
@@ -103,11 +100,11 @@ pub fn create(
         );
     }
 
-    Ok(tiny_http::Response::from_string(
-        serde_json::to_string(&instance_names).map_err(RikError::ParsingError)?,
+    Ok(
+        tiny_http::Response::from_string(serde_json::to_string(&instance_names)?)
+            .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
+            .with_status_code(tiny_http::StatusCode::from(201)),
     )
-    .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
-    .with_status_code(tiny_http::StatusCode::from(201)))
 }
 
 pub fn delete(
@@ -117,15 +114,11 @@ pub fn delete(
     internal_sender: &Sender<ApiChannel>,
 ) -> HttpResult {
     let mut content = String::new();
-    req.as_reader()
-        .read_to_string(&mut content)
-        .map_err(RikError::IoError)?;
-    let OnlyId { id: delete_id } =
-        serde_json::from_str(&content).map_err(RikError::ParsingError)?;
+    req.as_reader().read_to_string(&mut content)?;
+    let OnlyId { id: delete_id } = serde_json::from_str(&content)?;
 
     if let Ok(instance) = RikRepository::find_one(connection, &delete_id, "/instance") {
-        let instance_def: InstanceDefinition =
-            serde_json::from_value(instance.value.clone()).map_err(RikError::ParsingError)?;
+        let instance_def: InstanceDefinition = serde_json::from_value(instance.value.clone())?;
 
         let workload_def_rs =
             RikRepository::find_one(connection, &instance_def.workload_id, "/workload");
@@ -142,17 +135,13 @@ pub fn delete(
             ))
             .with_status_code(tiny_http::StatusCode::from(404)));
         }
-        let workload_def: WorkloadDefinition =
-            serde_json::from_value(workload_def_rs.map_err(RikError::DataBaseError)?.value)
-                .map_err(RikError::ParsingError)?;
-        internal_sender
-            .send(ApiChannel {
-                action: Crud::Delete,
-                workload_id: Some(instance_def.workload_id),
-                workload_definition: Some(workload_def),
-                instance_id: Some(delete_id),
-            })
-            .map_err(|e| RikError::InternalCommunicationError(e.to_string()))?;
+        let workload_def: WorkloadDefinition = serde_json::from_value(workload_def_rs?.value)?;
+        internal_sender.send(ApiChannel {
+            action: Crud::Delete,
+            workload_id: Some(instance_def.workload_id),
+            workload_definition: Some(workload_def),
+            instance_id: Some(delete_id),
+        })?;
 
         event!(
             Level::INFO,
