@@ -7,7 +7,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Error)]
-pub enum DataBaseError {
+pub enum DatabaseError {
     #[error("Error: {0}")]
     SqlError(rusqlite::Error),
 
@@ -15,7 +15,7 @@ pub enum DataBaseError {
     IoError(std::io::Error),
 }
 
-type Result<T> = std::result::Result<T, DataBaseError>;
+type Result<T> = std::result::Result<T, DatabaseError>;
 
 #[allow(dead_code)]
 pub struct RikDataBase {
@@ -41,7 +41,7 @@ impl RikDataBase {
             CREATE INDEX IF NOT EXISTS cluster_name_index ON cluster (name);
             CREATE INDEX IF NOT EXISTS cluster_name_id_index ON cluster (name,id);",
             )
-            .map_err(DataBaseError::SqlError)?;
+            .map_err(DatabaseError::SqlError)?;
         Ok(())
     }
 
@@ -51,10 +51,10 @@ impl RikDataBase {
         dotenv().ok();
         let file_path =
             std::env::var("DATABASE_LOCATION").unwrap_or("/var/lib/rik/data/".to_string());
-        std::fs::create_dir_all(&file_path).map_err(DataBaseError::IoError)?;
+        std::fs::create_dir_all(&file_path).map_err(DatabaseError::IoError)?;
 
         let database_path = format!("{}{}.db", file_path, self.name);
-        Connection::open(database_path).map_err(DataBaseError::SqlError)
+        Connection::open(database_path).map_err(DatabaseError::SqlError)
     }
 }
 
@@ -74,7 +74,7 @@ impl RikRepository {
     pub fn delete(connection: &Connection, id: &String) -> Result<()> {
         connection
             .execute("DELETE FROM cluster WHERE id = (?1)", params![id])
-            .map_err(DataBaseError::SqlError)?;
+            .map_err(DatabaseError::SqlError)?;
         Ok(())
     }
 
@@ -84,11 +84,11 @@ impl RikRepository {
                 "SELECT id, name, value FROM cluster WHERE id = '{}' AND name LIKE '{}%'",
                 id, element_type
             ))
-            .map_err(DataBaseError::SqlError)?;
+            .map_err(DatabaseError::SqlError)?;
         stmt.query_row([], |row| {
             Ok(Element::new(row.get(0)?, row.get(1)?, row.get(2)?))
         })
-        .map_err(DataBaseError::SqlError)
+        .map_err(DatabaseError::SqlError)
     }
 
     pub fn check_duplicate_name(connection: &Connection, name: &str) -> Result<Element> {
@@ -97,11 +97,11 @@ impl RikRepository {
                 "SELECT id, name, value FROM cluster WHERE name LIKE '{}%'",
                 name
             ))
-            .map_err(DataBaseError::SqlError)?;
+            .map_err(DatabaseError::SqlError)?;
         stmt.query_row([], |row| {
             Ok(Element::new(row.get(0)?, row.get(1)?, row.get(2)?))
         })
-        .map_err(DataBaseError::SqlError)
+        .map_err(DatabaseError::SqlError)
     }
 
     // TODO: add pagination
@@ -120,7 +120,7 @@ impl RikRepository {
 
         let mut elements: Vec<Element> = Vec::new();
         for element in elements_iter {
-            elements.push(element.map_err(DataBaseError::SqlError)?);
+            elements.push(element.map_err(DatabaseError::SqlError)?);
         }
         Ok(elements)
     }
@@ -131,7 +131,7 @@ impl RikRepository {
                 "UPDATE cluster SET value=(?1) WHERE id = (?2)",
                 params![value, id],
             )
-            .map_err(DataBaseError::SqlError)?;
+            .map_err(DatabaseError::SqlError)?;
         Ok(())
     }
 
@@ -151,7 +151,7 @@ impl RikRepository {
                     "INSERT INTO cluster (id, name, value) VALUES (?1, ?2, ?3)",
                     params![id, name, value],
                 )
-                .map_err(DataBaseError::SqlError)?;
+                .map_err(DatabaseError::SqlError)?;
             Ok(id.to_string())
         }
     }
