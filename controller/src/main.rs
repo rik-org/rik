@@ -6,9 +6,9 @@ mod tests;
 use std::sync::mpsc::channel;
 use std::thread;
 
-use crate::database::RikDataBase;
+use crate::{api::RikError, database::RikDataBase};
 use api::{external, ApiChannel};
-use tracing::{event, metadata::LevelFilter, Level};
+use tracing::{error, event, metadata::LevelFilter, Level};
 use tracing_subscriber::{
     fmt, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
@@ -32,7 +32,9 @@ async fn main() {
     logger_setup();
     event!(Level::INFO, "Starting Rik");
     let db = RikDataBase::new(String::from("rik"));
-    db.init_tables().unwrap();
+    if let Err(e) = db.init_tables() {
+        error!("Error while table initialization {}", e)
+    }
 
     let (legacy_sender, legacy_receiver) = channel::<ApiChannel>();
 
@@ -42,18 +44,26 @@ async fn main() {
     let external_api = external::Server::new(legacy_sender);
     let mut threads = Vec::new();
 
-    threads.push(thread::spawn(move || {
+    threads.push(thread::spawn(move || -> Result<(), RikError> {
         let future = async move { internal_api.listen_notification(legacy_receiver).await };
         Builder::new_multi_thread()
             .enable_all()
             .build()
             .unwrap()
-            .block_on(future)
+            .block_on(future);
+        Ok(())
     }));
 
-    threads.push(thread::spawn(move || external_api.run(db)));
+    threads.push(thread::spawn(move || -> Result<(), RikError> {
+        external_api.run(db)
+    }));
 
     for thread in threads {
-        thread.join().unwrap();
+        if let Err(e) = thread
+            .join()
+            .expect("Couldn't join on the associated thread")
+        {
+            error!("An error occured {}", e)
+        }
     }
 }
