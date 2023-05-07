@@ -5,6 +5,8 @@ use definition::workload::WorkloadDefinition;
 use std::fmt::{Debug, Display, Formatter, Result};
 use thiserror::Error;
 
+use crate::database::DatabaseError;
+
 #[derive(Debug)]
 pub enum Crud {
     Create = 0,
@@ -23,6 +25,9 @@ impl From<i32> for Crud {
 
 #[derive(Debug, Error)]
 pub enum RikError {
+    #[error("Database error {0}")]
+    DatabaseError(DatabaseError),
+
     #[error("Internal communication error: {0}")]
     InternalCommunicationError(String),
 
