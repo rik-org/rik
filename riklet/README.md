@@ -54,15 +54,25 @@ Here is a list of **required** environment variables to run riklet:
 To run riklet with FAAS configuration.
 
 ```bash
-sudo riklet --firecracker-path ${FIRECRACKER_LOCATION} \
-    --kernel-path ${KERNEL_LOCATION} --ifnet ${IFACE} \
-    --ifnet-ip ${IFACE_IP} --script-path ${SCRIPT_LOCATION}
+sudo riklet --kernel-path ${KERNEL_LOCATION} \
+            --ifnet ${IFACE} \
+            --ifnet-ip ${IFACE_IP} \
+            --script-path ${SCRIPT_LOCATION}
 ```
+
+> The firecracker binary location is determined by the following order:
+>
+> - **$FIRECRACKER_LOCATION** environment variable: direct path to the binary
+> - **$PATH** environment variable: search for the binary in the directories
+> - firecracker binary in the current working directory
 
 Exemple:
 
 ```bash
-sudo riklet --firecracker-path $(which firecracker) --kernel-path ./vmlinux.bin --ifnet wlp2s0 --ifnet-ip 192.168.1.84 --script-path ./scripts/setup-host-tap.sh
+sudo riklet --kernel-path ./vmlinux.bin  \
+            --ifnet wlp2s0  \
+            --ifnet-ip 192.168.1.84  \
+            --script-path ./scripts/setup-host-tap.sh
 ```
 
 You should see something like that :
@@ -74,7 +84,7 @@ You should see something like that :
         |    /  | | |    \ | |    |  __|  | |
         | |\ \ _| |_| |\  \| |____| |___  | |
         \_| \_|\___/\_| \_/\_____/\____/  \_/
-        
+
 [2021-07-03T15:04:09Z INFO  riklet::core] Riklet (v0.1.0) is ready to accept connections.
 ```
 
