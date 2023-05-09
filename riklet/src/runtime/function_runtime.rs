@@ -79,9 +79,10 @@ impl FunctionRuntime {
             )
             .try_build()
             .map_err(RuntimeError::FirepilotConfiguration)?;
-        let executor = FirecrackerExecutorBuilder::new()
+
+        let executor = FirecrackerExecutorBuilder::auto()
+            .map_err(RuntimeError::FirepilotConfiguration)?
             .with_chroot(DEFAULT_FIRECRACKER_WORKSPACE.to_string())
-            .with_exec_binary(self.function_config.firecracker_location.clone())
             .try_build()
             .map_err(RuntimeError::FirepilotConfiguration)?;
 
