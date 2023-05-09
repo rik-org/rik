@@ -5,14 +5,12 @@ use clap::Parser;
 
 #[derive(Debug, Clone)]
 pub struct FnConfiguration {
-    pub firecracker_location: PathBuf,
     pub kernel_location: PathBuf,
 }
 
 impl From<CliConfiguration> for FnConfiguration {
     fn from(cli: CliConfiguration) -> Self {
         FnConfiguration {
-            firecracker_location: cli.firecracker_path,
             kernel_location: cli.kernel_path,
         }
     }

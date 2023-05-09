@@ -20,14 +20,6 @@ pub struct CliConfiguration {
     /// If set and there is a config file, values defined by the CLI will override values of the configuration file.
     #[arg(long)]
     pub override_config: bool,
-    /// Path to a firecracker binary on your system
-    #[arg(
-        long,
-        value_name = "FIRECRACKER_LOCATION",
-        env = "FIRECRACKER_LOCATION",
-        default_value = "firecracker"
-    )]
-    pub firecracker_path: PathBuf,
     /// Path to the linux kernel.
     #[arg(
         long,
