@@ -1,7 +1,6 @@
 use definition::workload::WorkloadDefinition;
 use route_recognizer;
 use rusqlite::Connection;
-use std::str::FromStr;
 use std::sync::mpsc::Sender;
 use tracing::{event, Level};
 
@@ -13,6 +12,7 @@ use crate::api::types::instance::InstanceDefinition;
 use crate::api::{ApiChannel, Crud};
 use crate::core::instance::Instance;
 use crate::database::RikRepository;
+use tiny_http::Header;
 
 use super::HttpResult;
 
@@ -28,7 +28,7 @@ pub fn get(
 
         event!(Level::INFO, "instances.get, instances found");
         Ok(tiny_http::Response::from_string(instances_json)
-            .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
+            .with_header::<Header>(ContentType::JSON.into())
             .with_status_code(tiny_http::StatusCode::from(200)))
     } else {
         Ok(tiny_http::Response::from_string("Cannot find instances")
@@ -102,7 +102,7 @@ pub fn create(
 
     Ok(
         tiny_http::Response::from_string(serde_json::to_string(&instance_names)?)
-            .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
+            .with_header::<Header>(ContentType::JSON.into())
             .with_status_code(tiny_http::StatusCode::from(201)),
     )
 }

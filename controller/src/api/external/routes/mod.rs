@@ -1,6 +1,7 @@
 use route_recognizer;
 use rusqlite::Connection;
 use std::io;
+use std::str::FromStr;
 use std::sync::mpsc::Sender;
 use tiny_http::Method;
 use tiny_http::Response;
@@ -25,10 +26,12 @@ pub enum ContentType {
     JSON,
 }
 
-impl Into<&str> for ContentType {
-    fn into(self) -> &'static str {
+impl Into<tiny_http::Header> for ContentType {
+    fn into(self) -> tiny_http::Header {
         match self {
-            ContentType::JSON => "Content-Type: application/json",
+            ContentType::JSON => {
+                tiny_http::Header::from_str("Content-Type: application/json").unwrap()
+            }
         }
     }
 }
