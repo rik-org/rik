@@ -1,7 +1,7 @@
 use route_recognizer;
 use rusqlite::Connection;
-use std::str::FromStr;
 use std::sync::mpsc::Sender;
+use tiny_http::Header;
 use tracing::{event, Level};
 
 use super::HttpResult;
@@ -23,7 +23,7 @@ pub fn get(
         let tenants_json = serde_json::to_string(&tenants)?;
         event!(Level::INFO, "tenants.get, tenants found");
         Ok(tiny_http::Response::from_string(tenants_json)
-            .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
+            .with_header::<Header>(ContentType::JSON.into())
             .with_status_code(tiny_http::StatusCode::from(200)))
     } else {
         Ok(tiny_http::Response::from_string("Cannot find tenant")
@@ -44,7 +44,7 @@ pub fn create(
     if RikRepository::insert(connection, &tenant.name, &tenant.value).is_ok() {
         event!(Level::INFO, "Create tenant");
         Ok(tiny_http::Response::from_string(content)
-            .with_header(tiny_http::Header::from_str(ContentType::JSON.into()).unwrap())
+            .with_header::<Header>(ContentType::JSON.into())
             .with_status_code(tiny_http::StatusCode::from(200)))
     } else {
         event!(Level::ERROR, "Cannot create tenant");
