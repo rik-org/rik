@@ -44,7 +44,7 @@ gethostname = "0.4.1"
 firepilot = "1.1.0"
 devices = { git = "https://github.com/firecracker-microvm/firecracker.git", tag = "v1.3.1" }
 rate_limiter = { git = "https://github.com/firecracker-microvm/firecracker.git", tag = "v1.3.1" }
-utils = { git = "https://github.com/firecracker-microvm/firecracker.git", tag = "v1.3.1" }
+utils = { git = "https://github.com/firecracker-microvm/firecracker.git", tag = "v1.3.2" }
 rand = "0.8.5"
 rtnetlink = "0.12.0"
 ipnetwork="0.20.0"
