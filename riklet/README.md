@@ -39,7 +39,7 @@ CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER='sudo -E' cargo run --bin riklet
 
 ### Faas Usage
 
-**Prerequisite**: You need firecracker in yout PATH.
+**Prerequisite**: You need firecracker in your PATH.
 
 Here is a list of **required** environment variables to run riklet:
 
@@ -49,7 +49,6 @@ Here is a list of **required** environment variables to run riklet:
 | `IFACE_IP`             | IP of the Network interface connected to the internet                                                                   | ""      |
 | `FIRECRACKER_LOCATION` | Path to the firecracker binary                                                                                          | ""      |
 | `KERNEL_LOCATION`      | Path to the kernel location                                                                                             | ""      |
-| `SCRIPT_LOCATION`      | Path to the [script](https://github.com/polyxia-org/rik/blob/main/scripts/setup-host-tap.sh) that create tap interface. | ""      |
 
 To run riklet with FAAS configuration.
 
@@ -57,7 +56,6 @@ To run riklet with FAAS configuration.
 sudo riklet --kernel-path ${KERNEL_LOCATION} \
             --ifnet ${IFACE} \
             --ifnet-ip ${IFACE_IP} \
-            --script-path ${SCRIPT_LOCATION}
 ```
 
 > The firecracker binary location is determined by the following order:
@@ -71,8 +69,7 @@ Exemple:
 ```bash
 sudo riklet --kernel-path ./vmlinux.bin  \
             --ifnet wlp2s0  \
-            --ifnet-ip 192.168.1.84  \
-            --script-path ./scripts/setup-host-tap.sh
+            --ifnet-ip 192.168.1.84
 ```
 
 You should see something like that :

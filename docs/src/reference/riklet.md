@@ -4,7 +4,7 @@
 
 ## Faas Configuration
 
-**Prerequisite**: You need firecracker in yout PATH.
+**Prerequisite**: You need firecracker in your PATH.
 
 Here is a list of **required** environment variables to run riklet:
 
@@ -14,7 +14,6 @@ Here is a list of **required** environment variables to run riklet:
 | `IFACE_IP`             | IP of the Network interface connected to the internet                                                                   | ""      |
 | `FIRECRACKER_LOCATION` | Path to the firecracker binary                                                                                          | ""      |
 | `KERNEL_LOCATION`      | Path to the kernel location                                                                                             | ""      |
-| `SCRIPT_LOCATION`      | Path to the [script](https://github.com/polyxia-org/rik/blob/main/scripts/setup-host-tap.sh) that create tap interface. | ""      |
 
 To run riklet with FAAS configuration.
 
@@ -22,7 +21,6 @@ To run riklet with FAAS configuration.
 sudo riklet --kernel-path ${KERNEL_LOCATION} \
             --ifnet ${IFACE} \
             --ifnet-ip ${IFACE_IP} \
-            --script-path ${SCRIPT_LOCATION}
 ```
 
 > The firecracker binary location is determined by the following order:
