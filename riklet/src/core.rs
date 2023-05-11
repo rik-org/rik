@@ -205,7 +205,7 @@ impl Riklet {
         let fn_configuration =
             FnConfiguration::load().map_err(|e| RikletError::InvalidInput(e.to_string()))?;
 
-        let mut global_runtime_network = GlobalRuntimeNetwork::new(fn_configuration.gateway_ip)
+        let mut global_runtime_network = GlobalRuntimeNetwork::new(fn_configuration.iface)
             .map_err(|e| RikletError::NetworkError(NetworkError::IptablesError(e)))?;
         global_runtime_network
             .init()

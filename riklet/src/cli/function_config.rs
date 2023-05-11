@@ -31,7 +31,6 @@ impl FnConfiguration {
             None => get_default_iface()?,
         };
         Ok(FnConfiguration {
-            firecracker_location: opts.firecracker_path,
             kernel_location: opts.kernel_path,
             gateway_ip,
             iface,
