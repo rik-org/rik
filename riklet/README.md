@@ -41,7 +41,7 @@ CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER='sudo -E' cargo run --bin riklet
 
 **Prerequisite**: You need firecracker in your PATH.
 
-Here is a list of **required** environment variables to run riklet:
+Here is a list of environment variables that can be used to configure run riklet:
 
 | Environment Variable   | Description                                                                                                             | Default |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------- |
