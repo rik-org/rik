@@ -98,6 +98,15 @@ impl FunctionRuntimeNetwork {
             table: Table::Filter,
             chain: Chain::Forward,
         };
+        let filter_conntrack = Rule {
+            chain: Chain::Forward,
+            table: Table::Filter,
+            rule: format!(
+                "-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT -o {}",
+                self.tap_name()?
+            ),
+        };
+        rules.push(filter_conntrack);
         rules.push(rule);
         // port mapping
         for (exposed_port, internal_port) in self.port_mapping.iter() {
@@ -214,7 +223,7 @@ mod tests {
 
     use super::FunctionRuntimeNetwork;
 
-    const GATEWAY_MOCK: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 1);
+    const GATEWAY_MOCK: &str = "eth0";
 
     fn open_tap_shell(iface_name: &str) -> Result<(), String> {
         let tap_output = Command::new("ip")
@@ -281,7 +290,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn apply_exposure_network_routing() {
-        let mut network = GlobalRuntimeNetwork::new(GATEWAY_MOCK).unwrap();
+        let mut network = GlobalRuntimeNetwork::new(GATEWAY_MOCK.to_string()).unwrap();
         let result = network.init().await;
         assert!(result.is_ok());
 

@@ -54,8 +54,8 @@ To run riklet with FAAS configuration.
 
 ```bash
 sudo riklet --kernel-path ${KERNEL_LOCATION} \
-            --ifnet ${IFACE} \
-            --ifnet-ip ${IFACE_IP} \
+            --iface ${IFACE} \
+            --iface-ip ${IFACE_IP} \
 ```
 
 > The firecracker binary location is determined by the following order:
@@ -68,8 +68,8 @@ Exemple:
 
 ```bash
 sudo riklet --kernel-path ./vmlinux.bin  \
-            --ifnet wlp2s0  \
-            --ifnet-ip 192.168.1.84
+            --iface wlp2s0  \
+            --iface-ip 192.168.1.84
 ```
 
 You should see something like that :
