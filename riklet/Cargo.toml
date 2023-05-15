@@ -31,7 +31,7 @@ daemonize = "0.5.0"
 tonic.workspace = true
 prost.workspace = true
 tokio = { version = "1", features = ["full"] }
-futures-util = "0.3.15"
+futures-util = "0.3.28"
 serde = { version = "1.0.162", features = ["derive"] }
 tokio-stream = "0.1.6"
 async-trait = "0.1.50"
