@@ -35,7 +35,7 @@ futures-util = "0.3.28"
 serde = { version = "1.0.163", features = ["derive"] }
 tokio-stream = "0.1.6"
 async-trait = "0.1.50"
-libc="0.2.142"
+libc="0.2.144"
 toml="0.7.3"
 uuid = { version = "1.3", features = ["v4"] }
 clap = { version = "4.0.26", features = ["derive", "env"] }
