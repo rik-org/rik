@@ -1097,9 +1097,9 @@ dependencies = [
 
 [[package]]
 name = "firepilot"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc69ee1d318daa40928b4031e977a4bbd2a298565562d7fecb2090b00939cc9d"
+checksum = "832a7fd33c874fb3eccd5a0c4181e8da2242076977eafc205301c4ed8fea2679"
 dependencies = [
  "firepilot_models",
  "hyper",
