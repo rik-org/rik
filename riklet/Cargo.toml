@@ -42,7 +42,7 @@ clap = { version = "4.0.26", features = ["derive", "env"] }
 nix="0.26.2"
 gethostname = "0.4.3"
 firepilot = "1.1.1"
-devices = { git = "https://github.com/firecracker-microvm/firecracker.git", tag = "v1.3.1" }
+devices = { git = "https://github.com/firecracker-microvm/firecracker.git", tag = "v1.3.3" }
 rate_limiter = { git = "https://github.com/firecracker-microvm/firecracker.git", tag = "v1.3.1" }
 utils = { git = "https://github.com/firecracker-microvm/firecracker.git", tag = "v1.3.2" }
 rand = "0.8.5"

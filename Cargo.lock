@@ -859,22 +859,22 @@ dependencies = [
 [[package]]
 name = "devices"
 version = "0.1.0"
-source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1#94752a7d79993d0db565c19b1469ae45922a8668"
+source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3#d09538146406b093cd5864ffe205c33b899619a6"
 dependencies = [
  "derive_more",
  "dumbo",
  "event-manager",
  "io_uring",
  "libc",
- "logger",
+ "logger 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
  "mmds",
- "net_gen 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1)",
- "rate_limiter",
+ "net_gen 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
+ "rate_limiter 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
  "serde",
- "snapshot",
+ "snapshot 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
  "thiserror",
  "timerfd",
- "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1)",
+ "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
  "versionize",
  "versionize_derive",
  "virtio_gen",
@@ -983,13 +983,13 @@ checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
 [[package]]
 name = "dumbo"
 version = "0.1.0"
-source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1#94752a7d79993d0db565c19b1469ae45922a8668"
+source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3#d09538146406b093cd5864ffe205c33b899619a6"
 dependencies = [
  "bitflags 1.3.2",
  "derive_more",
- "logger",
+ "logger 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
  "micro_http",
- "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1)",
+ "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
 ]
 
 [[package]]
@@ -1590,11 +1590,11 @@ dependencies = [
 [[package]]
 name = "io_uring"
 version = "0.1.0"
-source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1#94752a7d79993d0db565c19b1469ae45922a8668"
+source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3#d09538146406b093cd5864ffe205c33b899619a6"
 dependencies = [
  "derive_more",
  "libc",
- "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1)",
+ "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
  "vm-memory 0.3.0",
 ]
 
@@ -1765,6 +1765,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "logger"
+version = "0.1.0"
+source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3#d09538146406b093cd5864ffe205c33b899619a6"
+dependencies = [
+ "lazy_static",
+ "libc",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
+ "vm-superio",
+]
+
+[[package]]
 name = "mach"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1872,20 +1887,20 @@ dependencies = [
 [[package]]
 name = "mmds"
 version = "0.1.0"
-source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1#94752a7d79993d0db565c19b1469ae45922a8668"
+source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3#d09538146406b093cd5864ffe205c33b899619a6"
 dependencies = [
  "aes-gcm",
  "base64 0.13.1",
  "bincode",
  "derive_more",
  "dumbo",
- "logger",
+ "logger 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
  "micro_http",
  "serde",
  "serde_json",
- "snapshot",
+ "snapshot 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
  "thiserror",
- "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1)",
+ "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
  "versionize",
  "versionize_derive",
 ]
@@ -1933,6 +1948,11 @@ source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1#
 name = "net_gen"
 version = "0.1.0"
 source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.2#41e786efc5b9454ec07bb5732ef5fa425636e686"
+
+[[package]]
+name = "net_gen"
+version = "0.1.0"
+source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3#d09538146406b093cd5864ffe205c33b899619a6"
 
 [[package]]
 name = "netlink-packet-core"
@@ -2558,10 +2578,23 @@ name = "rate_limiter"
 version = "0.1.0"
 source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1#94752a7d79993d0db565c19b1469ae45922a8668"
 dependencies = [
- "logger",
- "snapshot",
+ "logger 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1)",
+ "snapshot 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1)",
  "timerfd",
  "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1)",
+ "versionize",
+ "versionize_derive",
+]
+
+[[package]]
+name = "rate_limiter"
+version = "0.1.0"
+source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3#d09538146406b093cd5864ffe205c33b899619a6"
+dependencies = [
+ "logger 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
+ "snapshot 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
+ "timerfd",
+ "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
  "versionize",
  "versionize_derive",
 ]
@@ -2742,7 +2775,7 @@ dependencies = [
  "prost",
  "proto",
  "rand",
- "rate_limiter",
+ "rate_limiter 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1)",
  "rtnetlink",
  "serde",
  "serde_json",
@@ -3121,6 +3154,17 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 name = "snapshot"
 version = "0.1.0"
 source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1#94752a7d79993d0db565c19b1469ae45922a8668"
+dependencies = [
+ "libc",
+ "thiserror",
+ "versionize",
+ "versionize_derive",
+]
+
+[[package]]
+name = "snapshot"
+version = "0.1.0"
+source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3#d09538146406b093cd5864ffe205c33b899619a6"
 dependencies = [
  "libc",
  "thiserror",
@@ -3769,6 +3813,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "utils"
+version = "0.1.0"
+source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3#d09538146406b093cd5864ffe205c33b899619a6"
+dependencies = [
+ "derive_more",
+ "libc",
+ "net_gen 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
+ "serde",
+ "thiserror",
+ "versionize",
+ "versionize_derive",
+ "vmm-sys-util",
+]
+
+[[package]]
 name = "uuid"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3843,15 +3902,15 @@ dependencies = [
 [[package]]
 name = "virtio_gen"
 version = "0.1.0"
-source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1#94752a7d79993d0db565c19b1469ae45922a8668"
+source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3#d09538146406b093cd5864ffe205c33b899619a6"
 
 [[package]]
 name = "vm-memory"
 version = "0.3.0"
-source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1#94752a7d79993d0db565c19b1469ae45922a8668"
+source = "git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3#d09538146406b093cd5864ffe205c33b899619a6"
 dependencies = [
  "libc",
- "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.1)",
+ "utils 0.1.0 (git+https://github.com/firecracker-microvm/firecracker.git?tag=v1.3.3)",
  "vm-memory 0.10.0",
 ]
 
