@@ -33,7 +33,7 @@ prost.workspace = true
 tokio = { version = "1", features = ["full"] }
 futures-util = "0.3.28"
 serde = { version = "1.0.163", features = ["derive"] }
-tokio-stream = "0.1.6"
+tokio-stream = "0.1.14"
 async-trait = "0.1.50"
 libc="0.2.144"
 toml="0.7.4"
