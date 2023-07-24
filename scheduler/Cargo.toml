@@ -16,7 +16,7 @@ assets = [
 
 [dependencies]
 tonic.workspace = true
-tokio-stream = "0.1.6"
+tokio-stream = "0.1.14"
 env_logger = "0.10.0"
 log = "0.4.19"
 rand = "0.8.4"
